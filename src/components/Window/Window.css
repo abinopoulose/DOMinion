@@ -1,0 +1,248 @@
+/* ============================================================
+   Window — Draggable, resizable window frame
+   ============================================================ */
+
+.window {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-window);
+  overflow: hidden;
+  will-change: transform;
+  transition: border-radius 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.window--maximized {
+  border-radius: 0 !important;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.window--unfocused {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================
+   Title Bar
+   ============================================================ */
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--titlebar-height);
+  min-height: var(--titlebar-height);
+  background: var(--color-bg-titlebar);
+  padding: 0 var(--space-sm);
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.window--unfocused .titlebar {
+  opacity: 0.7;
+}
+
+.titlebar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  flex: 1;
+}
+
+.titlebar__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.titlebar__title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Window Control Buttons --- */
+.titlebar__controls {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 2px;
+}
+
+.titlebar__btn {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: filter 0.12s ease;
+  padding: 0;
+}
+
+.titlebar__btn:hover {
+  filter: brightness(1.25);
+}
+
+.titlebar__btn:active {
+  filter: brightness(0.85);
+}
+
+.titlebar__btn--minimize {
+  background: var(--color-minimize);
+}
+
+.titlebar__btn--maximize {
+  background: var(--color-maximize);
+}
+
+.titlebar__btn--close {
+  background: var(--color-close);
+}
+
+/* Button icons — hidden until titlebar hover (GNOME behavior) */
+.titlebar__btn-icon {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  width: 8px;
+  height: 8px;
+  stroke: rgba(0, 0, 0, 0.65);
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.titlebar:hover .titlebar__btn-icon {
+  opacity: 1;
+}
+
+/* ============================================================
+   Window Content
+   ============================================================ */
+
+.window__content {
+  flex: 1;
+  overflow: auto;
+  background: var(--color-bg-window);
+  position: relative;
+}
+
+/* ============================================================
+   Resize Handles — 8 invisible edges/corners
+   ============================================================ */
+
+.window__resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+/* Edge handles — 6px thick */
+.window__resize-handle--n {
+  top: -3px;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: n-resize;
+}
+
+.window__resize-handle--s {
+  bottom: -3px;
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: s-resize;
+}
+
+.window__resize-handle--e {
+  top: 8px;
+  right: -3px;
+  bottom: 8px;
+  width: 6px;
+  cursor: e-resize;
+}
+
+.window__resize-handle--w {
+  top: 8px;
+  left: -3px;
+  bottom: 8px;
+  width: 6px;
+  cursor: w-resize;
+}
+
+/* Corner handles — 12×12 */
+.window__resize-handle--ne {
+  top: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  cursor: ne-resize;
+}
+
+.window__resize-handle--nw {
+  top: -3px;
+  left: -3px;
+  width: 12px;
+  height: 12px;
+  cursor: nw-resize;
+}
+
+.window__resize-handle--se {
+  bottom: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  cursor: se-resize;
+}
+
+.window__resize-handle--sw {
+  bottom: -3px;
+  left: -3px;
+  width: 12px;
+  height: 12px;
+  cursor: sw-resize;
+}
+
+/* ============================================================
+   Minimize animation
+   ============================================================ */
+
+@keyframes window-minimize-out {
+  to {
+    opacity: 0;
+    transform: scale(0.6) translateY(80px);
+  }
+}
+
+.window--minimizing {
+  animation: window-minimize-out 0.2s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+  pointer-events: none;
+}
+
+/* Open animation */
+@keyframes window-open {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.window--opening {
+  animation: window-open 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
