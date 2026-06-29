@@ -2,43 +2,28 @@ import { useState, useCallback, type ReactNode } from 'react';
 import { TitleBar } from './TitleBar';
 import { useWindowDrag } from '../../hooks/useWindowDrag';
 import { useWindowResize } from '../../hooks/useWindowResize';
+import { useWindowStore } from '../../store';
 import './Window.css';
 
 export interface WindowProps {
   id: string;
-  title: string;
   icon?: ReactNode;
-  initialPosition: { x: number; y: number };
-  initialSize: { width: number; height: number };
-  zIndex: number;
-  isMinimized: boolean;
-  isFocused: boolean;
-  onFocus: () => void;
-  onClose: () => void;
-  onMinimize: () => void;
   children: ReactNode;
 }
 
 export function Window({
-  title,
+  id,
   icon,
-  initialPosition,
-  initialSize,
-  zIndex,
-  isMinimized,
-  isFocused,
-  onFocus,
-  onClose,
-  onMinimize,
   children,
 }: WindowProps) {
-  const [position, setPosition] = useState(initialPosition);
-  const [size, setSize] = useState(initialSize);
-  const [isMaximized, setIsMaximized] = useState(false);
-  const [preMaxRect, setPreMaxRect] = useState<{
-    pos: { x: number; y: number };
-    size: { width: number; height: number };
-  } | null>(null);
+  const win = useWindowStore(useCallback((state) => state.windows.find((w) => w.id === id), [id]));
+  const focusWindow = useWindowStore((s) => s.focusWindow);
+  const closeWindow = useWindowStore((s) => s.closeWindow);
+  const minimizeWindow = useWindowStore((s) => s.minimizeWindow);
+  const toggleMaximize = useWindowStore((s) => s.toggleMaximize);
+  const updatePosition = useWindowStore((s) => s.updatePosition);
+  const updateSize = useWindowStore((s) => s.updateSize);
+
   const [isMinimizing, setIsMinimizing] = useState(false);
   const [isOpening, setIsOpening] = useState(true);
 
@@ -51,50 +36,52 @@ export function Window({
     }
   }, [isOpening, isMinimizing]);
 
-  const handleMaximize = useCallback(() => {
-    if (isMaximized) {
-      // Restore
-      if (preMaxRect) {
-        setPosition(preMaxRect.pos);
-        setSize(preMaxRect.size);
-      }
-      setIsMaximized(false);
-    } else {
-      // Store current rect then maximize
-      setPreMaxRect({ pos: position, size });
-      const topbarHeight = 28;
-      const dockSpace = 90; // dock height + margin
-      setPosition({ x: 0, y: topbarHeight });
-      setSize({
-        width: window.innerWidth,
-        height: window.innerHeight - topbarHeight - dockSpace,
-      });
-      setIsMaximized(true);
-    }
-  }, [isMaximized, position, size, preMaxRect]);
-
   const handleMinimize = useCallback(() => {
     setIsMinimizing(true);
     // After animation, call the actual minimize handler
     setTimeout(() => {
-      onMinimize();
+      minimizeWindow(id);
       setIsMinimizing(false);
     }, 200);
-  }, [onMinimize]);
+  }, [id, minimizeWindow]);
+
+  const handleMaximize = useCallback(() => {
+    toggleMaximize(id);
+  }, [id, toggleMaximize]);
+
+  const handleFocus = useCallback(() => {
+    focusWindow(id);
+  }, [id, focusWindow]);
+
+  const handleClose = useCallback(() => {
+    closeWindow(id);
+  }, [id, closeWindow]);
+
+  const onPositionChange = useCallback((pos: { x: number; y: number }) => {
+    updatePosition(id, pos);
+  }, [id, updatePosition]);
+
+  const onSizeChange = useCallback((size: { width: number; height: number }) => {
+    updateSize(id, size);
+  }, [id, updateSize]);
+
+  if (!win) return null;
+
+  const { title, position, size, zIndex, isMinimized, isMaximized, isFocused } = win;
 
   const { dragHandlers } = useWindowDrag({
     position,
     isMaximized,
-    onPositionChange: setPosition,
-    onFocus,
+    onPositionChange,
+    onFocus: handleFocus,
   });
 
   const { resizeHandles } = useWindowResize({
     position,
     size,
     isMaximized,
-    onSizeChange: setSize,
-    onPositionChange: setPosition,
+    onSizeChange,
+    onPositionChange,
   });
 
   // Don't render if minimized (and not animating)
@@ -129,7 +116,7 @@ export function Window({
     <div
       className={classNames}
       style={style}
-      onMouseDown={onFocus}
+      onMouseDown={handleFocus}
       onAnimationEnd={handleAnimationEnd}
     >
       <TitleBar
@@ -139,7 +126,7 @@ export function Window({
         isMaximized={isMaximized}
         onMinimize={handleMinimize}
         onMaximize={handleMaximize}
-        onClose={onClose}
+        onClose={handleClose}
         onDoubleClick={handleMaximize}
         dragHandlers={dragHandlers}
       />
