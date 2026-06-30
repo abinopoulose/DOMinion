@@ -1,0 +1,489 @@
+/* ============================================================
+   Workspace Overview — GNOME Activities-style overview
+   ============================================================ */
+
+.workspace-overview {
+  position: fixed;
+  inset: 0;
+  z-index: 9997;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.workspace-overview--open {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+/* Darkened background overlay */
+.workspace-overview__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 0;
+}
+
+/* Top strip showing workspace thumbnails */
+.workspace-overview__strip {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px 24px;
+  margin-top: 40px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.workspace-overview__strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* Individual workspace thumbnail */
+.workspace-thumbnail {
+  position: relative;
+  flex-shrink: 0;
+  width: 200px;
+  height: 125px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: border-color 0.25s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+
+.workspace-thumbnail:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.04);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.workspace-thumbnail--active {
+  border-color: var(--color-accent, #E95420) !important;
+  box-shadow: 0 0 0 1px var(--color-accent, #E95420), 0 4px 20px rgba(233, 84, 32, 0.25);
+}
+
+/* Wallpaper preview inside thumbnail */
+.workspace-thumbnail__bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.6;
+  border-radius: 8px;
+}
+
+.workspace-thumbnail--active .workspace-thumbnail__bg {
+  opacity: 0.9;
+}
+
+/* Mini window previews inside thumbnails */
+.workspace-thumbnail__windows {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.workspace-thumbnail__mini-win {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.workspace-thumbnail__mini-win-titlebar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Workspace label underneath thumbnail */
+.workspace-thumbnail__label {
+  position: absolute;
+  bottom: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.workspace-thumbnail--active .workspace-thumbnail__label {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* Main content area: large window previews for active workspace */
+.workspace-overview__main {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 40px 60px;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-content: center;
+  margin-top: 20px;
+}
+
+/* Large window preview card */
+.workspace-preview-window {
+  position: relative;
+  width: 320px;
+  max-width: 40vw;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  background: var(--bg-window, #242424);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: preview-appear 0.3s cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.workspace-preview-window:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+.workspace-preview-window:hover .workspace-preview-window__close {
+  opacity: 1;
+}
+
+@keyframes preview-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Preview title bar */
+.workspace-preview-window__titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-titlebar, #1e1e1e);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-primary, #fff);
+  user-select: none;
+}
+
+.workspace-preview-window__titlebar-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.workspace-preview-window__titlebar-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Preview body (simplified content representation) */
+.workspace-preview-window__body {
+  height: 160px;
+  background: var(--bg-window, #242424);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.workspace-preview-window__body-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.4;
+}
+
+.workspace-preview-window__body-placeholder img {
+  width: 40px;
+  height: 40px;
+  filter: grayscale(50%);
+}
+
+.workspace-preview-window__body-placeholder span {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+/* Close button on preview window */
+.workspace-preview-window__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #E95420;
+  border: 2px solid rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+}
+
+.workspace-preview-window__close:hover {
+  background: #ff6b3d;
+  transform: scale(1.1);
+}
+
+.workspace-preview-window__close svg {
+  width: 10px;
+  height: 10px;
+  stroke: white;
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+}
+
+/* Empty workspace message */
+.workspace-overview__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  opacity: 0.4;
+}
+
+.workspace-overview__empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-overview__empty-icon svg {
+  width: 28px;
+  height: 28px;
+  stroke: rgba(255, 255, 255, 0.4);
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.workspace-overview__empty-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Bottom workspace dots indicator */
+.workspace-overview__dots {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 0 24px;
+}
+
+.workspace-overview__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.workspace-overview__dot:hover {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.3);
+}
+
+.workspace-overview__dot--active {
+  background: var(--color-accent, #E95420);
+  transform: scale(1.3);
+}
+
+/* Workspace transition for the desktop area */
+.workspace-slide-container {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  will-change: transform;
+}
+
+/* Add workspace button */
+.workspace-overview__add-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 200px;
+  height: 125px;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  transition: border-color 0.25s ease, transform 0.2s ease, background 0.2s ease;
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workspace-overview__add-btn:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: scale(1.04);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.workspace-overview__add-btn svg {
+  width: 32px;
+  height: 32px;
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 2;
+  fill: none;
+  transition: stroke 0.2s ease;
+}
+
+.workspace-overview__add-btn:hover svg {
+  stroke: rgba(255, 255, 255, 0.6);
+}
+
+/* Remove workspace button */
+.workspace-thumbnail__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(200, 50, 50, 0.9);
+  border: 1.5px solid rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 20;
+}
+
+.workspace-thumbnail:hover .workspace-thumbnail__remove {
+  opacity: 1;
+}
+
+.workspace-thumbnail__remove:hover {
+  background: #e53935;
+  transform: scale(1.15);
+}
+
+.workspace-thumbnail__remove svg {
+  width: 8px;
+  height: 8px;
+  stroke: white;
+  stroke-width: 2.5;
+  fill: none;
+  stroke-linecap: round;
+}
+
+/* ============================================================
+   App Grid / Search (Activities)
+   ============================================================ */
+
+.workspace-overview__search-container {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 40px;
+  position: relative;
+  z-index: 5;
+}
+
+.workspace-overview__search {
+  width: 100%;
+  padding: 12px 20px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 16px;
+  text-align: center;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.workspace-overview__search:focus {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.workspace-overview__search::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.workspace-overview__app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 20px 10px;
+  width: 100%;
+  max-width: 1000px;
+  padding: 20px 40px;
+  margin: 0 auto;
+}
+
+.workspace-overview__app-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.workspace-overview__app-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.workspace-overview__app-icon:active {
+  transform: scale(0.95);
+}
+
+.workspace-overview__app-icon img {
+  width: 64px;
+  height: 64px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+}
+
+.workspace-overview__app-icon span {
+  color: white;
+  font-size: 13px;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}

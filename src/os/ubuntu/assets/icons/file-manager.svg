@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="folder-back" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E95420" />
+      <stop offset="100%" stop-color="#C73E11" />
+    </linearGradient>
+    <linearGradient id="folder-front" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F2784B" />
+      <stop offset="100%" stop-color="#E95420" />
+    </linearGradient>
+    <linearGradient id="folder-shadow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(0,0,0,0.1)" />
+      <stop offset="100%" stop-color="rgba(0,0,0,0.3)" />
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow -->
+  <path fill="url(#folder-shadow)" d="M 6 22 L 30 22 L 34 27 L 58 27 C 60 27 62 29 62 31 L 62 55 C 62 57 60 59 58 59 L 6 59 C 4 59 2 57 2 55 L 2 26 C 2 24 4 22 6 22 Z" transform="translate(0, 2)"/>
+
+  <!-- Back Flap -->
+  <path fill="url(#folder-back)" d="M 5 12 C 5 9.5 7 7.5 9.5 7.5 L 24 7.5 C 26 7.5 27.5 8.5 28.5 10 L 32.5 16 L 54.5 16 C 57 16 59 18 59 20.5 L 59 50 C 59 52.5 57 54.5 54.5 54.5 L 9.5 54.5 C 7 54.5 5 52.5 5 50 L 5 12 Z"/>
+  
+  <!-- Paper inside -->
+  <rect fill="#FFFFFF" x="12" y="16" width="40" height="34" rx="2" />
+  <rect fill="#F2F2F2" x="14" y="24" width="36" height="2" rx="1" />
+  <rect fill="#F2F2F2" x="14" y="30" width="36" height="2" rx="1" />
+  <rect fill="#F2F2F2" x="14" y="36" width="24" height="2" rx="1" />
+
+  <!-- Front Flap -->
+  <path fill="url(#folder-front)" d="M 4 25 C 4 22.5 6 20.5 8.5 20.5 L 30 20.5 C 31.5 20.5 33 21.5 34 23 L 37.5 28 L 55.5 28 C 58 28 60 30 60 32.5 L 60 52.5 C 60 55 58 57 55.5 57 L 8.5 57 C 6 57 4 55 4 52.5 L 4 25 Z"/>
+
+  <!-- Front Flap highlight -->
+  <path fill="rgba(255,255,255,0.15)" d="M 4 25 C 4 22.5 6 20.5 8.5 20.5 L 30 20.5 C 31.5 20.5 33 21.5 34 23 L 37.5 28 L 55.5 28 C 58 28 60 30 60 32.5 L 60 33 C 60 30.5 58 28.5 55.5 28.5 L 37.5 28.5 L 34 23.5 C 33 22 31.5 21 30 21 L 8.5 21 C 6 21 4 23 4 25.5 L 4 25 Z"/>
+</svg>

@@ -1,0 +1,119 @@
+.appearance-theme-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.appearance-theme-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+}
+
+.appearance-theme-preview {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-md);
+  border: 2px solid transparent;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.appearance-theme-card:hover .appearance-theme-preview {
+  transform: scale(1.02);
+}
+
+.appearance-theme-card.active .appearance-theme-preview {
+  border-color: var(--color-accent);
+}
+
+.appearance-theme-preview.light {
+  background-color: #f0f0f0;
+}
+
+.appearance-theme-preview.light .appearance-theme-preview-header {
+  height: 20%;
+  background-color: #242424;
+}
+
+.appearance-theme-preview.light .appearance-theme-preview-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.appearance-theme-preview.light .appearance-theme-preview-window {
+  width: 60%;
+  height: 60%;
+  background-color: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border: 1px solid #dcdcdc;
+}
+
+.appearance-theme-preview.dark {
+  background-color: #2d2d2d;
+}
+
+.appearance-theme-preview.dark .appearance-theme-preview-header {
+  height: 20%;
+  background-color: #1a1a1a;
+}
+
+.appearance-theme-preview.dark .appearance-theme-preview-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.appearance-theme-preview.dark .appearance-theme-preview-window {
+  width: 60%;
+  height: 60%;
+  background-color: #1e1e1e;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 1px solid #333333;
+}
+
+.appearance-theme-label {
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.appearance-accent-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: var(--space-lg);
+  justify-content: center;
+}
+
+.appearance-accent-color {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.appearance-accent-color:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.appearance-accent-color.active {
+  box-shadow: 0 0 0 2px var(--color-bg-window), 0 0 0 4px var(--color-text-primary);
+}

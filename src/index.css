@@ -24,22 +24,46 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* --- Design Tokens (Yaru Dark Theme) --- */
+/* --- Design Tokens (Yaru Light Theme) --- */
 :root {
-  /* Ubuntu Yaru-inspired palette */
-  --color-bg-desktop:      #2C001E;
-  --color-bg-panel:        rgba(26, 26, 46, 0.82);
-  --color-bg-window:       #2d2d3f;
-  --color-bg-titlebar:     #242434;
-  --color-bg-input:        #1e1e2e;
-  --color-accent:          #E95420;
+  /* Requested Strict Tokens */
+  --bg-desktop: url('/ubuntu_wallpaper.jpg') center/cover no-repeat;
+  --bg-topbar: rgba(0, 0, 0, 0.85);
+  --bg-dock: rgba(0, 0, 0, 0.65);
+  --bg-dock-hover: rgba(255, 255, 255, 0.1);
+  --bg-window: #fafafa;
+  --bg-titlebar: #ebebeb;
+  --bg-selection: #E95420; /* Ubuntu Orange */
+  --text-primary: #2d2d2d;
+  --text-secondary: #555555;
+  --border-window: 1px solid #c9c9c9;
+  --radius-window: 12px;
+  --topbar-height: 28px;
+  --dock-width: 52px;
+
+  /* Restoring Original Tokens used throughout the app */
+  --color-bg-desktop:      var(--bg-desktop);
+  --color-bg-panel:        var(--bg-topbar);
+  --color-bg-dock:         var(--bg-dock);
+  --color-bg-window:       var(--bg-window);
+  --color-bg-titlebar:     var(--bg-titlebar);
+  --color-bg-input:        #ffffff;
+  --color-surface:         #f0f0f0;
+  --color-surface-hover:   #e0e0e0;
+  --color-surface-active:  #d0d0d0;
+  --color-accent:          var(--bg-selection);
   --color-accent-hover:    #FF6B3D;
-  --color-text-primary:    #F0F0F0;
-  --color-text-secondary:  #A0A0B0;
-  --color-border:          #3a3a4f;
+  --color-text-primary:    var(--text-primary);
+  --color-text-secondary:  var(--text-secondary);
+  --color-border:          #dcdcdc;
   --color-close:           #E95420;
   --color-minimize:        #F5C211;
   --color-maximize:        #2EC27E;
+
+  /* Context Menu & Properties specific tokens */
+  --bg-context-menu:       rgba(250, 250, 250, 0.96);
+  --color-context-border:  rgba(0, 0, 0, 0.1);
+  --bg-properties:         #fafafa;
 
   /* Typography */
   --font-system:           'Ubuntu', sans-serif;
@@ -54,16 +78,31 @@ body {
 
   /* Radii */
   --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-md: var(--radius-window);
   --radius-lg: 16px;
 
   /* Shadows */
-  --shadow-window: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --shadow-dock:   0 -4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-window: 0 12px 36px rgba(0, 0, 0, 0.5);
+  --shadow-dock:   2px 0 12px rgba(0, 0, 0, 0.4);
 
   /* Layout */
-  --topbar-height: 28px;
-  --dock-height:   64px;
-  --dock-padding:  6px;
-  --titlebar-height: 36px;
+  --dock-padding:  8px;
+  --titlebar-height: 38px;
+}
+
+/* --- Dark Theme Overrides --- */
+body.theme-dark {
+  --bg-window: #242424;
+  --bg-titlebar: #1e1e1e;
+  --text-primary: #ffffff;
+  --text-secondary: #aaaaaa;
+  --border-window: 1px solid #333333;
+  --color-bg-input: #333333;
+  --color-surface: #2b2b2b;
+  --color-surface-hover: #3b3b3b;
+  --color-surface-active: #4a4a4a;
+  --color-border: #444444;
+  --bg-context-menu: rgba(36, 36, 52, 0.96);
+  --color-context-border: rgba(255, 255, 255, 0.1);
+  --bg-properties: #333333;
 }

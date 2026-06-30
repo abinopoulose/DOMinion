@@ -1,0 +1,54 @@
+.grub-container {
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  color: #ccc;
+  font-family: 'Courier New', Courier, monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  user-select: none;
+  cursor: none;
+}
+
+.grub-box {
+  width: 80%;
+  max-width: 800px;
+  border: 2px solid #ccc;
+  padding: 20px;
+  background-color: #000;
+}
+
+.grub-title {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-top: 0;
+  margin-bottom: 30px;
+  color: #ccc;
+}
+
+.grub-menu {
+  margin-bottom: 30px;
+}
+
+.grub-item {
+  padding: 5px 10px;
+  font-size: 1.1rem;
+  white-space: pre;
+}
+
+.grub-item-selected {
+  background-color: #aaa;
+  color: #000;
+}
+
+.grub-help {
+  border-top: 1px solid #ccc;
+  padding-top: 20px;
+  font-size: 0.9rem;
+  color: #888;
+}
+
+.grub-help p {
+  margin: 5px 0;
+}

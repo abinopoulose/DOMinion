@@ -1,0 +1,69 @@
+.ubuntu-settings-panel-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  align-items: center;
+  padding: 36px;
+  overflow-y: auto;
+}
+
+.ubuntu-settings-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.ubuntu-settings-panel-title {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-primary, #1e1e1e);
+  margin: 0;
+}
+
+.ubuntu-settings-panel-header-controls {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ubuntu-settings-panel-header-controls.left {
+  left: 0;
+}
+
+.ubuntu-settings-panel-header-controls.right {
+  right: 0;
+}
+
+.ubuntu-settings-panel-content-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+/* Common GNOME-style card lists inside settings */
+.ubuntu-settings-list-group {
+  background-color: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.ubuntu-settings-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.ubuntu-settings-list-item:last-child {
+  border-bottom: none;
+}

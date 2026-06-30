@@ -1,0 +1,219 @@
+/* GNOME 46 / libadwaita Settings Style */
+
+.ubuntu-settings-app {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  background-color: var(--bg-window, #f6f5f4);
+  color: var(--text-primary, #1e1e1e);
+  font-family: 'Ubuntu', sans-serif;
+  user-select: none;
+}
+
+.ubuntu-settings-sidebar {
+  width: 280px;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.ubuntu-settings-search {
+  padding: 12px 16px;
+  position: relative;
+}
+
+.ubuntu-settings-search-icon {
+  position: absolute;
+  left: 28px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.ubuntu-settings-search input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.6);
+  color: var(--text-primary, #1e1e1e);
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-sizing: border-box;
+}
+
+.ubuntu-settings-search input:focus {
+  border-color: #E95420;
+  box-shadow: 0 0 0 2px rgba(233, 84, 32, 0.2);
+  background-color: #ffffff;
+}
+
+.ubuntu-settings-sidebar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 16px 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* Custom scrollbar for sidebar */
+.ubuntu-settings-sidebar-list::-webkit-scrollbar {
+  width: 6px;
+}
+.ubuntu-settings-sidebar-list::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.ubuntu-settings-sidebar-item {
+  padding: 10px 14px;
+  margin-bottom: 2px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  font-size: 14px;
+}
+
+.ubuntu-settings-sidebar-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.ubuntu-settings-sidebar-item.active {
+  background-color: rgba(0, 0, 0, 0.08);
+  font-weight: 500;
+}
+
+.ubuntu-settings-sidebar-item-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ubuntu-settings-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: transparent;
+  overflow-y: auto;
+  align-items: center;
+  padding: 36px;
+}
+
+/* Base style for GNOME 46 Panels */
+.ubuntu-settings-panel-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  opacity: 0.5;
+}
+
+/* Shared Panel Card Styles */
+.settings-panel {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeInPanel 0.2s ease-out;
+}
+
+@keyframes fadeInPanel {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-panel h1 {
+  font-size: 28px;
+  font-weight: 300;
+  margin: 0 0 8px 0;
+  align-self: center;
+}
+
+.settings-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  gap: 16px;
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-row-icon {
+  opacity: 0.7;
+}
+
+.settings-row-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-row-title {
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.settings-row-subtitle {
+  font-size: 13px;
+  opacity: 0.6;
+  margin-top: 2px;
+}
+
+.settings-switch {
+  /* Common styles for toggle switches will go here */
+}
+
+/* GNOME 46 Toggle Switch Style */
+.ubuntu-settings-toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background-color: rgba(0, 0, 0, 0.15);
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ubuntu-settings-toggle.checked {
+  background-color: var(--color-accent, #E95420) !important;
+}
+
+.ubuntu-settings-toggle.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ubuntu-settings-toggle-knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.ubuntu-settings-toggle.checked .ubuntu-settings-toggle-knob {
+  transform: translateX(20px) !important;
+}

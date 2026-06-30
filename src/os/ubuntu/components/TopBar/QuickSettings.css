@@ -1,0 +1,340 @@
+/* QuickSettings.css - GNOME 46 (Ubuntu 24.04) Light Theme Style */
+.quick-settings {
+  position: absolute;
+  top: 36px;
+  right: 12px;
+  width: 360px;
+  background: #f6f6f6;
+  border-radius: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.15);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  z-index: 10000;
+  cursor: default;
+  color: #333333;
+}
+
+/* 1. Top Row */
+.qs-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qs-battery-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #e4e4e4;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  font-weight: 500;
+  font-size: 15px;
+  color: #333;
+}
+
+.qs-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.qs-action-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e4e4e4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #555;
+  transition: all 0.15s ease;
+}
+
+.qs-action-circle:hover {
+  background: #d4d4d4;
+  color: #333;
+}
+
+/* Power Menu inside Top Row */
+.qs-power-menu {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  z-index: 10001;
+  animation: slideUpFade 0.15s ease-out;
+}
+
+.qs-power-menu-item {
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  transition: background 0.1s;
+}
+
+.qs-power-menu-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 2. Sliders */
+.quick-settings__sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 0 4px;
+}
+
+.qs-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.qs-slider-icon {
+  width: 24px;
+  display: flex;
+  justify-content: center;
+  color: #555;
+}
+
+.qs-slider-new {
+  flex: 1;
+  -webkit-appearance: none;
+  background: transparent;
+  height: 24px;
+  cursor: pointer;
+}
+
+.qs-slider-new::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  background: #dfdfdf;
+  border-radius: 2px;
+}
+
+.qs-slider-new::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #cccccc;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  margin-top: -8px; /* (Track Height / 2) - (Thumb Height / 2) */
+  cursor: pointer;
+}
+
+/* For better cross-browser fill, we can use accent color which takes over styling */
+@supports (accent-color: #e95420) {
+  .qs-slider-new {
+    accent-color: #e95420;
+    height: auto;
+  }
+}
+
+/* 3. Pills Grid */
+.quick-settings__pills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.qs-pill-group {
+  display: flex;
+  background: #e4e4e4;
+  border-radius: 24px;
+  transition: all 0.15s ease;
+  overflow: hidden;
+  height: 48px;
+  min-width: 0;
+}
+
+.qs-pill-group:hover {
+  background: #d4d4d4;
+}
+
+.qs-pill-group.active {
+  background: #e95420;
+  color: #ffffff;
+}
+
+.qs-pill-group.active:hover {
+  background: #da4c1a;
+}
+
+.qs-pill-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.qs-pill-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: inherit;
+}
+
+.qs-pill-group:not(.active) .qs-pill-icon {
+  color: #555;
+}
+
+.qs-pill-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+.qs-pill-title {
+  font-size: 15px;
+  font-weight: 400;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qs-pill-subtitle {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qs-pill-group:not(.active) .qs-pill-title {
+  color: #333;
+}
+
+.qs-pill-group:not(.active) .qs-pill-subtitle {
+  color: #666;
+}
+
+.qs-pill-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  cursor: pointer;
+  border-left: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.qs-pill-group.active .qs-pill-arrow {
+  border-left-color: rgba(255, 255, 255, 0.2);
+}
+
+.qs-pill-arrow:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.qs-pill-group.active .qs-pill-arrow:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Pill Dropdown Menu */
+.qs-pill-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  z-index: 10002;
+  animation: slideUpFade 0.15s ease-out;
+}
+
+.qs-pill-dropdown-header {
+  padding: 8px 16px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  margin-bottom: 4px;
+}
+
+.qs-pill-dropdown-item {
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  transition: background 0.1s;
+}
+
+.qs-pill-dropdown-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.qs-pill-dropdown-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+}
+
+.qs-searching-spinner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #555;
+  font-weight: 500;
+}
+
+.qs-spinner {
+  width: 18px;
+  height: 18px;
+  animation: rotate 2s linear infinite;
+}
+
+.qs-spinner circle {
+  stroke: #e95420;
+  stroke-linecap: round;
+  animation: dash 1.5s ease-in-out infinite;
+}
+
+@keyframes rotate {
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes dash {
+  0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+  50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+  100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+}

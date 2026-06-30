@@ -1,0 +1,37 @@
+.ubuntu-settings-app-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ubuntu-settings-app-list-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ubuntu-settings-app-list-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.ubuntu-settings-app-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.ubuntu-settings-app-detail-icon {
+  width: 64px;
+  height: 64px;
+}
+
+.ubuntu-settings-app-detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

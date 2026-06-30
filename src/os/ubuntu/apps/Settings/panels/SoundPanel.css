@@ -1,0 +1,4 @@
+.sound-volume-slider {
+  flex: 1;
+  accent-color: var(--color-accent);
+}

@@ -1,0 +1,157 @@
+/* ============================================================
+   Dock — Application Launcher at the bottom of the viewport
+   ============================================================ */
+
+.dock {
+  position: fixed;
+  top: var(--topbar-height);
+  bottom: 0;
+  left: 0;
+  width: var(--dock-width);
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  background: var(--bg-dock);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+
+.dock.left {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dock.right {
+  left: auto;
+  right: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dock.bottom {
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100% !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* --- Dock divider --- */
+.dock__divider {
+  width: 32px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: var(--space-xs) 0;
+}
+
+/* --- Dock Icon --- */
+.dock-icon {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 8px;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease;
+}
+
+.dock-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dock-icon:active {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dock-icon__img {
+  width: 36px;
+  height: 36px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  transition: filter 0.2s ease;
+}
+
+/* --- Active indicator dot --- */
+.dock-icon__indicator {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #E95420; /* Yaru orange dot */
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.dock.right .dock-icon__indicator {
+  left: auto;
+  right: 2px;
+}
+
+.dock.bottom .dock-icon__indicator {
+  left: 50%;
+  top: auto;
+  bottom: 2px;
+  transform: translateX(-50%);
+}
+
+.dock-icon__indicator--active {
+  opacity: 1;
+}
+
+/* --- Tooltip --- */
+.dock-icon__tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%) translateX(-4px);
+  background: rgba(30, 30, 46, 0.95);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 100;
+}
+
+.dock.right .dock-icon__tooltip {
+  left: auto;
+  right: calc(100% + 10px);
+  transform: translateY(-50%) translateX(4px);
+}
+
+.dock.bottom .dock-icon__tooltip {
+  left: 50%;
+  top: auto;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(4px);
+}
+
+.dock.left .dock-icon:hover .dock-icon__tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.dock.right .dock-icon:hover .dock-icon__tooltip {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.dock.bottom .dock-icon:hover .dock-icon__tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

@@ -1,0 +1,30 @@
+.mouse-primary-button-toggle {
+  display: flex;
+  background-color: var(--color-bg-window);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.mouse-primary-button-option {
+  padding: 8px 24px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+  color: var(--color-text-secondary);
+}
+
+.mouse-primary-button-option.active {
+  background-color: var(--color-surface-active);
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.mouse-primary-button-option:first-child {
+  border-right: 1px solid var(--color-border);
+}
+
+.mouse-speed-slider {
+  width: 100%;
+  accent-color: var(--color-accent);
+}

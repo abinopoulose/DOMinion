@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <path d="M8 12c-2.2 0-4 1.8-4 4v32c0 2.2 1.8 4 4 4h48c2.2 0 4-1.8 4-4V20c0-2.2-1.8-4-4-4H32l-4-4H8z" fill="#D74212"/>
+  <path d="M4 22h56v24H4z" fill="#fcfcfc" opacity="0.9"/>
+  <path d="M4 24h56v24c0 2.2-1.8 4-4 4H8c-2.2 0-4-1.8-4-4V24z" fill="#E95420"/>
+  <path d="M4 24h56l-4-4H8l-4 4z" fill="#F07C54"/>
+  <!-- Home icon in white -->
+  <path d="M32 26l-10 10h4v10h12V36h4L32 26z" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,66 @@
+.bios-container {
+  width: 100vw;
+  height: 100vh;
+  background-color: #0000aa; /* Classic BIOS Blue */
+  color: #fff;
+  font-family: monospace;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  cursor: none;
+}
+
+.bios-header {
+  background-color: #aaa; /* Gray bar */
+  color: #000;
+  text-align: center;
+  padding: 5px;
+  font-weight: bold;
+}
+
+.bios-nav {
+  display: flex;
+  background-color: #aaa;
+  color: #000;
+  padding: 0 20px;
+  border-bottom: 2px solid #fff;
+}
+
+.bios-tab {
+  padding: 5px 15px;
+}
+
+.bios-tab-active {
+  background-color: #0000aa;
+  color: #fff;
+}
+
+.bios-content {
+  flex: 1;
+  padding: 20px 40px;
+}
+
+.bios-page {
+  font-size: 1.1rem;
+}
+
+.bios-row {
+  display: flex;
+  margin-bottom: 10px;
+}
+
+.bios-label {
+  width: 250px;
+  color: #fff;
+}
+
+.bios-footer {
+  border-top: 2px solid #fff;
+  padding: 10px 20px;
+  line-height: 1.5;
+}
+
+.bios-footer span {
+  display: inline-block;
+  width: 200px;
+}
