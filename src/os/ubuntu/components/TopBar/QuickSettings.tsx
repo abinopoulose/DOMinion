@@ -1,8 +1,8 @@
-import { useHardwareStore } from '../../../../hardware/store/useHardwareStore';
+
 import { useWindowStore } from '../../store/useUbuntuWindowStore';
 import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { useNetworkStore } from '../../store/useNetworkStore';
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect } from 'react';
 import './QuickSettings.css';
 
 interface QuickSettingsProps {
@@ -11,7 +11,7 @@ interface QuickSettingsProps {
 }
 
 export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsProps) {
-  const powerOff = useHardwareStore((s) => s.powerOff);
+
   const openWindow = useWindowStore((s) => s.openWindow);
   const openDialog = useSystemDialogStore((s) => s.openDialog);
   

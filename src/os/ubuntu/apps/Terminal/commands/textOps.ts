@@ -136,7 +136,7 @@ export const grep: CommandHandler = (args, cwdId) => {
  * Defaults to 10 lines if -n is not specified.
  */
 export const head: CommandHandler = (args, cwdId) => {
-  const { flags, options, positional } = parseArgs(args, ['n']);
+  const { options, positional } = parseArgs(args, ['n']);
 
   if (positional.length === 0) {
     return { output: ['head: missing file operand'], isError: true };
@@ -184,7 +184,7 @@ export const head: CommandHandler = (args, cwdId) => {
  * Defaults to 10 lines if -n is not specified.
  */
 export const tail: CommandHandler = (args, cwdId) => {
-  const { flags, options, positional } = parseArgs(args, ['n']);
+  const { options, positional } = parseArgs(args, ['n']);
 
   if (positional.length === 0) {
     return { output: ['tail: missing file operand'], isError: true };

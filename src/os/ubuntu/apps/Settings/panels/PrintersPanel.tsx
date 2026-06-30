@@ -8,7 +8,7 @@ export function PrintersPanel() {
   );
 
   return (
-    <SettingsPanelWrapper title="Printers" headerContent={headerContent}>
+    <SettingsPanelWrapper title="Printers" rightHeaderContent={headerContent}>
       <div className="ubuntu-settings-panel-empty-state">
         <svg 
           width="96" 

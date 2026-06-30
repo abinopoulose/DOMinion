@@ -232,7 +232,7 @@ export const cp: CommandHandler = (args, cwdId) => {
       if (error) return { output: [`cp: ${error}`], isError: true };
     } else {
       // For directory copy to a new name, use duplicateNode then rename
-      const { error, newId } = store.duplicateNode(sourceNode.id, destParentNode.id);
+      const { error, id: newId } = store.duplicateNode(sourceNode.id, destParentNode.id);
       if (error) return { output: [`cp: ${error}`], isError: true };
       // Rename the copy to destName if different
       if (newId && destName !== sourceNode.name) {

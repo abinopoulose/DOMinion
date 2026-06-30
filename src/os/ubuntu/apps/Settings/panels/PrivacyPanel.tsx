@@ -82,7 +82,7 @@ export function PrivacyPanel() {
     }
 
     return (
-      <SettingsPanelWrapper title={title} headerContent={backButton}>
+      <SettingsPanelWrapper title={title} leftHeaderContent={backButton}>
         {content}
       </SettingsPanelWrapper>
     );

@@ -97,9 +97,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       reorderWorkspaces: (oldIndex: number, newIndex: number) => {
         if (oldIndex === newIndex) return;
         
-        // We import useWindowStore dynamically to avoid circular dependencies
-        const { useWindowStore } = require('./useUbuntuWindowStore');
-        useWindowStore.getState().shiftWorkspaces(oldIndex, newIndex);
+        import('./useUbuntuWindowStore').then(({ useWindowStore }) => {
+          useWindowStore.getState().shiftWorkspaces(oldIndex, newIndex);
+        });
 
         set((state) => {
           let activeWs = state.activeWorkspace;

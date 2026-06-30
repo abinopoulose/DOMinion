@@ -32,7 +32,7 @@ export function AppsPanel() {
     );
 
     return (
-      <SettingsPanelWrapper title={app.name} headerContent={backButton}>
+      <SettingsPanelWrapper title={app.name} leftHeaderContent={backButton}>
         <div className="ubuntu-settings-app-detail-header">
           <img src={app.icon} alt={app.name} className="ubuntu-settings-app-detail-icon" />
           <div className="ubuntu-settings-app-detail-info">

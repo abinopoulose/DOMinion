@@ -22,7 +22,7 @@ export function SharingPanel() {
   );
 
   return (
-    <SettingsPanelWrapper title="Sharing" headerContent={headerToggle}>
+    <SettingsPanelWrapper title="Sharing" rightHeaderContent={headerToggle}>
       <div className="ubuntu-settings-list-group" style={{ marginBottom: '24px' }}>
         <div className="ubuntu-settings-list-item" style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '16px', gap: '8px' }}>
           <span style={{ fontWeight: '500' }}>Computer Name</span>

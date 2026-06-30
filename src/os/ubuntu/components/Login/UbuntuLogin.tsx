@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
-import { useHardwareStore } from '../../../../hardware/store/useHardwareStore';
+
 import { UBUNTU_ACCOUNTS } from '../../../../config/accounts';
 import { TopBar } from '../TopBar/TopBar';
 import './UbuntuLogin.css';

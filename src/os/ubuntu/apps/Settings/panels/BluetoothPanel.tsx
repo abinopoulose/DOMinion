@@ -8,7 +8,7 @@ export function BluetoothPanel() {
   );
 
   return (
-    <SettingsPanelWrapper title="Bluetooth" headerContent={headerToggle}>
+    <SettingsPanelWrapper title="Bluetooth" rightHeaderContent={headerToggle}>
       <div className="ubuntu-settings-panel-empty-state">
         <svg 
           width="96" 

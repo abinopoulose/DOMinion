@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useHardwareStore } from './hardware/store/useHardwareStore'
 import { useUbuntuAuthStore } from './os/ubuntu/store/useUbuntuAuthStore'
 import { useWindowsAuthStore } from './os/windows/store/useWindowsAuthStore'
@@ -234,6 +234,8 @@ export default function App() {
     if (powerState === 'off' || powerState === 'shutting_down' || powerState === 'post') {
       useWindowStore.getState().clearAllWindows();
       useWorkspaceStore.getState().resetWorkspaces();
+      useUbuntuAuthStore.getState().logout();
+      useWindowsAuthStore.getState().logout();
     }
   }, [powerState]);
 

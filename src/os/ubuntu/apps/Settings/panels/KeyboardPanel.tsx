@@ -17,7 +17,7 @@ export function KeyboardPanel() {
     );
 
     return (
-      <SettingsPanelWrapper title="Keyboard Shortcuts" headerContent={backButton}>
+      <SettingsPanelWrapper title="Keyboard Shortcuts" leftHeaderContent={backButton}>
         <div className="ubuntu-settings-list-group">
           <div className="ubuntu-settings-list-item">
             <span>Open Terminal</span>

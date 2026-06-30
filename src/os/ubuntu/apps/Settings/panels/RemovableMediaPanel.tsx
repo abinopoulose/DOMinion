@@ -19,7 +19,7 @@ export function RemovableMediaPanel() {
   );
 
   return (
-    <SettingsPanelWrapper title="Removable Media" headerContent={headerToggle}>
+    <SettingsPanelWrapper title="Removable Media" rightHeaderContent={headerToggle}>
       <div className="ubuntu-settings-section-title" style={{ padding: '0 8px 8px', fontSize: '12px', fontWeight: 'bold', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
         Select how media should be handled
       </div>

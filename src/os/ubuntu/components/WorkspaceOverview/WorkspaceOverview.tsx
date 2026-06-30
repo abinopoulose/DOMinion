@@ -43,7 +43,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
   const containerRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredApps = Object.entries(APP_ICONS).filter(([id, icon]) => {
+  const filteredApps = Object.entries(APP_ICONS).filter(([id]) => {
     // Basic label matching (id parsing)
     const label = id === 'file-manager' ? 'Files' : id.replace('-', ' ');
     return label.toLowerCase().includes(searchQuery.toLowerCase());

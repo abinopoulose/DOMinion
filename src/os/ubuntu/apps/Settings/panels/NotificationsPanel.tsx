@@ -39,7 +39,7 @@ export function NotificationsPanel() {
   );
 
   return (
-    <SettingsPanelWrapper title="Notifications" headerContent={headerToggle}>
+    <SettingsPanelWrapper title="Notifications" rightHeaderContent={headerToggle}>
       <div className="ubuntu-settings-list-group" style={{ marginBottom: '24px' }}>
         <div className="ubuntu-settings-list-item clickable" onClick={() => setLockScreen(!lockScreen)}>
           <span>Lock Screen Notifications</span>
