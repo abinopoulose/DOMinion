@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useLayoutEffect, type ReactNode } from 'react';
+import { useState, useCallback, useRef, useLayoutEffect, type ReactNode } from 'react';
 import { TitleBar } from './TitleBar';
 import { useWindowDrag } from '../../hooks/useWindowDrag';
 import { useWindowResize } from '../../hooks/useWindowResize';
@@ -124,10 +124,12 @@ export function Window({
 
   const { dragHandlers } = useWindowDrag({
     position,
+    size,
     isMaximized: isEffectivelyMaximized,
     onPositionChange,
     onFocus: handleFocus,
     onMaximize: handleMaximize,
+    onRestore: tileState ? handleUntile : handleMaximize,
     onTile: handleTile,
   });
 

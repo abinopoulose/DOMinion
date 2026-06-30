@@ -3,14 +3,17 @@ import { useRef, useCallback, type PointerEvent as ReactPointerEvent } from 'rea
 interface DragState {
   offsetX: number;
   offsetY: number;
+  isTearingOff?: boolean;
 }
 
 interface UseWindowDragOptions {
   position: { x: number; y: number };
+  size: { width: number; height: number };
   isMaximized: boolean;
   onPositionChange: (pos: { x: number; y: number }) => void;
   onFocus: () => void;
   onMaximize?: () => void;
+  onRestore?: () => void;
   onTile?: (side: 'left' | 'right') => void;
 }
 
@@ -19,7 +22,7 @@ interface UseWindowDragOptions {
  * Constrains the title bar to remain within viewport bounds.
  * Disabled when the window is maximized.
  */
-export function useWindowDrag({ position, isMaximized, onPositionChange, onFocus, onMaximize, onTile }: UseWindowDragOptions) {
+export function useWindowDrag({ position, size, isMaximized, onPositionChange, onFocus, onMaximize, onRestore, onTile }: UseWindowDragOptions) {
   const dragRef = useRef<DragState | null>(null);
   const posRef = useRef(position);
   posRef.current = position;
@@ -36,14 +39,28 @@ export function useWindowDrag({ position, isMaximized, onPositionChange, onFocus
     const windowEl = e.currentTarget.closest('.window');
     if (windowEl) windowEl.classList.add('window--dragging');
 
-    dragRef.current = {
-      offsetX: e.clientX - posRef.current.x,
-      offsetY: e.clientY - posRef.current.y,
-    };
-  }, [isMaximized, onFocus]);
+    if (isMaximized) {
+      dragRef.current = {
+        offsetX: size.width / 2,
+        offsetY: e.clientY - e.currentTarget.getBoundingClientRect().top,
+        isTearingOff: true,
+      };
+    } else {
+      dragRef.current = {
+        offsetX: e.clientX - posRef.current.x,
+        offsetY: e.clientY - posRef.current.y,
+        isTearingOff: false,
+      };
+    }
+  }, [isMaximized, onFocus, size.width]);
 
   const handlePointerMove = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     if (!dragRef.current) return;
+
+    if (dragRef.current.isTearingOff) {
+      if (onRestore) onRestore();
+      dragRef.current.isTearingOff = false;
+    }
 
     const topbarHeight = 28;
     const newX = e.clientX - dragRef.current.offsetX;
