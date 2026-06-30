@@ -376,7 +376,7 @@ export const useVFSStore = create<VFSStore>()(
         const rootNode = migratedMap[ROOT_ID];
         if (rootNode) {
           const checkAndCreateSystemDir = (name: string, overrideId?: string) => {
-            let existingChild = rootNode.children.find(childId => migratedMap[childId]?.name === name);
+            let existingChild = rootNode.children.find((childId: string) => migratedMap[childId]?.name === name);
             if (!existingChild && overrideId && migratedMap[overrideId]) {
                // The node exists but isn't linked to root, link it
                existingChild = overrideId;

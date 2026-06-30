@@ -318,7 +318,7 @@ export function TerminalHeaderControls({ windowId }: { windowId: string }) {
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => {
              if (e.key === 'Enter') {
-                window.find(searchQuery, false, false, true, false, true, false);
+                (window as any).find(searchQuery, false, false, true, false, true, false);
              } else if (e.key === 'Escape') {
                 setShowSearch(false);
              }

@@ -10,6 +10,8 @@ interface UseWindowDragOptions {
   isMaximized: boolean;
   onPositionChange: (pos: { x: number; y: number }) => void;
   onFocus: () => void;
+  onMaximize?: () => void;
+  onTile?: (side: 'left' | 'right') => void;
 }
 
 /**
@@ -17,7 +19,7 @@ interface UseWindowDragOptions {
  * Constrains the title bar to remain within viewport bounds.
  * Disabled when the window is maximized.
  */
-export function useWindowDrag({ position, isMaximized, onPositionChange, onFocus }: UseWindowDragOptions) {
+export function useWindowDrag({ position, isMaximized, onPositionChange, onFocus, onMaximize, onTile }: UseWindowDragOptions) {
   const dragRef = useRef<DragState | null>(null);
   const posRef = useRef(position);
   posRef.current = position;
@@ -30,6 +32,9 @@ export function useWindowDrag({ position, isMaximized, onPositionChange, onFocus
 
     onFocus();
     e.currentTarget.setPointerCapture(e.pointerId);
+    
+    const windowEl = e.currentTarget.closest('.window');
+    if (windowEl) windowEl.classList.add('window--dragging');
 
     dragRef.current = {
       offsetX: e.clientX - posRef.current.x,
@@ -53,9 +58,22 @@ export function useWindowDrag({ position, isMaximized, onPositionChange, onFocus
 
   const handlePointerUp = useCallback((e: ReactPointerEvent<HTMLElement>) => {
     if (!dragRef.current) return;
+    
+    // Snap to maximize if dropped at the top edge of the screen (over the TopBar)
+    if (e.clientY <= 30 && onMaximize) {
+      onMaximize();
+    } else if (e.clientX <= 20 && onTile) {
+      onTile('left');
+    } else if (e.clientX >= window.innerWidth - 20 && onTile) {
+      onTile('right');
+    }
+    
     dragRef.current = null;
     e.currentTarget.releasePointerCapture(e.pointerId);
-  }, []);
+    
+    const windowEl = e.currentTarget.closest('.window');
+    if (windowEl) windowEl.classList.remove('window--dragging');
+  }, [onMaximize, onTile]);
 
   return {
     dragHandlers: {

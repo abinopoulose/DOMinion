@@ -9,6 +9,7 @@ export interface WindowState {
   zIndex: number;
   isMinimized: boolean;
   isMaximized: boolean;
+  tileState?: 'left' | 'right' | null;
   isFocused: boolean;
   /** Which virtual desktop / workspace this window belongs to (0-based) */
   workspaceId: number;

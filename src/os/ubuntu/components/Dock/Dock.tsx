@@ -101,10 +101,10 @@ export function Dock() {
   const [contextAppId, setContextAppId] = useState<string | null>(null);
   const [previewAppId, setPreviewAppId] = useState<string | null>(null);
   const [previewPos, setPreviewPos] = useState({ top: -9999, left: -9999 });
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseEnterIcon = (e: React.MouseEvent, appId: string) => {
+  const handleMouseEnterIcon = (_e: React.MouseEvent, appId: string) => {
     const appWindows = currentWorkspaceWindows.filter(w => w.appId === appId);
     if (appWindows.length > 0) {
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);

@@ -17,6 +17,7 @@ interface WindowStore {
   minimizeWindow: (id: string) => void;
   restoreWindow: (id: string) => void;
   toggleMaximize: (id: string) => void;
+  tileWindow: (id: string, side: 'left' | 'right' | null) => void;
   updatePosition: (id: string, position: { x: number; y: number }) => void;
   updateSize: (id: string, size: { width: number; height: number }) => void;
   updateAppState: (id: string, appState: unknown) => void;
@@ -144,6 +145,22 @@ export const useWindowStore = create<WindowStore>()(
               return {
                 ...w,
                 isMaximized: !w.isMaximized,
+                tileState: null,
+              };
+            }
+            return w;
+          }),
+        }));
+      },
+
+      tileWindow: (id: string, side: 'left' | 'right' | null) => {
+        set((state) => ({
+          windows: state.windows.map((w) => {
+            if (w.id === id) {
+              return {
+                ...w,
+                isMaximized: false,
+                tileState: side,
               };
             }
             return w;

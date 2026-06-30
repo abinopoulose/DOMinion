@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from 'react';
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, type ReactNode } from 'react';
 import { TitleBar } from './TitleBar';
 import { useWindowDrag } from '../../hooks/useWindowDrag';
 import { useWindowResize } from '../../hooks/useWindowResize';
@@ -24,34 +24,78 @@ export function Window({
   const closeWindow = useWindowStore((s) => s.closeWindow);
   const minimizeWindow = useWindowStore((s) => s.minimizeWindow);
   const toggleMaximize = useWindowStore((s) => s.toggleMaximize);
+  const tileWindow = useWindowStore((s) => s.tileWindow);
   const updatePosition = useWindowStore((s) => s.updatePosition);
   const updateSize = useWindowStore((s) => s.updateSize);
   const previewFocusWindowId = useWindowStore((s) => s.previewFocusWindowId);
 
-  const [isMinimizing, setIsMinimizing] = useState(false);
-  const [isOpening, setIsOpening] = useState(true);
+  const windowRef = useRef<HTMLDivElement>(null);
+  const [animState, setAnimState] = useState<'normal' | 'minimizing' | 'restoring' | 'opening'>('opening');
+  const [dockTransform, setDockTransform] = useState('');
 
-  // Remove opening animation after it plays
-  const handleAnimationEnd = useCallback(() => {
-    if (isOpening) setIsOpening(false);
-    if (isMinimizing) {
-      // Animation finished, now actually minimize
-      setIsMinimizing(false);
-    }
-  }, [isOpening, isMinimizing]);
+  const calculateDockTransform = useCallback(() => {
+    if (!win) return 'scale(0.15)';
+    const el = document.getElementById(`dock-icon-wrapper-${win.appId}`);
+    if (!el || !windowRef.current) return 'scale(0.15)';
+    
+    const rect = el.getBoundingClientRect();
+    const winRect = windowRef.current.getBoundingClientRect();
+    
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const winCx = winRect.left + winRect.width / 2;
+    const winCy = winRect.top + winRect.height / 2;
+    
+    const tx = cx - winCx;
+    const ty = cy - winCy;
+    
+    return `translate(${tx}px, ${ty}px) scale(0.15)`;
+  }, [win]);
 
   const handleMinimize = useCallback(() => {
-    setIsMinimizing(true);
-    // After animation, call the actual minimize handler
+    setDockTransform(calculateDockTransform());
+    setAnimState('minimizing');
     setTimeout(() => {
       minimizeWindow(id);
-      setIsMinimizing(false);
-    }, 200);
-  }, [id, minimizeWindow]);
+      setAnimState('normal');
+    }, 350);
+  }, [id, minimizeWindow, calculateDockTransform]);
+
+  const prevMinimized = useRef(win?.isMinimized);
+  useLayoutEffect(() => {
+    if (prevMinimized.current && !win?.isMinimized && windowRef.current) {
+      setDockTransform(calculateDockTransform());
+      setAnimState('restoring');
+      
+      // Force layout recalculation to snap to the dock instantly
+      windowRef.current.getBoundingClientRect();
+      
+      requestAnimationFrame(() => {
+        setAnimState('normal');
+      });
+    }
+    prevMinimized.current = win?.isMinimized;
+  }, [win?.isMinimized, calculateDockTransform]);
+
+  useLayoutEffect(() => {
+    if (animState === 'opening') {
+      requestAnimationFrame(() => {
+        setAnimState('normal');
+      });
+    }
+  }, [animState]);
 
   const handleMaximize = useCallback(() => {
     toggleMaximize(id);
   }, [id, toggleMaximize]);
+
+  const handleUntile = useCallback(() => {
+    tileWindow(id, null);
+  }, [id, tileWindow]);
+
+  const handleTile = useCallback((side: 'left' | 'right') => {
+    tileWindow(id, side);
+  }, [id, tileWindow]);
 
   const handleFocus = useCallback(() => {
     focusWindow(id);
@@ -74,12 +118,17 @@ export function Window({
   const position = win?.position || fallbackPosition;
   const size = win?.size || fallbackSize;
   const isMaximized = win?.isMaximized || false;
+  const tileState = win?.tileState || null;
+  
+  const isEffectivelyMaximized = isMaximized || !!tileState;
 
   const { dragHandlers } = useWindowDrag({
     position,
-    isMaximized,
+    isMaximized: isEffectivelyMaximized,
     onPositionChange,
     onFocus: handleFocus,
+    onMaximize: handleMaximize,
+    onTile: handleTile,
   });
 
   const { resizeHandles } = useWindowResize({
@@ -102,11 +151,11 @@ export function Window({
     isMinimized = false;
   }
 
-  // Don't render if minimized (and not animating)
-  if (isMinimized && !isMinimizing) return null;
+  // Don't render if minimized (and not animating out)
+  if (isMinimized && animState !== 'minimizing') return null;
   
   // Calculate workspace boundaries dynamically
-  const dockSize = dockAutoHide ? 0 : dockIconSize + 24;
+  const dockSize = dockAutoHide ? 0 : dockIconSize;
   const topbarHeight = 28;
 
   let maxTop = topbarHeight;
@@ -118,12 +167,33 @@ export function Window({
   if (dockPosition === 'right') maxRight = dockSize;
   if (dockPosition === 'bottom') maxBottom = dockSize;
 
+  let tileStyle: React.CSSProperties | null = null;
+  if (tileState) {
+    const halfWidth = `calc(50vw - ${(maxLeft + maxRight) / 2}px)`;
+    tileStyle = {
+      top: maxTop,
+      bottom: maxBottom,
+      width: halfWidth,
+      height: 'auto',
+      zIndex,
+      transition: 'all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+    };
+    if (tileState === 'left') {
+      tileStyle.left = maxLeft;
+      tileStyle.right = 'auto';
+    } else {
+      tileStyle.right = maxRight;
+      tileStyle.left = 'auto';
+    }
+  }
+
   const classNames = [
     'window',
-    isMaximized && 'window--maximized',
+    isEffectivelyMaximized && 'window--maximized',
     !isFocused && 'window--unfocused',
-    isMinimizing && 'window--minimizing',
-    isOpening && 'window--opening',
+    animState === 'minimizing' && 'window--minimizing',
+    animState === 'restoring' && 'window--restoring',
+    animState === 'opening' && 'window--opening',
   ].filter(Boolean).join(' ');
 
   const style: React.CSSProperties = isMaximized
@@ -135,33 +205,39 @@ export function Window({
         width: 'auto',
         height: 'auto',
         zIndex,
-        transition: 'all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
       }
-    : {
-        top: position.y,
-        left: position.x,
-        width: size.width,
-        height: size.height,
-        zIndex,
-      };
+    : tileState && tileStyle
+      ? tileStyle
+      : {
+          top: position.y,
+          left: position.x,
+          width: size.width,
+          height: size.height,
+          zIndex,
+        };
+
+  if (animState === 'minimizing' || animState === 'restoring') {
+    style.transform = dockTransform;
+    style.opacity = 0;
+  }
 
   return (
     <div
+      ref={windowRef}
       className={classNames}
       style={style}
       data-window-id={id}
       onMouseDown={handleFocus}
-      onAnimationEnd={handleAnimationEnd}
     >
       <TitleBar
         title={title}
         icon={icon}
         isFocused={isFocused}
-        isMaximized={isMaximized}
+        isMaximized={isEffectivelyMaximized}
         onMinimize={handleMinimize}
-        onMaximize={handleMaximize}
+        onMaximize={tileState ? handleUntile : handleMaximize}
         onClose={handleClose}
-        onDoubleClick={handleMaximize}
+        onDoubleClick={tileState ? handleUntile : handleMaximize}
         dragHandlers={dragHandlers}
         headerControls={headerControls}
       />

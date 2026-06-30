@@ -9,8 +9,9 @@
   border-radius: var(--radius-window);
   box-shadow: var(--shadow-window);
   overflow: hidden;
-  will-change: transform;
-  transition: border-radius 0.2s ease;
+  will-change: transform, opacity, width, height, top, left;
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease, border-radius 0.2s ease, width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transform-origin: center center;
   border: var(--border-window);
   background: var(--bg-window);
 }
@@ -23,6 +24,10 @@
 
 .window--unfocused {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.window--dragging, .window--resizing {
+  transition: none !important;
 }
 
 /* ============================================================
@@ -210,33 +215,20 @@
 }
 
 /* ============================================================
-   Minimize animation
+   Minimize & Open animation classes
    ============================================================ */
 
-@keyframes window-minimize-out {
-  to {
-    opacity: 0;
-    transform: scale(0.6) translateY(80px);
-  }
-}
-
 .window--minimizing {
-  animation: window-minimize-out 0.2s cubic-bezier(0.55, 0, 1, 0.45) forwards;
   pointer-events: none;
 }
 
-/* Open animation */
-@keyframes window-open {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+.window--restoring {
+  pointer-events: none;
+  transition: none !important;
 }
 
 .window--opening {
-  animation: window-open 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  opacity: 0;
+  transform: scale(0.95);
+  transition: none !important;
 }

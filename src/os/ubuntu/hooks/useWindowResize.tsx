@@ -46,6 +46,9 @@ export function useWindowResize({
     e.preventDefault();
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
+    
+    const windowEl = e.currentTarget.closest('.window');
+    if (windowEl) windowEl.classList.add('window--resizing');
 
     resizeRef.current = {
       edge,
@@ -104,6 +107,9 @@ export function useWindowResize({
     if (!resizeRef.current) return;
     resizeRef.current = null;
     e.currentTarget.releasePointerCapture(e.pointerId);
+    
+    const windowEl = e.currentTarget.closest('.window');
+    if (windowEl) windowEl.classList.remove('window--resizing');
   }, []);
 
   // Clean up on unmount
