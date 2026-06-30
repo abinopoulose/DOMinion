@@ -46,4 +46,6 @@ export const commandRegistry: Record<string, CommandHandler> = {
   clear: misc.clear,
   help: misc.help,
   hostname: misc.hostname,
+  poweroff: misc.poweroff,
+  reboot: misc.reboot,
 };

@@ -9,12 +9,14 @@ import './Window.css';
 export interface WindowProps {
   id: string;
   icon?: ReactNode;
+  headerControls?: ReactNode;
   children: ReactNode;
 }
 
 export function Window({
   id,
   icon,
+  headerControls,
   children,
 }: WindowProps) {
   const win = useWindowStore(useCallback((state) => state.windows.find((w) => w.id === id), [id]));
@@ -24,6 +26,7 @@ export function Window({
   const toggleMaximize = useWindowStore((s) => s.toggleMaximize);
   const updatePosition = useWindowStore((s) => s.updatePosition);
   const updateSize = useWindowStore((s) => s.updateSize);
+  const previewFocusWindowId = useWindowStore((s) => s.previewFocusWindowId);
 
   const [isMinimizing, setIsMinimizing] = useState(false);
   const [isOpening, setIsOpening] = useState(true);
@@ -91,7 +94,13 @@ export function Window({
 
   if (!win) return null;
 
-  const { title, zIndex, isMinimized, isFocused } = win;
+  let { title, zIndex, isMinimized, isFocused } = win;
+
+  const isPreviewed = previewFocusWindowId === id;
+  if (isPreviewed) {
+    zIndex = 99999;
+    isMinimized = false;
+  }
 
   // Don't render if minimized (and not animating)
   if (isMinimized && !isMinimizing) return null;
@@ -140,6 +149,7 @@ export function Window({
     <div
       className={classNames}
       style={style}
+      data-window-id={id}
       onMouseDown={handleFocus}
       onAnimationEnd={handleAnimationEnd}
     >
@@ -153,6 +163,7 @@ export function Window({
         onClose={handleClose}
         onDoubleClick={handleMaximize}
         dragHandlers={dragHandlers}
+        headerControls={headerControls}
       />
       <div className="window__content">
         {children}

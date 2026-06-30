@@ -1,5 +1,7 @@
 import type { CommandHandler } from './types';
 import { useVFSStore } from '../../../store';
+import { getAuthContext } from '../../../store/useUbuntuVFSStore';
+import { useHardwareStore } from '../../../../../hardware/store/useHardwareStore';
 
 
 export const echo: CommandHandler = (args) => {
@@ -70,5 +72,29 @@ export const hostname: CommandHandler = () => {
     return { output: [node.content.trim()] };
   }
   return { output: ['ubuntu-web'] };
+};
+
+export const poweroff: CommandHandler = () => {
+  if (getAuthContext().username !== 'root') {
+    return { output: ['poweroff: must be superuser.'], isError: true };
+  }
+  
+  setTimeout(() => {
+    useHardwareStore.getState().powerOff();
+  }, 100);
+  
+  return { output: [] };
+};
+
+export const reboot: CommandHandler = () => {
+  if (getAuthContext().username !== 'root') {
+    return { output: ['reboot: must be superuser.'], isError: true };
+  }
+  
+  setTimeout(() => {
+    useHardwareStore.getState().powerOff();
+  }, 100);
+  
+  return { output: [] };
 };
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { VFSNode } from '../../fs/types';
 import { getIconForFile } from '../../utils/iconResolver';
 import { useVFSStore } from '../../store';
+import { useSettingsStore } from '../Settings/store/useSettingsStore';
 
 interface FileListProps {
   files: VFSNode[];
@@ -18,6 +19,8 @@ interface FileListProps {
 export function FileList({ files, onNavigate, onOpenFile, onRename, onContextMenu, editingId, editValue, setEditingId, setEditValue }: FileListProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
+  const listIconSize = Math.max(16, Math.floor(dockIconSize / 2));
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -103,7 +106,7 @@ export function FileList({ files, onNavigate, onOpenFile, onRename, onContextMen
           }}
           style={{ display: 'grid', gridTemplateColumns: '40px 2fr 1fr 1fr 1fr 1fr 1fr', alignItems: 'center', padding: '4px 8px', gap: '8px' }}
         >
-          <img src={getIconForFile(file.name, file.type === 'directory')} alt={file.name} className="fm-item-icon" draggable={false} style={{ width: 24, height: 24 }} />
+          <img src={getIconForFile(file.name, file.type === 'directory')} alt={file.name} className="fm-item-icon" draggable={false} style={{ width: listIconSize, height: listIconSize }} />
           
           {editingId === file.id ? (
             <input

@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useWindowStore, useVFSStore } from '../../store';
-import { HOME_ID, TRASH_ID } from '../../fs/seed';
+import { getHomeId, getTrashId } from '../../fs/seed';
+import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { Sidebar } from './Sidebar';
 import { BreadcrumbBar } from './BreadcrumbBar';
 import { FileGrid } from './FileGrid';
@@ -8,6 +9,7 @@ import { FileList } from './FileList';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../../components/ContextMenu/ContextMenu';
 import type { VFSNode } from '../../fs/types';
+import { hasPermission } from '../../fs/permissions';
 import './FileManager.css';
 
 interface FileManagerProps {
@@ -34,6 +36,10 @@ export function FileManager({ windowId }: FileManagerProps) {
   const [contextNode, setContextNode] = useState<VFSNode | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+
+  const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
+  const HOME_ID = getHomeId(username);
+  const TRASH_ID = getTrashId(username);
 
   // Initialize app state defaults
   const defaultState: FileManagerState = {
@@ -104,12 +110,16 @@ export function FileManager({ windowId }: FileManagerProps) {
   // Generate context menu items dynamically based on target
   const contextMenuItems = useMemo(() => {
     const clipboard = vfsStore.clipboard;
+    const canWriteCwd = hasPermission(vfsStore.map, cwdId, 'write', username);
+    const canWriteNode = contextNode ? hasPermission(vfsStore.map, contextNode.id, 'write', username) : false;
+
     if (contextNode) {
       if (cwdId === TRASH_ID) {
         return [
           {
             id: 'restore',
             label: 'Restore',
+            disabled: !canWriteNode,
             onClick: () => {
               vfsStore.restoreFromTrash(contextNode.id);
               hideMenu();
@@ -119,6 +129,7 @@ export function FileManager({ windowId }: FileManagerProps) {
           {
             id: 'delete-permanent',
             label: 'Delete Permanently',
+            disabled: !canWriteNode,
             onClick: () => {
               vfsStore.deleteNode(contextNode.id);
               hideMenu();
@@ -149,6 +160,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'rename',
           label: 'Rename',
+          disabled: !canWriteNode,
           onClick: () => {
             setEditingId(contextNode.id);
             setEditValue(contextNode.name);
@@ -159,6 +171,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'cut',
           label: 'Cut',
+          disabled: !canWriteNode,
           onClick: () => {
             vfsStore.setClipboard('cut', contextNode.id);
             hideMenu();
@@ -176,6 +189,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'delete',
           label: 'Delete',
+          disabled: !canWriteNode,
           onClick: () => {
             vfsStore.moveToTrash(contextNode.id);
             hideMenu();
@@ -196,6 +210,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'new-folder',
           label: 'New Folder',
+          disabled: !canWriteCwd,
           onClick: () => {
             let name = 'New Folder';
             let i = 1;
@@ -211,6 +226,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'new-file',
           label: 'New File',
+          disabled: !canWriteCwd,
           onClick: () => {
             let name = 'Untitled';
             let i = 1;
@@ -227,7 +243,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'paste',
           label: 'Paste',
-          disabled: !clipboard.nodeId,
+          disabled: !clipboard.nodeId || !canWriteCwd,
           onClick: () => {
             const { action, nodeId } = clipboard;
             if (!nodeId) return;
@@ -243,7 +259,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         }
       ];
     }
-  }, [contextNode, cwdId, vfsStore, navigateTo, hideMenu]);
+  }, [contextNode, cwdId, vfsStore, navigateTo, hideMenu, username]);
 
   return (
     <div className="file-manager">

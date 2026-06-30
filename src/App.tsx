@@ -27,7 +27,7 @@ import fileManagerIcon from './os/ubuntu/assets/icons/file-manager.svg'
 import browserIcon from './os/ubuntu/assets/icons/browser.svg'
 import textIcon from './os/ubuntu/assets/icons/text.svg'
 import settingsIcon from './os/ubuntu/assets/icons/settings.svg'
-import { Terminal } from './os/ubuntu/apps/Terminal/Terminal'
+import { Terminal, TerminalHeaderControls } from './os/ubuntu/apps/Terminal/Terminal'
 import { FileManager } from './os/ubuntu/apps/FileManager/FileManager'
 import { Browser } from './os/ubuntu/apps/Browser/Browser'
 import { TextEditor } from './os/ubuntu/apps/TextEditor/TextEditor'
@@ -119,6 +119,12 @@ function UbuntuEnvironment() {
         // We'll toggle on keyup to avoid issues
         return;
       }
+
+      if (e.ctrlKey && e.altKey && e.key.toLowerCase() === 't') {
+        e.preventDefault();
+        openWindow('terminal');
+        return;
+      }
       
       let isNextDesktop = false;
       let isPrevDesktop = false;
@@ -184,6 +190,7 @@ function UbuntuEnvironment() {
           key={win.id}
           id={win.id}
           icon={<img src={APP_META[win.appId]?.icon} alt="" style={{ width: 16, height: 16 }} />}
+          headerControls={win.appId === 'terminal' ? <TerminalHeaderControls windowId={win.id} /> : undefined}
         >
           <MockAppContent appId={win.appId} windowId={win.id} />
         </Window>

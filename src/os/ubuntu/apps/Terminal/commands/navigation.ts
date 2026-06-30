@@ -1,6 +1,8 @@
 import type { CommandHandler } from './types';
 import { useVFSStore } from '../../../store';
-import { HOME_ID } from '../../../fs/seed';
+import { getAuthContext } from '../../../store/useUbuntuVFSStore';
+import { getHomeId } from '../../../fs/seed';
+import { hasPermission } from '../../../fs/permissions';
 
 export const pwd: CommandHandler = (_args, cwdId) => {
   const store = useVFSStore.getState();
@@ -10,6 +12,8 @@ export const pwd: CommandHandler = (_args, cwdId) => {
 
 export const cd: CommandHandler = (args, cwdId, updateCwd) => {
   const store = useVFSStore.getState();
+  const username = getAuthContext().username;
+  const HOME_ID = getHomeId(username);
   
   if (args.length === 0) {
     updateCwd(HOME_ID);
@@ -35,6 +39,10 @@ export const cd: CommandHandler = (args, cwdId, updateCwd) => {
   
   if (node.type !== 'directory') {
     return { output: [`cd: ${args[0]}: Not a directory`], isError: true };
+  }
+  
+  if (!hasPermission(store.map, node.id, 'execute', username)) {
+    return { output: [`cd: ${args[0]}: Permission denied`], isError: true };
   }
 
   updateCwd(node.id);
@@ -65,6 +73,11 @@ export const ls: CommandHandler = (args, cwdId) => {
       return { output: [`ls: cannot access '${targetPath}': No such file or directory`], isError: true };
     }
     targetId = node.id;
+  }
+  
+  const username = getAuthContext().username;
+  if (!hasPermission(store.map, targetId, 'read', username)) {
+    return { output: [`ls: cannot open directory '${targetPath}': Permission denied`], isError: true };
   }
 
   let children = store.getChildren(targetId);

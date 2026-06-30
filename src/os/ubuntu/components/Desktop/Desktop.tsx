@@ -6,9 +6,11 @@ import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useWindowStore, useVFSStore } from '../../store';
-import { DESKTOP_ID, HOME_ID, TRASH_ID } from '../../fs/seed';
+import { getDesktopId, getHomeId, getTrashId } from '../../fs/seed';
+import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { getIconForFile } from '../../utils/iconResolver';
 import type { VFSNode } from '../../fs/types';
+import { hasPermission } from '../../fs/permissions';
 import './Desktop.css';
 
 interface DesktopIconItem {
@@ -37,6 +39,11 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const vfsStore = useVFSStore();
   // Explicitly subscribe to map changes
   useVFSStore((s) => s.map); 
+  const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
+  const DESKTOP_ID = getDesktopId(username);
+  const HOME_ID = getHomeId(username);
+  const TRASH_ID = getTrashId(username);
+
   const desktopFiles = vfsStore.getChildren(DESKTOP_ID);
 
   // Fallback to default wallpaper if not set in store
@@ -51,6 +58,9 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const desktopIconOrder = useSettingsStore((s: any) => s.desktopIconOrder);
   const desktopIconPositions = useSettingsStore((s: any) => s.desktopIconPositions || {});
   const setDesktopIconPositions = useSettingsStore((s: any) => s.setDesktopIconPositions);
+  const dockPosition = useSettingsStore((s: any) => s.dockPosition);
+  const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
+  const dockAutoHide = useSettingsStore((s: any) => s.dockAutoHide);
 
   const combinedIcons = useMemo(() => {
     const arr: any[] = [];
@@ -81,17 +91,59 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     const positions: Record<string, {x: number, y: number}> = {};
     const occupied = new Set<string>();
 
+    const dockWidth = dockAutoHide ? 0 : dockIconSize;
     const GRID_X = 100;
     const GRID_Y = 100;
-    const OFFSET_X = 64 + 16;
-    const OFFSET_Y = 32 + 16;
+    const OFFSET_X = (dockPosition === 'left' ? dockWidth : 0) + 16;
+    const OFFSET_Y = 28 + 16;
+
+    const maxRow = Math.max(0, Math.floor((window.innerHeight - OFFSET_Y - (dockPosition === 'bottom' ? dockWidth : 0)) / GRID_Y) - 1);
+    const maxCol = Math.max(0, Math.floor((window.innerWidth - OFFSET_X - (dockPosition === 'right' ? dockWidth : 0)) / GRID_X) - 1);
 
     for (const item of combinedIcons) {
       if (desktopIconPositions[item.id]) {
-         const px = desktopIconPositions[item.id].x;
-         const py = desktopIconPositions[item.id].y;
-         const c = Math.round((px - OFFSET_X) / GRID_X);
-         const r = Math.round((py - OFFSET_Y) / GRID_Y);
+         const pos = desktopIconPositions[item.id];
+         let c = 0, r = 0;
+         
+         // Use exact grid coordinates if available, otherwise migrate from absolute pixels
+         if (pos.c !== undefined && pos.r !== undefined) {
+           c = pos.c;
+           r = pos.r;
+         } else {
+           c = Math.round((pos.x - OFFSET_X) / GRID_X);
+           r = Math.round((pos.y - OFFSET_Y) / GRID_Y);
+           c = Math.max(0, c);
+           r = Math.max(0, r);
+         }
+         
+         if (r > maxRow) {
+           r = 0;
+           c++;
+         }
+         
+         // Resolve any accidental collisions
+         while (occupied.has(`${c},${r}`)) {
+           r++;
+           if (r > maxRow) {
+             r = 0;
+             c++;
+           }
+         }
+         
+         // Clamp column and find first empty slot if overflowing
+         if (c > maxCol) {
+           let foundEmpty = false;
+           for (let scanC = 0; scanC <= maxCol && !foundEmpty; scanC++) {
+             for (let scanR = 0; scanR <= maxRow && !foundEmpty; scanR++) {
+               if (!occupied.has(`${scanC},${scanR}`)) {
+                 c = scanC;
+                 r = scanR;
+                 foundEmpty = true;
+               }
+             }
+           }
+         }
+         
          positions[item.id] = { x: OFFSET_X + c * GRID_X, y: OFFSET_Y + r * GRID_Y };
          occupied.add(`${c},${r}`);
       }
@@ -99,24 +151,28 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
     let nextRow = 0;
     let nextCol = 0;
-    const itemsPerCol = Math.max(1, Math.floor((window.innerHeight - 32) / 100));
 
     for (const item of combinedIcons) {
       if (!positions[item.id]) {
         while (occupied.has(`${nextCol},${nextRow}`)) {
           nextRow++;
-          if (nextRow >= itemsPerCol) {
+          if (nextRow > maxRow) {
             nextRow = 0;
             nextCol++;
           }
         }
-        positions[item.id] = { x: OFFSET_X + nextCol * GRID_X, y: OFFSET_Y + nextRow * GRID_Y };
-        occupied.add(`${nextCol},${nextRow}`);
+        
+        // If grid is full horizontally, don't crash, just let it overflow
+        let finalCol = nextCol;
+        if (finalCol > maxCol) finalCol = maxCol; 
+        
+        positions[item.id] = { x: OFFSET_X + finalCol * GRID_X, y: OFFSET_Y + nextRow * GRID_Y };
+        occupied.add(`${finalCol},${nextRow}`);
       }
     }
 
     return positions;
-  }, [combinedIcons, desktopIconPositions]);
+  }, [combinedIcons, desktopIconPositions, dockPosition, dockIconSize, dockAutoHide]);
 
   const commitRename = () => {
     if (editingId && editValue.trim()) {
@@ -151,6 +207,9 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const clipboard = useVFSStore((s) => s.clipboard);
 
   // Determine what menu items to show based on what was right-clicked
+  const canWriteDesktop = hasPermission(vfsStore.map, DESKTOP_ID, 'write', username);
+  const canWriteNode = contextNode ? hasPermission(vfsStore.map, contextNode.id, 'write', username) : false;
+
   const menuItems = contextNode ? [
     {
       id: 'open',
@@ -164,6 +223,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     {
       id: 'rename',
       label: 'Rename',
+      disabled: !canWriteNode,
       onClick: () => {
         setEditingId(contextNode.id);
         setEditValue(contextNode.name);
@@ -174,6 +234,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     {
       id: 'cut',
       label: 'Cut',
+      disabled: !canWriteNode,
       onClick: () => {
         useVFSStore.getState().setClipboard('cut', contextNode.id);
         hideContextMenu();
@@ -191,6 +252,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     {
       id: 'delete',
       label: 'Delete',
+      disabled: !canWriteNode,
       onClick: () => {
         useVFSStore.getState().moveToTrash(contextNode.id);
         hideContextMenu();
@@ -206,14 +268,14 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
       }
     }
   ] : [
-    { id: 'new-folder', label: 'New Folder' },
-    { id: 'new-file', label: 'New File' },
+    { id: 'new-folder', label: 'New Folder', disabled: !canWriteDesktop },
+    { id: 'new-file', label: 'New File', disabled: !canWriteDesktop },
     { id: 'change-wallpaper', label: 'Change Wallpaper' },
     { id: 'sep-1', label: '', separator: true },
     {
       id: 'paste',
       label: 'Paste',
-      disabled: !clipboard.nodeId,
+      disabled: !clipboard.nodeId || !canWriteDesktop,
       onClick: () => {
         const store = useVFSStore.getState();
         const { action, nodeId } = store.clipboard;
@@ -247,15 +309,20 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
         if (desktopIconId) {
           const rawX = e.clientX - dragOffset.x;
           const rawY = e.clientY - dragOffset.y;
-          const OFFSET_X = 64 + 16;
-          const OFFSET_Y = 32 + 16;
+          const dockWidth = dockAutoHide ? 0 : dockIconSize;
+          const OFFSET_X = (dockPosition === 'left' ? dockWidth : 0) + 16;
+          const OFFSET_Y = 28 + 16;
           const GRID_X = 100;
           const GRID_Y = 100;
 
           let targetCol = Math.round((rawX - OFFSET_X) / GRID_X);
           let targetRow = Math.round((rawY - OFFSET_Y) / GRID_Y);
-          targetCol = Math.max(0, targetCol);
-          targetRow = Math.max(0, targetRow);
+          
+          const maxRow = Math.max(0, Math.floor((window.innerHeight - OFFSET_Y - (dockPosition === 'bottom' ? dockWidth : 0)) / GRID_Y) - 1);
+          const maxCol = Math.max(0, Math.floor((window.innerWidth - OFFSET_X - (dockPosition === 'right' ? dockWidth : 0)) / GRID_X) - 1);
+          
+          targetCol = Math.max(0, Math.min(targetCol, maxCol));
+          targetRow = Math.max(0, Math.min(targetRow, maxRow));
           
           const occupied = new Set<string>();
           for (const [id, pos] of Object.entries(layoutPositions)) {
@@ -293,7 +360,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
           setDesktopIconPositions({
             ...desktopIconPositions,
-            [desktopIconId]: { x: finalX, y: finalY }
+            [desktopIconId]: { c: finalCol, r: finalRow, x: finalX, y: finalY }
           });
         }
         
@@ -310,7 +377,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
             <div
               key={item.id}
               className={`desktop-icon${selectedIcon === item.id ? ' desktop-icon--selected' : ''}`}
-              style={{ left: pos.x, top: pos.y }}
+              style={{ left: pos.x, top: pos.y, width: `${dockIconSize + 32}px` }}
               draggable
             onDragStart={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
@@ -365,6 +432,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
               src={item.icon} 
               alt={item.label} 
               draggable={false} 
+              style={{ width: `${dockIconSize + 8}px`, height: `${dockIconSize + 8}px` }}
             />
             {editingId === item.id && !item.isStatic ? (
               <input

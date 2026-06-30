@@ -14,6 +14,7 @@ interface TitleBarProps {
     onPointerMove: (e: React.PointerEvent<HTMLElement>) => void;
     onPointerUp: (e: React.PointerEvent<HTMLElement>) => void;
   };
+  headerControls?: ReactNode;
 }
 
 export function TitleBar({
@@ -24,6 +25,7 @@ export function TitleBar({
   onClose,
   onDoubleClick,
   dragHandlers,
+  headerControls,
 }: TitleBarProps) {
   return (
     <div
@@ -40,6 +42,11 @@ export function TitleBar({
       <span className="titlebar__title">{title}</span>
 
       <div className="titlebar__controls">
+        {headerControls && (
+          <div className="titlebar__custom-controls" style={{ display: 'flex', gap: '4px', marginRight: '8px' }}>
+            {headerControls}
+          </div>
+        )}
         {/* Minimize */}
         <button
           className="titlebar__btn titlebar__btn--minimize"

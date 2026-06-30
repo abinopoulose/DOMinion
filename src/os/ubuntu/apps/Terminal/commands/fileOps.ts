@@ -1,5 +1,7 @@
 import type { CommandHandler } from './types';
 import { useVFSStore } from '../../../store';
+import { getAuthContext } from '../../../store/useUbuntuVFSStore';
+import { hasPermission } from '../../../fs/permissions';
 import { parseArgs } from '../commandParser';
 import { walkTree } from './utils';
 
@@ -11,6 +13,11 @@ export const cat: CommandHandler = (args, cwdId) => {
 
   if (!node) return { output: [`cat: ${args[0]}: No such file or directory`], isError: true };
   if (node.type === 'directory') return { output: [`cat: ${args[0]}: Is a directory`], isError: true };
+  
+  const username = getAuthContext().username;
+  if (!hasPermission(store.map, node.id, 'read', username)) {
+    return { output: [`cat: ${args[0]}: Permission denied`], isError: true };
+  }
   
   return { output: node.content.split('\n') };
 };

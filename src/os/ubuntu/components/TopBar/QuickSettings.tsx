@@ -1,7 +1,8 @@
-
 import { useWindowStore } from '../../store/useUbuntuWindowStore';
 import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { useNetworkStore } from '../../store/useNetworkStore';
+import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
+import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useState, useEffect } from 'react';
 import './QuickSettings.css';
 
@@ -24,6 +25,9 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
     toggleAirplaneMode 
   } = useNetworkStore();
 
+  const { systemVolume, setSystemVolume, accentColor } = useSettingsStore();
+
+  const [brightness, setBrightness] = useState(80);
   const [darkMode, setDarkMode] = useState(false);
   const [nightLight, setNightLight] = useState(false);
   const [showPowerMenu, setShowPowerMenu] = useState(false);
@@ -152,7 +156,7 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
               </div>
             </>
           )}
-          <div className="qs-action-circle" title="Lock Screen">
+          <div className="qs-action-circle" title="Lock Screen" onClick={() => { useUbuntuAuthStore.getState().logout(); onClose(); }}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
               <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/>
             </svg>
@@ -183,7 +187,14 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
             </svg>
           </div>
-          <input type="range" className="qs-slider-new" min="0" max="100" defaultValue="50" />
+          <input 
+            type="range" 
+            className="qs-slider-new" 
+            min="0" max="100" 
+            value={systemVolume}
+            onChange={(e) => setSystemVolume(Number(e.target.value))}
+            style={{ background: `linear-gradient(to right, ${accentColor} ${systemVolume}%, #dfdfdf ${systemVolume}%)` }}
+          />
         </div>
         <div className="qs-slider-row">
           <div className="qs-slider-icon">
@@ -191,7 +202,14 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
               <path d="M12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zM11 1h2v3h-2zm0 17h2v3h-2zM3.51 5.92l1.41-1.41 2.12 2.12-1.41 1.41zM17.96 19.46l1.41-1.41 2.12 2.12-1.41 1.41zM1 11h3v2H1zm19 0h3v2h-3zm-2.04-3.54l2.12-2.12 1.41 1.41-2.12 2.12zM4.92 18.04l2.12-2.12 1.41 1.41-2.12 2.12z"/>
             </svg>
           </div>
-          <input type="range" className="qs-slider-new" min="0" max="100" defaultValue="80" />
+          <input 
+            type="range" 
+            className="qs-slider-new" 
+            min="0" max="100" 
+            value={brightness}
+            onChange={(e) => setBrightness(Number(e.target.value))}
+            style={{ background: `linear-gradient(to right, ${accentColor} ${brightness}%, #dfdfdf ${brightness}%)` }}
+          />
         </div>
       </div>
 

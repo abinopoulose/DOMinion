@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { VFSNode } from '../../fs/types';
 import { getIconForFile } from '../../utils/iconResolver';
 import { useVFSStore } from '../../store';
+import { useSettingsStore } from '../Settings/store/useSettingsStore';
 
 interface FileGridProps {
   files: VFSNode[];
@@ -18,6 +19,7 @@ interface FileGridProps {
 export function FileGrid({ files, onNavigate, onOpenFile, onRename, onContextMenu, editingId, editValue, setEditingId, setEditValue }: FileGridProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -89,7 +91,7 @@ export function FileGrid({ files, onNavigate, onOpenFile, onRename, onContextMen
             onContextMenu(e, file);
           }}
         >
-          <img src={getIconForFile(file.name, file.type === 'directory')} alt={file.name} className="fm-item-icon" draggable={false} />
+          <img src={getIconForFile(file.name, file.type === 'directory')} alt={file.name} className="fm-item-icon" draggable={false} style={{ width: dockIconSize, height: dockIconSize }} />
           {editingId === file.id ? (
             <input
               ref={inputRef}

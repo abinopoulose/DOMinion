@@ -1,5 +1,5 @@
 export const UBUNTU_ACCOUNTS = [
-  { username: 'user', password: 'password', role: 'normal' },
+  { username: 'user', password: 'password', role: 'standard' },
   { username: 'abino', password: 'password', role: 'admin' },
 ];
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWindowStore, useVFSStore } from '../../store';
-import { DESKTOP_ID } from '../../fs/seed';
+import { getDesktopId } from '../../fs/seed';
+import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import './TextEditor.css';
 
 interface TextEditorProps {
@@ -15,6 +16,9 @@ export function TextEditor({ windowId }: TextEditorProps) {
 
   const appState = (windowState?.appState as { fileId?: string }) || {};
   const { fileId } = appState;
+
+  const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
+  const DESKTOP_ID = getDesktopId(username);
 
   const [content, setContent] = useState('');
   const [originalContent, setOriginalContent] = useState('');

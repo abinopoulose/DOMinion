@@ -8,7 +8,9 @@ import { useWorkspaceStore } from './useWorkspaceStore';
 interface WindowStore {
   windows: WindowState[];
   nextZIndex: number;
+  previewFocusWindowId: string | null;
 
+  setPreviewFocusWindowId: (id: string | null) => void;
   openWindow: (appId: AppId, initialAppState?: unknown) => void;
   closeWindow: (id: string) => void;
   focusWindow: (id: string) => void;
@@ -46,6 +48,9 @@ export const useWindowStore = create<WindowStore>()(
     (set, get) => ({
       windows: [],
       nextZIndex: 100,
+      previewFocusWindowId: null,
+
+      setPreviewFocusWindowId: (id) => set({ previewFocusWindowId: id }),
 
       openWindow: (appId: AppId, initialAppState?: unknown) => {
         const { windows, nextZIndex } = get();

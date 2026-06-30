@@ -122,14 +122,16 @@
   flex: 1;
   -webkit-appearance: none;
   background: transparent;
-  height: 24px;
+  height: 4px;
+  border-radius: 2px;
   cursor: pointer;
+  outline: none;
 }
 
 .qs-slider-new::-webkit-slider-runnable-track {
   width: 100%;
-  height: 4px;
-  background: #dfdfdf;
+  height: 100%;
+  background: transparent;
   border-radius: 2px;
 }
 
@@ -143,14 +145,6 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   margin-top: -8px; /* (Track Height / 2) - (Thumb Height / 2) */
   cursor: pointer;
-}
-
-/* For better cross-browser fill, we can use accent color which takes over styling */
-@supports (accent-color: #e95420) {
-  .qs-slider-new {
-    accent-color: #e95420;
-    height: auto;
-  }
 }
 
 /* 3. Pills Grid */

@@ -3,7 +3,8 @@ import homeIcon from '../../assets/icons/home.svg';
 import trashIcon from '../../assets/icons/trash.svg';
 import folderIcon from '../../assets/icons/file-manager.svg';
 import { useVFSStore } from '../../store';
-import { HOME_ID, DESKTOP_ID, TRASH_ID } from '../../fs/seed';
+import { getHomeId, getDesktopId, getTrashId } from '../../fs/seed';
+import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 
 interface SidebarProps {
   currentCwdId: string;
@@ -18,9 +19,14 @@ export function Sidebar({ currentCwdId, onNavigate }: SidebarProps) {
     return node ? node.id : null;
   };
 
-  const docsId = getDirId('/home/user/Documents');
-  const dlsId = getDirId('/home/user/Downloads');
-  const picsId = getDirId('/home/user/Pictures');
+  const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
+  const HOME_ID = getHomeId(username);
+  const DESKTOP_ID = getDesktopId(username);
+  const TRASH_ID = getTrashId(username);
+
+  const docsId = getDirId(`/home/${username}/Documents`);
+  const dlsId = getDirId(`/home/${username}/Downloads`);
+  const picsId = getDirId(`/home/${username}/Pictures`);
 
   const favorites = [
     { id: HOME_ID, label: 'Home', icon: homeIcon },

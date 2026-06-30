@@ -13,6 +13,10 @@ export interface TerminalAppState {
   nanoBuffer?: string;
   nanoModified?: boolean;
   nanoCursorLine?: number;
+  sudoPasswordPrompt?: boolean;
+  sudoPendingCommand?: string;
+  sudoAuthorized?: boolean;
+  fontSize?: number;
 }
 
 /**

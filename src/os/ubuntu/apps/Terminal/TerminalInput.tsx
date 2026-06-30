@@ -4,13 +4,14 @@ interface TerminalInputProps {
   prompt: string;
   onCommand: (command: string) => void;
   commandHistory: string[];
+  isPassword?: boolean;
 }
 
 export interface TerminalInputRef {
   focus: () => void;
 }
 
-export const TerminalInput = forwardRef<TerminalInputRef, TerminalInputProps>(({ prompt, onCommand, commandHistory }, ref) => {
+export const TerminalInput = forwardRef<TerminalInputRef, TerminalInputProps>(({ prompt, onCommand, commandHistory, isPassword }, ref) => {
   const [input, setInput] = useState('');
   const [historyIndex, setHistoryIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,7 +52,7 @@ export const TerminalInput = forwardRef<TerminalInputRef, TerminalInputProps>(({
       <span className="terminal-prompt">{prompt}</span>
       <input
         ref={inputRef}
-        type="text"
+        type={isPassword ? 'password' : 'text'}
         className="terminal-input-field"
         value={input}
         onChange={(e) => setInput(e.target.value)}
