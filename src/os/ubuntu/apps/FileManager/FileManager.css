@@ -265,3 +265,24 @@
 .fm-item-list .fm-inline-rename {
   text-align: left;
 }
+
+.file-lock-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-icon-container {
+  position: relative;
+}
+
+.file-item-protected {
+  opacity: 0.85;
+}

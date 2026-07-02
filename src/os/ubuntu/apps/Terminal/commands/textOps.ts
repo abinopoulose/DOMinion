@@ -22,11 +22,11 @@ import { walkTree } from './utils';
  *   Multi-file:   filename:lineContent  (or  filename:lineNum:lineContent with -n)
  *   With -c:      filename:count  (or just count for single file)
  */
-export const grep: CommandHandler = (args, cwdId) => {
+export const grep: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { flags, positional } = parseArgs(args);
 
   if (positional.length < 1) {
-    return { output: ['grep: missing pattern'], isError: true };
+    ['grep: missing pattern'].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const pattern = positional[0];
@@ -38,7 +38,7 @@ export const grep: CommandHandler = (args, cwdId) => {
   try {
     regex = new RegExp(pattern, flags.i ? 'i' : '');
   } catch {
-    return { output: [`grep: invalid pattern: '${pattern}'`], isError: true };
+    [`grep: invalid pattern: '${pattern}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   // Collect files to search
@@ -57,7 +57,7 @@ export const grep: CommandHandler = (args, cwdId) => {
     }
 
     if (!startNode) {
-      return { output: [`grep: ${startPath}: No such file or directory`], isError: true };
+      [`grep: ${startPath}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     if (startNode.type === 'file') {
@@ -72,23 +72,23 @@ export const grep: CommandHandler = (args, cwdId) => {
   } else {
     // Non-recursive: explicit file targets
     if (targets.length === 0) {
-      return { output: ['grep: missing file operand'], isError: true };
+      ['grep: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     for (const target of targets) {
       const node = store.resolveRelativePath(cwdId, target);
       if (!node) {
-        return { output: [`grep: ${target}: No such file or directory`], isError: true };
+        [`grep: ${target}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
       }
       if (node.type === 'directory') {
-        return { output: [`grep: ${target}: Is a directory`], isError: true };
+        [`grep: ${target}: Is a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
       }
       files.push({ name: target, content: node.content });
     }
   }
 
   if (files.length === 0) {
-    return { output: [] };
+    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
   const multiFile = files.length > 1;
@@ -124,7 +124,7 @@ export const grep: CommandHandler = (args, cwdId) => {
     }
   }
 
-  return { output: outputLines };
+  outputLines.forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 /**
@@ -135,18 +135,18 @@ export const grep: CommandHandler = (args, cwdId) => {
  *
  * Defaults to 10 lines if -n is not specified.
  */
-export const head: CommandHandler = (args, cwdId) => {
+export const head: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { options, positional } = parseArgs(args, ['n']);
 
   if (positional.length === 0) {
-    return { output: ['head: missing file operand'], isError: true };
+    ['head: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const store = useVFSStore.getState();
   const n = parseInt(options.n || '10', 10);
 
   if (isNaN(n) || n < 0) {
-    return { output: [`head: invalid number of lines: '${options.n}'`], isError: true };
+    [`head: invalid number of lines: '${options.n}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const results: string[] = [];
@@ -157,10 +157,10 @@ export const head: CommandHandler = (args, cwdId) => {
     const node = store.resolveRelativePath(cwdId, target);
 
     if (!node) {
-      return { output: [`head: ${target}: No such file or directory`], isError: true };
+      [`head: ${target}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
     if (node.type === 'directory') {
-      return { output: [`head: ${target}: Is a directory`], isError: true };
+      [`head: ${target}: Is a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     if (multiFile) {
@@ -172,7 +172,7 @@ export const head: CommandHandler = (args, cwdId) => {
     results.push(...lines);
   }
 
-  return { output: results };
+  results.forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 /**
@@ -183,18 +183,18 @@ export const head: CommandHandler = (args, cwdId) => {
  *
  * Defaults to 10 lines if -n is not specified.
  */
-export const tail: CommandHandler = (args, cwdId) => {
+export const tail: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { options, positional } = parseArgs(args, ['n']);
 
   if (positional.length === 0) {
-    return { output: ['tail: missing file operand'], isError: true };
+    ['tail: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const store = useVFSStore.getState();
   const n = parseInt(options.n || '10', 10);
 
   if (isNaN(n) || n < 0) {
-    return { output: [`tail: invalid number of lines: '${options.n}'`], isError: true };
+    [`tail: invalid number of lines: '${options.n}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const results: string[] = [];
@@ -205,10 +205,10 @@ export const tail: CommandHandler = (args, cwdId) => {
     const node = store.resolveRelativePath(cwdId, target);
 
     if (!node) {
-      return { output: [`tail: ${target}: No such file or directory`], isError: true };
+      [`tail: ${target}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
     if (node.type === 'directory') {
-      return { output: [`tail: ${target}: Is a directory`], isError: true };
+      [`tail: ${target}: Is a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     if (multiFile) {
@@ -221,7 +221,7 @@ export const tail: CommandHandler = (args, cwdId) => {
     results.push(...lines);
   }
 
-  return { output: results };
+  results.forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 /**
@@ -238,11 +238,11 @@ export const tail: CommandHandler = (args, cwdId) => {
  * If no flags: prints all three (lines, words, chars).
  * Multiple files → totals row at the end.
  */
-export const wc: CommandHandler = (args, cwdId) => {
+export const wc: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { flags, positional } = parseArgs(args);
 
   if (positional.length === 0) {
-    return { output: ['wc: missing file operand'], isError: true };
+    ['wc: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const store = useVFSStore.getState();
@@ -257,10 +257,10 @@ export const wc: CommandHandler = (args, cwdId) => {
     const node = store.resolveRelativePath(cwdId, target);
 
     if (!node) {
-      return { output: [`wc: ${target}: No such file or directory`], isError: true };
+      [`wc: ${target}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
     if (node.type === 'directory') {
-      return { output: [`wc: ${target}: Is a directory`], isError: true };
+      [`wc: ${target}: Is a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     const content = node.content;
@@ -291,5 +291,5 @@ export const wc: CommandHandler = (args, cwdId) => {
     results.push(parts.join(''));
   }
 
-  return { output: results };
+  results.forEach((line: string) => process.stdout.writeLine(line)); return {};
 };

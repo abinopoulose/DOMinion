@@ -10,7 +10,44 @@ import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../../components/ContextMenu/ContextMenu';
 import type { VFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
+import { useSystemDialogStore } from '../../store/useSystemDialogStore';
+import { withElevation } from '../../services/sudoService';
 import './FileManager.css';
+
+/**
+ * Attempt a VFS operation. If it fails with "Permission denied",
+ * open the Polkit dialog and retry with elevated privileges.
+ *
+ * @param operation - The VFS operation to attempt (returns error string or undefined)
+ * @param actionMessage - Human-readable description for the Polkit dialog
+ * @param actionId - The Polkit action ID
+ * @param onSuccess - Optional callback after successful elevated operation
+ */
+function attemptWithPolkit(
+  operation: () => string | undefined,
+  actionMessage: string,
+  actionId: string,
+  onSuccess?: () => void
+) {
+  // First, try without elevation
+  const error = operation();
+
+  if (error === 'Permission denied') {
+    // Open Polkit dialog
+    useSystemDialogStore.getState().openPolkitDialog({
+      message: actionMessage,
+      actionId,
+      icon: 'folder',
+      onSuccess: () => {
+        // Retry with elevation
+        const elevatedError = withElevation(() => operation());
+        if (!elevatedError && onSuccess) {
+          onSuccess();
+        }
+      },
+    });
+  }
+}
 
 interface FileManagerProps {
   windowId: string;
@@ -21,6 +58,7 @@ interface FileManagerState {
   viewMode: 'grid' | 'list';
   historyStack: string[];
   historyIndex: number;
+  elevatedDirs: string[];  // directories accessed via Polkit elevation
 }
 
 export function FileManager({ windowId }: FileManagerProps) {
@@ -47,6 +85,7 @@ export function FileManager({ windowId }: FileManagerProps) {
     viewMode: 'grid',
     historyStack: [HOME_ID],
     historyIndex: 0,
+    elevatedDirs: [],
   };
 
   const appState = (windowState?.appState as Partial<FileManagerState>) || {};
@@ -55,15 +94,42 @@ export function FileManager({ windowId }: FileManagerProps) {
   const viewMode = appState.viewMode || defaultState.viewMode;
   const historyStack = appState.historyStack || [cwdId];
   const historyIndex = appState.historyIndex ?? 0;
+  const elevatedDirs: string[] = appState.elevatedDirs || [];
 
-  const files = vfsStore.getChildren(cwdId);
+  const isElevated = elevatedDirs.includes(cwdId);
+  const effectiveUser = isElevated ? 'root' : username;
+  const files = vfsStore.getChildren(cwdId, effectiveUser);
 
   const updateState = (updates: Partial<FileManagerState>) => {
     updateAppState(windowId, { ...appState, ...updates });
   };
 
-  const navigateTo = (id: string) => {
+  const navigateTo = (id: string, name: string = 'directory') => {
     if (id === cwdId) return; // already there
+    
+    const canExecute = hasPermission(vfsStore.map, id, 'execute', username);
+
+    if (!canExecute) {
+      useSystemDialogStore.getState().openPolkitDialog({
+        message: `Authentication is needed to access '${name}'.`,
+        actionId: 'org.freedesktop.filemanager.access-directory',
+        icon: 'folder',
+        onSuccess: () => {
+          // Navigate with elevated permissions and remember this dir
+          const newStack = historyStack.slice(0, historyIndex + 1);
+          newStack.push(id);
+          const newElevated = elevatedDirs.includes(id) ? elevatedDirs : [...elevatedDirs, id];
+          updateState({
+            cwdId: id,
+            historyStack: newStack,
+            historyIndex: newStack.length - 1,
+            elevatedDirs: newElevated,
+          });
+        },
+      });
+      return;
+    }
+
     const newStack = historyStack.slice(0, historyIndex + 1);
     newStack.push(id);
     updateState({
@@ -96,7 +162,11 @@ export function FileManager({ windowId }: FileManagerProps) {
   };
 
   const handleRename = (id: string, newName: string) => {
-    vfsStore.renameNode(id, newName);
+    attemptWithPolkit(
+      () => vfsStore.renameNode(id, newName),
+      `Authentication is needed to rename this item.`,
+      'org.freedesktop.filemanager.rename'
+    );
   };
 
   const [propertiesNode, setPropertiesNode] = useState<VFSNode | null>(null);
@@ -110,8 +180,8 @@ export function FileManager({ windowId }: FileManagerProps) {
   // Generate context menu items dynamically based on target
   const contextMenuItems = useMemo(() => {
     const clipboard = vfsStore.clipboard;
-    const canWriteCwd = hasPermission(vfsStore.map, cwdId, 'write', username);
-    const canWriteNode = contextNode ? hasPermission(vfsStore.map, contextNode.id, 'write', username) : false;
+    const canWriteCwd = hasPermission(vfsStore.map, cwdId, 'write', effectiveUser);
+    const canWriteNode = contextNode ? hasPermission(vfsStore.map, contextNode.id, 'write', effectiveUser) : false;
 
     if (contextNode) {
       if (cwdId === TRASH_ID) {
@@ -129,9 +199,13 @@ export function FileManager({ windowId }: FileManagerProps) {
           {
             id: 'delete-permanent',
             label: 'Delete Permanently',
-            disabled: !canWriteNode,
+            icon: !canWriteNode ? 'lock' : undefined,
             onClick: () => {
-              vfsStore.deleteNode(contextNode.id);
+              attemptWithPolkit(
+                () => vfsStore.deleteNode(contextNode.id),
+                `Authentication is needed to delete '${contextNode.name}'.`,
+                'org.freedesktop.filemanager.delete'
+              );
               hideMenu();
             }
           },
@@ -152,7 +226,7 @@ export function FileManager({ windowId }: FileManagerProps) {
           id: 'open',
           label: 'Open',
           onClick: () => {
-            if (contextNode.type === 'directory') navigateTo(contextNode.id);
+            if (contextNode.type === 'directory') navigateTo(contextNode.id, contextNode.name);
             else handleOpenFile(contextNode.id);
             hideMenu();
           }
@@ -160,7 +234,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'rename',
           label: 'Rename',
-          disabled: !canWriteNode,
+          icon: !canWriteNode ? 'lock' : undefined,
           onClick: () => {
             setEditingId(contextNode.id);
             setEditValue(contextNode.name);
@@ -171,7 +245,7 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'cut',
           label: 'Cut',
-          disabled: !canWriteNode,
+          icon: !canWriteNode ? 'lock' : undefined,
           onClick: () => {
             vfsStore.setClipboard('cut', contextNode.id);
             hideMenu();
@@ -189,9 +263,13 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'delete',
           label: 'Delete',
-          disabled: !canWriteNode,
+          icon: !canWriteNode ? 'lock' : undefined,
           onClick: () => {
-            vfsStore.moveToTrash(contextNode.id);
+            attemptWithPolkit(
+              () => vfsStore.moveToTrash(contextNode.id),
+              `Authentication is needed to delete '${contextNode.name}'.`,
+              'org.freedesktop.filemanager.delete'
+            );
             hideMenu();
           }
         },
@@ -210,15 +288,32 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'new-folder',
           label: 'New Folder',
-          disabled: !canWriteCwd,
+          icon: !canWriteCwd ? 'lock' : undefined,
           onClick: () => {
             let name = 'New Folder';
             let i = 1;
             while (vfsStore.exists(cwdId, name)) name = `New Folder ${i++}`;
-            const { id } = vfsStore.createNode(cwdId, name, 'directory');
-            if (id) {
-              setEditingId(id);
-              setEditValue(name);
+            
+            attemptWithPolkit(
+              () => vfsStore.createNode(cwdId, name, 'directory').error,
+              `Authentication is needed to create a folder.`,
+              'org.freedesktop.filemanager.create-folder',
+              () => {
+                const node = vfsStore.getChildren(cwdId).find(n => n.name === name);
+                if (node) {
+                  setEditingId(node.id);
+                  setEditValue(node.name);
+                }
+              }
+            );
+
+            // Attempt logic without elevation already creates node if success, wait, we need to handle success here if it succeeded on first try
+            if (hasPermission(vfsStore.map, cwdId, 'write', username)) {
+               const node = vfsStore.getChildren(cwdId).find(n => n.name === name);
+               if (node) {
+                 setEditingId(node.id);
+                 setEditValue(node.name);
+               }
             }
             hideMenu();
           }
@@ -226,15 +321,31 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'new-file',
           label: 'New File',
-          disabled: !canWriteCwd,
+          icon: !canWriteCwd ? 'lock' : undefined,
           onClick: () => {
             let name = 'Untitled';
             let i = 1;
             while (vfsStore.exists(cwdId, name)) name = `Untitled ${i++}`;
-            const { id } = vfsStore.createNode(cwdId, name, 'file');
-            if (id) {
-              setEditingId(id);
-              setEditValue(name);
+            
+            attemptWithPolkit(
+              () => vfsStore.createNode(cwdId, name, 'file').error,
+              `Authentication is needed to create a file.`,
+              'org.freedesktop.filemanager.create-file',
+              () => {
+                const node = vfsStore.getChildren(cwdId).find(n => n.name === name);
+                if (node) {
+                  setEditingId(node.id);
+                  setEditValue(node.name);
+                }
+              }
+            );
+
+            if (hasPermission(vfsStore.map, cwdId, 'write', username)) {
+               const node = vfsStore.getChildren(cwdId).find(n => n.name === name);
+               if (node) {
+                 setEditingId(node.id);
+                 setEditValue(node.name);
+               }
             }
             hideMenu();
           }
@@ -243,17 +354,26 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'paste',
           label: 'Paste',
-          disabled: !clipboard.nodeId || !canWriteCwd,
+          disabled: !clipboard.nodeId,
+          icon: !canWriteCwd ? 'lock' : undefined,
           onClick: () => {
             const { action, nodeId } = clipboard;
             if (!nodeId) return;
             
-            if (action === 'cut') {
-              vfsStore.moveNode(nodeId, cwdId);
-              vfsStore.setClipboard(null, null); // Clear clipboard after cut
-            } else if (action === 'copy') {
-              vfsStore.duplicateNode(nodeId, cwdId);
-            }
+            attemptWithPolkit(
+              () => {
+                if (action === 'cut') {
+                  const err = vfsStore.moveNode(nodeId, cwdId);
+                  if (!err) vfsStore.setClipboard(null, null);
+                  return err;
+                } else if (action === 'copy') {
+                  return vfsStore.duplicateNode(nodeId, cwdId).error;
+                }
+                return undefined;
+              },
+              `Authentication is needed to paste into this location.`,
+              'org.freedesktop.filemanager.paste'
+            );
             hideMenu();
           }
         }
@@ -335,14 +455,41 @@ export function FileManager({ windowId }: FileManagerProps) {
               Properties: {propertiesNode.name}
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '8px', fontSize: '14px' }}>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Name:</strong> <span>{propertiesNode.name}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Type:</strong> <span>{propertiesNode.type}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Size:</strong> <span>{propertiesNode.type === 'directory' ? '4096 B' : `${new Blob([propertiesNode.content]).size} B`}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Owner:</strong> <span>{propertiesNode.owner}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Group:</strong> <span>{propertiesNode.group}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Permissions:</strong> <span>{propertiesNode.permissions}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Created:</strong> <span>{new Date(propertiesNode.createdAt).toLocaleString()}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Modified:</strong> <span>{new Date(propertiesNode.modifiedAt).toLocaleString()}</span>
+              {(() => {
+                const storeState = useVFSStore.getState();
+                const ino = storeState.idToIno[propertiesNode.id];
+                const inode = ino ? storeState.inodeTable[ino] : null;
+                
+                let sizeStr = propertiesNode.type === 'directory' ? '4096 B' : `${new Blob([propertiesNode.content]).size} B`;
+                if (propertiesNode.type === 'proc_file' || propertiesNode.type === 'character_device') sizeStr = '0 B';
+                if (inode) sizeStr = `${inode.size} B`;
+
+                const typeChar = propertiesNode.type === 'directory' ? 'd' : propertiesNode.type === 'symlink' ? 'l' : propertiesNode.type === 'character_device' ? 'c' : '-';
+                let permStr = propertiesNode.permissions || '644';
+                if (inode) {
+                  permStr = inode.permissions.toString(8);
+                  const rwx = permStr.padStart(3, '0').split('').map(digit => {
+                    const val = parseInt(digit, 8);
+                    return (val & 4 ? 'r' : '-') + (val & 2 ? 'w' : '-') + (val & 1 ? 'x' : '-');
+                  }).join('');
+                  permStr = `${typeChar}${rwx}`;
+                }
+
+                return (
+                  <>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Name:</strong> <span>{propertiesNode.name}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Type:</strong> <span>{propertiesNode.type}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Inode:</strong> <span>{inode ? inode.ino : 'N/A'}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Hard Links:</strong> <span>{inode ? inode.links : 1}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Size:</strong> <span>{sizeStr}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Owner:</strong> <span>{propertiesNode.owner}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Group:</strong> <span>{propertiesNode.group}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Permissions:</strong> <span>{permStr}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Created:</strong> <span>{new Date(propertiesNode.createdAt).toLocaleString()}</span>
+                    <strong style={{ color: 'var(--color-text-secondary)' }}>Modified:</strong> <span>{new Date(propertiesNode.modifiedAt).toLocaleString()}</span>
+                  </>
+                );
+              })()}
             </div>
             <div style={{ marginTop: '20px', textAlign: 'right' }}>
               <button 

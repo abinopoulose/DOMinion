@@ -10,17 +10,16 @@ import { parseArgs } from '../commandParser';
  *
  * Reads from appState.commandHistory (5th parameter).
  */
-export const history: CommandHandler = (args, _cwdId, _updateCwd, clearHistory, appState) => {
+export const history: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, appState, process) => {
   const { flags } = parseArgs(args);
 
   if (flags.c) {
-    // Clear the history
-    clearHistory();
-    return { output: [] };
+    // Clear the history (Terminal.tsx handles clearing commandHistory)
+    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
   if (!appState?.commandHistory || appState.commandHistory.length === 0) {
-    return { output: [] };
+    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
   // Format each command with a right-aligned line number
@@ -30,5 +29,5 @@ export const history: CommandHandler = (args, _cwdId, _updateCwd, clearHistory, 
     return `${num}  ${cmd}`;
   });
 
-  return { output: lines };
+  lines.forEach((line: string) => process.stdout.writeLine(line)); return {};
 };

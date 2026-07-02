@@ -4,27 +4,27 @@ import { getAuthContext } from '../../../store/useUbuntuVFSStore';
 import { getHomeId } from '../../../fs/seed';
 import { hasPermission } from '../../../fs/permissions';
 
-export const pwd: CommandHandler = (_args, cwdId) => {
+export const pwd: CommandHandler = (_args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const store = useVFSStore.getState();
   const path = store.getAbsolutePath(cwdId);
-  return { output: [path] };
+  [path].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
-export const cd: CommandHandler = (args, cwdId, updateCwd) => {
+export const cd: CommandHandler = (args, cwdId, updateCwd, _clearHistory, _appState, process) => {
   const store = useVFSStore.getState();
-  const username = getAuthContext().username;
+  const username = _appState?.effectiveUser || getAuthContext().username;
   const HOME_ID = getHomeId(username);
   
   if (args.length === 0) {
     updateCwd(HOME_ID);
-    return { output: [] };
+    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
   let path = args[0];
   
   if (path === '~') {
     updateCwd(HOME_ID);
-    return { output: [] };
+    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
   
   if (path.startsWith('~/')) {
@@ -34,22 +34,22 @@ export const cd: CommandHandler = (args, cwdId, updateCwd) => {
   const node = store.resolveRelativePath(cwdId, path);
   
   if (!node) {
-    return { output: [`cd: ${args[0]}: No such file or directory`], isError: true };
+    [`cd: ${args[0]}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
   
   if (node.type !== 'directory') {
-    return { output: [`cd: ${args[0]}: Not a directory`], isError: true };
+    [`cd: ${args[0]}: Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
   
   if (!hasPermission(store.map, node.id, 'execute', username)) {
-    return { output: [`cd: ${args[0]}: Permission denied`], isError: true };
+    [`cd: ${args[0]}: Permission denied`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   updateCwd(node.id);
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
-export const ls: CommandHandler = (args, cwdId) => {
+export const ls: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const store = useVFSStore.getState();
   let showHidden = false;
   let longFormat = false;
@@ -70,14 +70,14 @@ export const ls: CommandHandler = (args, cwdId) => {
   if (targetPath !== '.') {
     const node = store.resolveRelativePath(cwdId, targetPath);
     if (!node) {
-      return { output: [`ls: cannot access '${targetPath}': No such file or directory`], isError: true };
+      [`ls: cannot access '${targetPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
     targetId = node.id;
   }
   
-  const username = getAuthContext().username;
+  const username = _appState?.effectiveUser || getAuthContext().username;
   if (!hasPermission(store.map, targetId, 'read', username)) {
-    return { output: [`ls: cannot open directory '${targetPath}': Permission denied`], isError: true };
+    [`ls: cannot open directory '${targetPath}': Permission denied`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   let children = store.getChildren(targetId);
@@ -100,28 +100,35 @@ export const ls: CommandHandler = (args, cwdId) => {
       const links = c.type === 'directory' ? c.children.length + 2 : 1;
       const owner = c.owner || 'user';
       const group = c.group || 'user';
-      const size = c.type === 'directory' ? 4096 : new Blob([c.content]).size;
+      let size = 0;
+      if (c.type === 'directory') size = 4096;
+      else if (c.type !== 'proc_file' && c.type !== 'character_device') {
+        size = new Blob([c.content]).size;
+      }
       
       const dateObj = new Date(c.modifiedAt);
       const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) + ' ' + 
                       dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       
-      const nameStr = c.type === 'directory' ? `<span style="color: #62a0ea; font-weight: bold;">${c.name}</span>` : c.name;
+      const nameStr = c.type === 'directory' ? `\x1b[1;34m${c.name}\x1b[0m` : c.name;
       
       return `${permString} ${links} ${owner} ${group} ${size.toString().padStart(5, ' ')} ${dateStr} ${nameStr}`;
     });
     
     // In terminal output, we can join with \n to make them separate lines, 
     // or just return the array and TerminalOutput will render each line.
-    return { output: outputLines };
+    outputLines.forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
   const outputStr = children.map(c => {
     if (c.type === 'directory') {
-      return `<span style="color: #62a0ea; font-weight: bold;">${c.name}/</span>`;
+      return `\x1b[1;34m${c.name}/\x1b[0m`;
     }
     return c.name;
   }).join('  ');
 
-  return { output: outputStr ? [outputStr] : [] };
+  if (outputStr) {
+    [outputStr].forEach((line: string) => process.stdout.writeLine(line));
+  }
+  return {};
 };

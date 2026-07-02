@@ -1,4 +1,4 @@
-export type VFSNodeType = 'file' | 'directory';
+export type VFSNodeType = 'file' | 'directory' | 'symlink' | 'proc_file' | 'character_device';
 
 export interface VFSNode {
   id: string;              // uuid

@@ -5,15 +5,17 @@ import { TerminalOutput } from './TerminalOutput';
 import type { HistoryEntry } from './TerminalOutput';
 import { TerminalInput } from './TerminalInput';
 import type { TerminalInputRef } from './TerminalInput';
-import { parseCommand } from './commandParser/parser';
-import { commandRegistry } from './commands';
 import type { TerminalAppState } from './commands/types';
+import { parseCommand } from './commandParser';
 import { handleNano } from './commands/nano';
+import { commandRegistry } from './commands';
+import { openFile, writeToFile, readFile, closeFile, type ProcessState } from '../../fs/fd';
 import { getHomeId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { NanoEditor } from './NanoEditor';
-import { UBUNTU_ACCOUNTS } from '../../../../config/accounts';
-import { setTempExecutionUser } from '../../store/useUbuntuVFSStore';
+import { setTempExecutionUser, useUbuntuVFSStore } from '../../store/useUbuntuVFSStore';
+import { verifySudoPassword } from '../../services/sudoService';
+import { handleSudo } from './commands/sudo';
 import './Terminal.css';
 
 interface TerminalProps {
@@ -28,7 +30,7 @@ export function Terminal({ windowId }: TerminalProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<TerminalInputRef>(null);
 
-  const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
+  const username = useUbuntuAuthStore((s) => s.currentUser) || 'peasant';
   const HOME_ID = getHomeId(username);
 
   // Initialize app state
@@ -39,7 +41,7 @@ export function Terminal({ windowId }: TerminalProps) {
     fontSize: 13,
   };
 
-  const { cwdId, history, commandHistory, interactiveApp, nanoFileId, fontSize = 13 } = appState;
+  let { cwdId, history, commandHistory, interactiveApp, nanoFileId, fontSize = 13 } = appState;
 
   // Auto-scroll to bottom when history changes
   useEffect(() => {
@@ -55,16 +57,19 @@ export function Terminal({ windowId }: TerminalProps) {
     }
   }, [windowState?.isFocused, interactiveApp]);
 
+  const effectiveUser = appState.effectiveUser || username;
+
   const generatePrompt = (currentCwdId: string) => {
     const absPath = vfsStore.getAbsolutePath(currentCwdId);
-    const homePath = vfsStore.getAbsolutePath(HOME_ID);
+    const homePath = vfsStore.getAbsolutePath(getHomeId(effectiveUser));
     
     let displayPath = absPath;
     if (absPath.startsWith(homePath)) {
       displayPath = '~' + absPath.slice(homePath.length);
     }
     
-    return `${username}@ubuntu:${displayPath}$ `;
+    const promptChar = effectiveUser === 'root' ? '#' : '$';
+    return `${effectiveUser}@ubuntu:${displayPath}${promptChar} `;
   };
 
   const executeCommand = (cmdStr: string, asRoot: boolean) => {
@@ -78,45 +83,199 @@ export function Terminal({ windowId }: TerminalProps) {
 
     if (asRoot) setTempExecutionUser('root');
 
-    const parsed = parseCommand(cmdStr);
-    if (parsed) {
-      if (parsed.name === 'nano' || parsed.name === 'vi') {
-        const nanoResult = handleNano(parsed.name, parsed.args, cwdId);
-        if (nanoResult.error) {
-          output = nanoResult.error.output;
-          isError = nanoResult.error.isError;
-        } else if (nanoResult.fileId) {
-          newInteractiveApp = 'nano';
-          newNanoFileId = nanoResult.fileId;
-          shouldClear = true;
+    const parsedPipeline = parseCommand(cmdStr);
+    let finalParsed: any = null;
+
+    if (parsedPipeline && parsedPipeline.length > 0) {
+      finalParsed = parsedPipeline[0];
+      let pipeBuffer = '';
+
+      for (let cmdIndex = 0; cmdIndex < parsedPipeline.length; cmdIndex++) {
+        const parsed = parsedPipeline[cmdIndex];
+        const isLastCommand = cmdIndex === parsedPipeline.length - 1;
+        const currentPipeInput = pipeBuffer;
+        pipeBuffer = ''; // reset for next command
+
+        // Expand ~ in arguments
+        const store = useUbuntuVFSStore.getState();
+        const homePath = store.getAbsolutePath(getHomeId(effectiveUser));
+        parsed.args = parsed.args.map(arg => {
+          if (arg === '~') return homePath;
+          if (arg.startsWith('~/')) return arg.replace('~', homePath);
+          return arg;
+        });
+
+        let isSuidElevated = false;
+        if (!asRoot) {
+          const store = useUbuntuVFSStore.getState();
+          const binPaths = [`/usr/bin/${parsed.name}`, `/bin/${parsed.name}`];
+          for (const p of binPaths) {
+            const node = store.resolvePath(p);
+            if (node && node.type === 'file' && node.permissions) {
+              const mode = parseInt(node.permissions, 8);
+              if ((mode & 0o4000) !== 0) { // SUID bit
+                setTempExecutionUser(node.owner);
+                isSuidElevated = true;
+                break;
+              }
+            }
+          }
         }
-      } else {
-        const handler = commandRegistry[parsed.name];
-        if (handler) {
-          const updateCwd = (id: string) => { nextCwdId = id; };
-          const clearHistoryFn = () => { shouldClear = true; };
-          const handlerResult = handler(parsed.args, cwdId, updateCwd, clearHistoryFn, appState);
-          output = handlerResult.output;
-          isError = handlerResult.isError || false;
-          if (parsed.name === 'history' && parsed.args.includes('-c')) {
-            clearCmdHistory = true;
+
+        if (parsed.name === 'nano' || parsed.name === 'vi') {
+          const nanoResult = handleNano(parsed.name, parsed.args, cwdId);
+          if (nanoResult.error) {
+            output = nanoResult.error.output;
+            isError = nanoResult.error.isError;
+          } else if (nanoResult.fileId) {
+            newInteractiveApp = 'nano';
+            newNanoFileId = nanoResult.fileId;
+            shouldClear = true;
           }
         } else {
-          output = [`${parsed.name}: command not found`];
-          isError = true;
+          const handler = commandRegistry[parsed.name];
+          if (handler) {
+            const updateCwd = (id: string) => { nextCwdId = id; };
+            const clearHistoryFn = () => { shouldClear = true; };
+            
+            let stdoutFd = 1;
+            let stderrFd = 2;
+            const openFds: number[] = [];
+            
+            if (parsed.redirections) {
+              for (const red of parsed.redirections) {
+                try {
+                  const uid = appState.effectiveUser === 'root' ? 0 : 1000;
+                  const mode = red.type === '>>' ? 'a' : red.type === '>' ? 'w' : 'r';
+                  if (mode !== 'r') {
+                    const fd = openFile(red.target, mode, cwdId, uid, 1000);
+                    stdoutFd = fd;
+                    openFds.push(fd);
+                  }
+                } catch (err: any) {
+                  output.push(`bash: ${red.target}: ${err.message}`);
+                  isError = true;
+                  break;
+                }
+              }
+            }
+            
+            let stdinFd = 0;
+            
+            if (parsed.redirections) {
+              const stdinRedir = parsed.redirections.find(r => r.type === '<');
+              if (stdinRedir) {
+                try {
+                  const uid = appState.effectiveUser === 'root' ? 0 : 1000;
+                  stdinFd = openFile(stdinRedir.target, 'r', cwdId, uid, 1000);
+                  openFds.push(stdinFd);
+                } catch (err: any) {
+                  output.push(`bash: ${stdinRedir.target}: ${err.message}`);
+                  isError = true;
+                }
+              }
+            }
+
+            if (!isError) {
+              const process: ProcessState = {
+                pid: 100,
+                fds: {},
+                stdout: {
+                  write: (data) => {
+                    if (stdoutFd === 1) {
+                      if (isLastCommand) output.push(data);
+                      else pipeBuffer += data;
+                    }
+                    else writeToFile(stdoutFd, data);
+                  },
+                  writeLine: (data) => {
+                    if (stdoutFd === 1) {
+                      if (isLastCommand) output.push(data);
+                      else pipeBuffer += (data + '\n');
+                    }
+                    else writeToFile(stdoutFd, data + '\n');
+                  }
+                },
+                stderr: {
+                  write: (data) => {
+                    if (stderrFd === 2) { output.push(data); isError = true; }
+                    else writeToFile(stderrFd, data);
+                  },
+                  writeLine: (data) => {
+                    if (stderrFd === 2) { output.push(data); isError = true; }
+                    else writeToFile(stderrFd, data + '\n');
+                  }
+                },
+                stdin: {
+                  readAll: () => {
+                    if (stdinFd === 0) {
+                      if (cmdIndex === 0) return '';
+                      return currentPipeInput;
+                    }
+                    return readFile(stdinFd);
+                  }
+                }
+              };
+              
+              const handlerResult = handler(parsed.args, cwdId, updateCwd, clearHistoryFn, appState, process);
+              
+              if (handlerResult.nextCwdId) nextCwdId = handlerResult.nextCwdId;
+              if (handlerResult.shouldClear) shouldClear = handlerResult.shouldClear;
+              
+              if (parsed.name === 'history' && parsed.args.includes('-c')) {
+                clearCmdHistory = true;
+              }
+
+              if (handlerResult.newPasswdState) {
+                return { output, isError, nextCwdId, shouldClear, newInteractiveApp, newNanoFileId, clearCmdHistory, parsed: finalParsed, newPasswdState: handlerResult.newPasswdState };
+              }
+            }
+            
+            for (const fd of openFds) closeFile(fd);
+
+          } else {
+            output = [`${parsed.name}: command not found`];
+            isError = true;
+          }
         }
+
+        if (isSuidElevated) setTempExecutionUser(null);
+        
+        if (isError) break; // stop pipeline on error
       }
     }
 
     if (asRoot) setTempExecutionUser(null);
-    return { output, isError, nextCwdId, shouldClear, newInteractiveApp, newNanoFileId, clearCmdHistory, parsed };
+    return { output, isError, nextCwdId, shouldClear, newInteractiveApp, newNanoFileId, clearCmdHistory, parsed: finalParsed };
   };
 
-  const handleCommand = (rawCommand: string) => {
-    if (appState.sudoPasswordPrompt) {
-      const userObj = UBUNTU_ACCOUNTS.find(u => u.username === username);
-      const isCorrect = userObj && userObj.password === rawCommand;
+  const handleCommand = async (rawCommand: string) => {
+    const trimmed = rawCommand.trim();
 
+    // === SUDO PASSWORD PROMPT MODE ===
+    if (appState.sudoPasswordPrompt) {
+      if (rawCommand === '__CTRL_C__') {
+        const newHistoryEntry: HistoryEntry = {
+          id: uuidv4(),
+          prompt: `[sudo] password for ${username}: `,
+          command: '',
+          output: ['^C'],
+        };
+        updateAppState(windowId, {
+          ...appState,
+          sudoPasswordPrompt: false,
+          sudoPendingCommand: undefined,
+          sudoAttempts: 0,
+          sudoTargetUser: undefined,
+          history: [...history, newHistoryEntry],
+        });
+        return;
+      }
+
+      const targetUser = appState.sudoTargetUser || 'root';
+      const pendingCmd = appState.sudoPendingCommand || '';
+      const attempts = (appState.sudoAttempts || 0) + 1;
+      
       const newHistoryEntry: HistoryEntry = {
         id: uuidv4(),
         prompt: `[sudo] password for ${username}: `,
@@ -124,22 +283,66 @@ export function Terminal({ windowId }: TerminalProps) {
         output: [],
       };
 
-      if (!isCorrect) {
-        newHistoryEntry.output = ['Sorry, try again.'];
+      const verifyResult = await verifySudoPassword(username, rawCommand, windowId, attempts);
+
+      if (!verifyResult.success) {
         newHistoryEntry.isError = true;
-        updateAppState(windowId, {
-          ...appState,
-          sudoPasswordPrompt: false,
-          sudoPendingCommand: undefined,
-          history: [...history, newHistoryEntry]
-        });
+        if (verifyResult.errorCode === 'MAX_ATTEMPTS') {
+          newHistoryEntry.output = [verifyResult.error!];
+          updateAppState(windowId, {
+            ...appState,
+            sudoPasswordPrompt: false,
+            sudoPendingCommand: undefined,
+            sudoTargetUser: undefined,
+            sudoAttempts: 0,
+            history: [...history, newHistoryEntry]
+          });
+        } else {
+          newHistoryEntry.output = [verifyResult.error!];
+          updateAppState(windowId, {
+            ...appState,
+            sudoAttempts: attempts,
+            history: [...history, newHistoryEntry]
+          });
+        }
         return;
       }
 
-      const pendingCmd = appState.sudoPendingCommand || '';
-      const execResult = executeCommand(pendingCmd, true);
+      // Sudo authorized
+      let execResult;
+      if (pendingCmd === '__sudo_shell_authorized__') {
+        execResult = { output: [], isError: false, shouldClear: false };
+        updateAppState(windowId, {
+          ...appState,
+          effectiveUser: targetUser,
+          userStack: [...(appState.userStack || []), username],
+          sudoPasswordPrompt: false,
+          sudoPendingCommand: undefined,
+          sudoAttempts: 0,
+          sudoTargetUser: undefined,
+          history: [...history, newHistoryEntry]
+        });
+        return;
+      } else if (pendingCmd) {
+        const parsed = parseCommand(`sudo ${pendingCmd}`);
+        let tempCwdId = cwdId;
+        const sudoOutput: string[] = [];
+        let sudoIsError = false;
+        const mockProcess = {
+          stdout: { writeLine: (l: string) => sudoOutput.push(l), write: (l: string) => sudoOutput.push(l) },
+          stderr: { writeLine: (l: string) => { sudoOutput.push(l); sudoIsError = true; }, write: (l: string) => { sudoOutput.push(l); sudoIsError = true; } },
+          stdin: { readAll: () => '' }
+        };
+        const sudoResult = handleSudo(
+          parsed![0].args, tempCwdId, (id: string) => { tempCwdId = id; }, () => {},
+          appState, windowId, effectiveUser, mockProcess
+        );
+        execResult = { ...sudoResult, nextCwdId: tempCwdId, output: sudoOutput, isError: sudoIsError };
+      } else {
+        execResult = { output: [], isError: false, shouldClear: false };
+      }
 
-      newHistoryEntry.output = execResult.output;
+      newHistoryEntry.output = execResult.output || [];
       newHistoryEntry.isError = execResult.isError;
       
       const newHistory = execResult.shouldClear ? [] : [...history, newHistoryEntry];
@@ -154,27 +357,191 @@ export function Terminal({ windowId }: TerminalProps) {
 
       updateAppState(windowId, {
         ...appState,
-        cwdId: execResult.nextCwdId,
+        cwdId: execResult.nextCwdId || cwdId,
         history: newHistory,
         commandHistory: execResult.clearCmdHistory ? [] : newCommandHistory,
         interactiveApp: execResult.newInteractiveApp,
         nanoFileId: execResult.newNanoFileId,
         sudoPasswordPrompt: false,
         sudoPendingCommand: undefined,
+        sudoTargetUser: undefined,
+        sudoAttempts: 0,
         sudoAuthorized: true,
       });
       return;
     }
 
-    const trimmed = rawCommand.trim();
-    const prompt = generatePrompt(cwdId);
+    // === SU PASSWORD PROMPT MODE ===
+    if (appState.suPasswordPrompt) {
+      if (rawCommand === '__CTRL_C__') {
+        const newHistoryEntry: HistoryEntry = {
+          id: uuidv4(),
+          prompt: `Password: `,
+          command: '',
+          output: ['^C'],
+        };
+        updateAppState(windowId, {
+          ...appState,
+          suPasswordPrompt: false,
+          sudoTargetUser: undefined,
+          history: [...history, newHistoryEntry],
+        });
+        return;
+      }
 
+      const targetUser = appState.sudoTargetUser || 'root';
+      const newHistoryEntry: HistoryEntry = {
+        id: uuidv4(),
+        prompt: `Password: `,
+        command: '',
+        output: [],
+      };
+
+      // su authenticates against the TARGET user's password, not the current user's
+      const verifyResult = await verifySudoPassword(targetUser, rawCommand, windowId, 1);
+      
+      if (!verifyResult.success) {
+        newHistoryEntry.isError = true;
+        newHistoryEntry.output = ['su: Authentication failure'];
+        updateAppState(windowId, {
+          ...appState,
+          suPasswordPrompt: false,
+          sudoTargetUser: undefined,
+          history: [...history, newHistoryEntry]
+        });
+        return;
+      }
+
+      // Success
+      updateAppState(windowId, {
+        ...appState,
+        effectiveUser: targetUser,
+        userStack: [...(appState.userStack || []), effectiveUser],
+        suPasswordPrompt: false,
+        sudoTargetUser: undefined,
+        history: [...history, newHistoryEntry]
+      });
+      return;
+    }
+
+    // === PASSWD PASSWORD PROMPT MODE ===
+    if (appState.passwdState) {
+      const { step, targetUser, newPasswordAttempt } = appState.passwdState;
+
+      if (rawCommand === '__CTRL_C__') {
+        const newHistoryEntry: HistoryEntry = {
+          id: uuidv4(),
+          prompt: step === 'current' ? `Changing password for ${targetUser}.\n(current) UNIX password: ` :
+                  step === 'new' ? `New password: ` : `Retype new password: `,
+          command: '',
+          output: ['^C'],
+        };
+        updateAppState(windowId, {
+          ...appState,
+          passwdState: undefined,
+          history: [...history, newHistoryEntry],
+        });
+        return;
+      }
+
+      const promptStr = step === 'current' ? `Changing password for ${targetUser}.\n(current) UNIX password: ` :
+                        step === 'new' ? `New password: ` : `Retype new password: `;
+                        
+      const newHistoryEntry: HistoryEntry = {
+        id: uuidv4(),
+        prompt: promptStr,
+        command: '',
+        output: [],
+      };
+
+      if (step === 'current') {
+        const verifyResult = await verifySudoPassword(targetUser, rawCommand, windowId, 1);
+        if (!verifyResult.success) {
+          newHistoryEntry.isError = true;
+          newHistoryEntry.output = ['passwd: Authentication token manipulation error', 'passwd: password unchanged'];
+          updateAppState(windowId, {
+            ...appState,
+            passwdState: undefined,
+            history: [...history, newHistoryEntry],
+          });
+        } else {
+          updateAppState(windowId, {
+            ...appState,
+            passwdState: { ...appState.passwdState, step: 'new' },
+            history: [...history, newHistoryEntry],
+          });
+        }
+        return;
+      }
+
+      if (step === 'new') {
+        updateAppState(windowId, {
+          ...appState,
+          passwdState: { ...appState.passwdState, step: 'confirm', newPasswordAttempt: rawCommand },
+          history: [...history, newHistoryEntry],
+        });
+        return;
+      }
+
+      if (step === 'confirm') {
+        if (rawCommand !== newPasswordAttempt) {
+          newHistoryEntry.isError = true;
+          newHistoryEntry.output = ['Sorry, passwords do not match.', 'passwd: Authentication token manipulation error', 'passwd: password unchanged'];
+          updateAppState(windowId, {
+            ...appState,
+            passwdState: undefined,
+            history: [...history, newHistoryEntry],
+          });
+          return;
+        }
+
+        const store = useUbuntuVFSStore.getState();
+        const shadowNode = store.resolvePath('/etc/shadow');
+        if (shadowNode && shadowNode.type === 'file') {
+          const { hashPassword } = await import('../../utils/passwordHasher');
+          const newHash = await hashPassword(rawCommand);
+          const lines = shadowNode.content.split('\n');
+          const userLineIdx = lines.findIndex(l => l.startsWith(targetUser + ':'));
+          if (userLineIdx !== -1) {
+            const parts = lines[userLineIdx].split(':');
+            parts[1] = newHash;
+            parts[2] = Math.floor(Date.now() / 86400000).toString();
+            lines[userLineIdx] = parts.join(':');
+            store.updateContent(shadowNode.id, lines.join('\n'), 'root');
+            newHistoryEntry.output = ['passwd: password updated successfully'];
+          } else {
+             newHistoryEntry.output = [`passwd: user '${targetUser}' does not exist`];
+             newHistoryEntry.isError = true;
+          }
+        } else {
+          newHistoryEntry.output = ['passwd: password updated successfully'];
+        }
+        
+        updateAppState(windowId, {
+          ...appState,
+          passwdState: undefined,
+          history: [...history, newHistoryEntry],
+        });
+        return;
+      }
+    }
+
+    const prompt = generatePrompt(cwdId);
     const newHistoryEntry: HistoryEntry = {
       id: uuidv4(),
       prompt,
       command: rawCommand,
       output: [],
     };
+
+    if (rawCommand === '__CTRL_C__') {
+      newHistoryEntry.output = ['^C'];
+      updateAppState(windowId, {
+        ...appState,
+        history: [...history, newHistoryEntry],
+      });
+      return;
+    }
 
     if (!trimmed) {
       updateAppState(windowId, {
@@ -185,43 +552,113 @@ export function Terminal({ windowId }: TerminalProps) {
     }
 
     const parsed = parseCommand(trimmed);
-    if (parsed && parsed.name === 'sudo') {
-      const userObj = UBUNTU_ACCOUNTS.find(u => u.username === username);
-      if (userObj?.role !== 'admin') {
-        newHistoryEntry.output = [`${username} is not in the sudoers file. This incident will be reported.`];
-        newHistoryEntry.isError = true;
-        updateAppState(windowId, { ...appState, history: [...history, newHistoryEntry] });
+
+    // Handle `exit` for su sessions
+    if (parsed && parsed.length > 0 && parsed[0].name === 'exit') {
+      if (appState.userStack && appState.userStack.length > 0) {
+        const previousUser = appState.userStack[appState.userStack.length - 1];
+        newHistoryEntry.output = ['exit'];
+        updateAppState(windowId, {
+          ...appState,
+          effectiveUser: previousUser === username ? undefined : previousUser,
+          userStack: appState.userStack.slice(0, -1),
+          history: [...history, newHistoryEntry],
+        });
         return;
       }
-      
-      if (parsed.args.length === 0) {
-        newHistoryEntry.output = ['usage: sudo command'];
-        newHistoryEntry.isError = true;
-        updateAppState(windowId, { ...appState, history: [...history, newHistoryEntry] });
+      // If no user stack, let normal exit command handle closing window
+    }
+
+    // Handle `sudo` delegation
+    if (parsed && parsed.length > 0 && parsed[0].name === 'sudo') {
+      const updateCwdId = (id: string) => { cwdId = id; }; // Or use a variable if needed, but here it's just a placeholder since sudo handles it
+      const sudoOutput: string[] = [];
+      let sudoIsError = false;
+      const mockProcess = {
+        stdout: { writeLine: (l: string) => sudoOutput.push(l), write: (l: string) => sudoOutput.push(l) },
+        stderr: { writeLine: (l: string) => { sudoOutput.push(l); sudoIsError = true; }, write: (l: string) => { sudoOutput.push(l); sudoIsError = true; } },
+        stdin: { readAll: () => '' }
+      };
+      const sudoResult = handleSudo(
+        parsed[0].args, cwdId, updateCwdId, () => {},
+        appState, windowId, effectiveUser, mockProcess
+      );
+
+      if (sudoResult.needsPassword) {
+        updateAppState(windowId, {
+          ...appState,
+          history: [...history, newHistoryEntry],
+          sudoPasswordPrompt: true,
+          sudoPendingCommand: sudoResult.pendingCommand,
+          sudoTargetUser: sudoResult.targetUser,
+          sudoAttempts: 0,
+          sudoCancellable: true,
+        });
         return;
       }
 
-      if (!appState.sudoAuthorized) {
+      newHistoryEntry.output = [...(sudoResult.output || []), ...sudoOutput];
+      newHistoryEntry.isError = sudoResult.isError || sudoIsError;
+      
+      const newHistory = sudoResult.shouldClear ? [] : [...history, newHistoryEntry];
+      const newCommandHistory = [...commandHistory, trimmed];
+      if (newCommandHistory.length > 100) newCommandHistory.shift();
+
+      updateAppState(windowId, {
+        ...appState,
+        cwdId: sudoResult.nextCwdId || cwdId,
+        history: newHistory,
+        commandHistory: sudoResult.clearCmdHistory ? [] : newCommandHistory,
+        interactiveApp: sudoResult.newInteractiveApp,
+        nanoFileId: sudoResult.newNanoFileId,
+        passwdState: (sudoResult as any).newPasswdState,
+      });
+      return;
+    }
+    
+    // Handle `su` command
+    if (parsed && parsed.length > 0 && parsed[0].name === 'su') {
+      const updateCwdId = (id: string) => { cwdId = id; };
+      const suOutput: string[] = [];
+      let suIsError = false;
+      const processMock = {
+        stdout: { write: (l: string) => suOutput.push(l), writeLine: (l: string) => suOutput.push(l) },
+        stderr: { write: (l: string) => { suOutput.push(l); suIsError = true; }, writeLine: (l: string) => { suOutput.push(l); suIsError = true; } },
+        stdin: { readAll: () => '' }, pid: 1, fds: {}
+      } as any;
+      const suResult = commandRegistry['su'](parsed[0].args, cwdId, updateCwdId, () => {}, appState, processMock);
+      
+      if (!suIsError && !suResult.isError) {
+        let targetUser = 'root';
+        for (const arg of parsed[0].args) {
+          if (!arg.startsWith('-')) {
+            targetUser = arg;
+            break;
+          }
+        }
+        
         updateAppState(windowId, {
-           ...appState,
-           history: [...history, newHistoryEntry],
-           sudoPasswordPrompt: true,
-           sudoPendingCommand: parsed.args.join(' ')
+          ...appState,
+          history: [...history, newHistoryEntry],
+          suPasswordPrompt: true,
+          sudoTargetUser: targetUser,
+        });
+        return;
+      } else {
+        newHistoryEntry.output = [...(suResult.output || []), ...suOutput];
+        newHistoryEntry.isError = true;
+        updateAppState(windowId, {
+          ...appState,
+          history: [...history, newHistoryEntry],
         });
         return;
       }
     }
 
-    let isSudo = false;
-    let cmdToRun = trimmed;
-    if (parsed && parsed.name === 'sudo' && appState.sudoAuthorized) {
-      isSudo = true;
-      cmdToRun = parsed.args.join(' ');
-    }
+    // Normal execution
+    const execResult = executeCommand(trimmed, false);
 
-    const execResult = executeCommand(cmdToRun, isSudo);
-
-    newHistoryEntry.output = execResult.output;
+    newHistoryEntry.output = execResult.output || [];
     newHistoryEntry.isError = execResult.isError;
 
     const newHistory = execResult.shouldClear ? [] : [...history, newHistoryEntry];
@@ -238,11 +675,12 @@ export function Terminal({ windowId }: TerminalProps) {
 
     updateAppState(windowId, {
       ...appState,
-      cwdId: execResult.nextCwdId,
+      cwdId: execResult.nextCwdId || cwdId,
       history: newHistory,
       commandHistory: newCommandHistory,
       interactiveApp: execResult.newInteractiveApp,
       nanoFileId: execResult.newNanoFileId,
+      passwdState: (execResult as any).newPasswdState,
     });
   };
 
@@ -278,16 +716,31 @@ export function Terminal({ windowId }: TerminalProps) {
     }
   };
 
+  let currentPrompt = generatePrompt(cwdId);
+  let isPasswordMode = false;
+  if (appState.sudoPasswordPrompt) {
+    currentPrompt = `[sudo] password for ${username}: `;
+    isPasswordMode = true;
+  } else if (appState.suPasswordPrompt) {
+    currentPrompt = `Password: `;
+    isPasswordMode = true;
+  } else if (appState.passwdState) {
+    const { step, targetUser } = appState.passwdState;
+    currentPrompt = step === 'current' ? `Changing password for ${targetUser}.\n(current) UNIX password: ` :
+                    step === 'new' ? `New password: ` : `Retype new password: `;
+    isPasswordMode = true;
+  }
+
   return (
-    <div className="terminal-app" onClick={() => inputRef.current?.focus()} onKeyDown={handleKeyDown} tabIndex={-1} style={{ fontSize: `${fontSize}px` }}>
+    <div className="terminal-app" onClick={() => { if (!window.getSelection()?.toString()) inputRef.current?.focus(); }} onKeyDown={handleKeyDown} tabIndex={-1} style={{ fontSize: `${fontSize}px` }}>
       <div className="terminal-scroll-area" ref={scrollAreaRef}>
         <TerminalOutput history={history} />
         <TerminalInput
           ref={inputRef}
-          prompt={appState.sudoPasswordPrompt ? `[sudo] password for ${username}: ` : generatePrompt(cwdId)}
+          prompt={currentPrompt}
           onCommand={handleCommand}
           commandHistory={commandHistory}
-          isPassword={!!appState.sudoPasswordPrompt}
+          isPassword={isPasswordMode}
         />
       </div>
     </div>

@@ -5,57 +5,97 @@ import { hasPermission } from '../../../fs/permissions';
 import { parseArgs } from '../commandParser';
 import { walkTree } from './utils';
 
-export const cat: CommandHandler = (args, cwdId) => {
-  if (args.length === 0) return { output: ['cat: missing operand'], isError: true };
+export const cat: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+  if (args.length === 0) {
+    const input = process.stdin.readAll();
+    input.split('\n').forEach((line: string) => process.stdout.writeLine(line));
+    return {};
+  }
   
   const store = useVFSStore.getState();
   const node = store.resolveRelativePath(cwdId, args[0]);
 
-  if (!node) return { output: [`cat: ${args[0]}: No such file or directory`], isError: true };
-  if (node.type === 'directory') return { output: [`cat: ${args[0]}: Is a directory`], isError: true };
-  
-  const username = getAuthContext().username;
-  if (!hasPermission(store.map, node.id, 'read', username)) {
-    return { output: [`cat: ${args[0]}: Permission denied`], isError: true };
+  if (!node) {
+    [`cat: ${args[0]}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line));
+    return {};
+  }
+  if (node.type === 'directory') {
+    [`cat: ${args[0]}: Is a directory`].forEach((line: string) => process.stderr.writeLine(line));
+    return {};
   }
   
-  return { output: node.content.split('\n') };
+  const username = _appState?.effectiveUser || getAuthContext().username;
+  if (!hasPermission(store.map, node.id, 'read', username)) {
+    [`cat: ${args[0]}: Permission denied`].forEach((line: string) => process.stderr.writeLine(line));
+    return {};
+  }
+  
+  node.content.split('\n').forEach((line: string) => process.stdout.writeLine(line));
+  return {};
 };
 
-export const touch: CommandHandler = (args, cwdId) => {
-  if (args.length === 0) return { output: ['touch: missing file operand'], isError: true };
+export const touch: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+  if (args.length === 0) { ['touch: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
   const store = useVFSStore.getState();
   const name = args[0];
   
-  if (name.includes('/')) return { output: ['touch: creating files in subdirectories is not yet supported'], isError: true };
+  let parentId = cwdId;
+  let fileName = name;
+  if (name.includes('/')) {
+    const parts = name.split('/');
+    fileName = parts.pop()!;
+    const parentPath = parts.join('/') || (name.startsWith('/') ? '/' : '.');
+    const parentNode = store.resolveRelativePath(cwdId, parentPath);
+    if (!parentNode) {
+      [`touch: cannot touch '${name}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    }
+    if (parentNode.type !== 'directory') {
+      [`touch: cannot touch '${name}': Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    }
+    parentId = parentNode.id;
+  }
 
   const node = store.resolveRelativePath(cwdId, name);
   if (node) {
     // If it exists, Unix touch updates timestamp. Since we don't display it yet, this is a no-op conceptually, 
     // but we can just update content with its own content to trigger a modifiedAt update
-    store.updateContent(node.id, node.content);
-    return { output: [] };
+    store.updateContent(node!.id, node!.content ?? '');
+    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
-  const { error: err } = store.createNode(cwdId, name, 'file', '');
-  if (err) return { output: [`touch: ${err}`], isError: true };
+  const { error: err } = store.createNode(parentId, fileName, 'file', '');
+  if (err) { [`touch: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
-export const mkdir: CommandHandler = (args, cwdId) => {
-  if (args.length === 0) return { output: ['mkdir: missing operand'], isError: true };
+export const mkdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+  if (args.length === 0) { ['mkdir: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
   const store = useVFSStore.getState();
   const name = args[0];
   
-  if (name.includes('/')) return { output: ['mkdir: creating nested directories is not yet supported'], isError: true };
+  let parentId = cwdId;
+  let dirName = name;
+  if (name.includes('/')) {
+    const parts = name.split('/');
+    dirName = parts.pop()!;
+    const parentPath = parts.join('/') || (name.startsWith('/') ? '/' : '.');
+    const parentNode = store.resolveRelativePath(cwdId, parentPath);
+    if (!parentNode) {
+      [`mkdir: cannot create directory '${name}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    }
+    if (parentNode.type !== 'directory') {
+      [`mkdir: cannot create directory '${name}': Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    }
+    parentId = parentNode.id;
+  }
 
-  const { error: err } = store.createNode(cwdId, name, 'directory');
-  if (err) return { output: [`mkdir: cannot create directory '${name}': ${err}`], isError: true };
+  const { error: err } = store.createNode(parentId, dirName, 'directory');
+  if (err) { [`mkdir: cannot create directory '${name}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 /**
@@ -70,14 +110,14 @@ export const mkdir: CommandHandler = (args, cwdId) => {
  *
  * Supports combined flags (-rf, -Rf) and multiple file operands.
  */
-export const rm: CommandHandler = (args, cwdId) => {
+export const rm: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { flags, positional } = parseArgs(args);
   const recursive = flags.r || flags.R;
   const force = flags.f;
 
   if (positional.length === 0) {
-    if (force) return { output: [] }; // rm -f with no args is silent
-    return { output: ['rm: missing operand'], isError: true };
+    if (force) { [].forEach((line: string) => process.stdout.writeLine(line)); return {}; } // rm -f with no args is silent
+    ['rm: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const store = useVFSStore.getState();
@@ -87,48 +127,62 @@ export const rm: CommandHandler = (args, cwdId) => {
 
     if (!node) {
       if (force) continue; // -f silences "not found"
-      return { output: [`rm: cannot remove '${target}': No such file or directory`], isError: true };
+      [`rm: cannot remove '${target}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     if (node.type === 'directory' && !recursive) {
-      return { output: [`rm: cannot remove '${target}': Is a directory`], isError: true };
+      [`rm: cannot remove '${target}': Is a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     const err = store.deleteNode(node.id);
     if (err) {
-      return { output: [`rm: cannot remove '${target}': ${err}`], isError: true };
+      [`rm: cannot remove '${target}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
   }
 
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
-export const chmod: CommandHandler = (args, cwdId) => {
-  if (args.length < 2) return { output: ['chmod: missing operand'], isError: true };
+export const chmod: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+  if (args.length < 2) { ['chmod: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
   const permissions = args[0];
   const targetName = args[1];
   
   if (!/^[0-7]{3}$/.test(permissions)) {
-    return { output: [`chmod: invalid mode: '${permissions}'`], isError: true };
+    [`chmod: invalid mode: '${permissions}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const store = useVFSStore.getState();
   const node = store.resolveRelativePath(cwdId, targetName);
   
   if (!node) {
-    return { output: [`chmod: cannot access '${targetName}': No such file or directory`], isError: true };
+    [`chmod: cannot access '${targetName}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
   
-  const err = store.updatePermissions(node.id, permissions);
-  if (err) return { output: [`chmod: ${err}`], isError: true };
+  const username = _appState?.effectiveUser || getAuthContext().username;
+
+  // Only owner or root can chmod
+  if (username !== 'root' && username !== node!.owner) {
+    [`chmod: changing permissions of '${targetName}': Operation not permitted`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  }
+
+  const err = store.updatePermissions(node!.id, permissions);
+  if (err) { [`chmod: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
-export const chown: CommandHandler = (args, cwdId) => {
-  if (args.length < 2) return { output: ['chown: missing operand'], isError: true };
+export const chown: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+  if (args.length < 2) { ['chown: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
+  const username = _appState?.effectiveUser || getAuthContext().username;
+
+  // chown requires root in real Linux (unless changing to own group only)
+  if (username !== 'root') {
+    ['chown: changing ownership: Operation not permitted'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  }
+
   const ownerGroup = args[0];
   const targetName = args[1];
   
@@ -138,13 +192,13 @@ export const chown: CommandHandler = (args, cwdId) => {
   const node = store.resolveRelativePath(cwdId, targetName);
   
   if (!node) {
-    return { output: [`chown: cannot access '${targetName}': No such file or directory`], isError: true };
+    [`chown: cannot access '${targetName}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
   
-  const err = store.updateOwner(node.id, owner || undefined, group || undefined);
-  if (err) return { output: [`chown: ${err}`], isError: true };
+  const err = store.updateOwner(node!.id, owner || undefined, group || undefined);
+  if (err) { [`chown: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 /**
@@ -161,12 +215,12 @@ export const chown: CommandHandler = (args, cwdId) => {
  *   - Dir (-r): Deep copy using VFS duplicateNode
  *   - source === dest: Error
  */
-export const cp: CommandHandler = (args, cwdId) => {
+export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { flags, positional } = parseArgs(args);
   const recursive = flags.r || flags.R;
 
   if (positional.length < 2) {
-    return { output: ['cp: missing file operand'], isError: true };
+    ['cp: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const sourcePath = positional[0];
@@ -176,12 +230,12 @@ export const cp: CommandHandler = (args, cwdId) => {
   // Resolve source
   const sourceNode = store.resolveRelativePath(cwdId, sourcePath);
   if (!sourceNode) {
-    return { output: [`cp: cannot stat '${sourcePath}': No such file or directory`], isError: true };
+    [`cp: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   // Check if source is a directory without -r
   if (sourceNode.type === 'directory' && !recursive) {
-    return { output: [`cp: -r not specified; omitting directory '${sourcePath}'`], isError: true };
+    [`cp: -r not specified; omitting directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   // Resolve destination
@@ -190,7 +244,7 @@ export const cp: CommandHandler = (args, cwdId) => {
   if (destNode) {
     // Destination exists
     if (destNode.id === sourceNode.id) {
-      return { output: [`cp: '${sourcePath}' and '${destPath}' are the same file`], isError: true };
+      [`cp: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     if (destNode.type === 'directory') {
@@ -203,17 +257,17 @@ export const cp: CommandHandler = (args, cwdId) => {
           store.updateContent(existing.id, sourceNode.content);
         } else {
           const { error } = store.createNode(destNode.id, sourceNode.name, 'file', sourceNode.content);
-          if (error) return { output: [`cp: ${error}`], isError: true };
+          if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
         }
       } else {
         // Directory → copy into dest directory
         const { error } = store.duplicateNode(sourceNode.id, destNode.id);
-        if (error) return { output: [`cp: ${error}`], isError: true };
+        if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
       }
     } else {
       // Destination is a file — overwrite its content (only if source is also a file)
       if (sourceNode.type === 'directory') {
-        return { output: [`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`], isError: true };
+        [`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
       }
       store.updateContent(destNode.id, sourceNode.content);
     }
@@ -231,24 +285,24 @@ export const cp: CommandHandler = (args, cwdId) => {
     }
 
     if (!destParentNode || destParentNode.type !== 'directory') {
-      return { output: [`cp: cannot create '${destPath}': No such file or directory`], isError: true };
+      [`cp: cannot create '${destPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     if (sourceNode.type === 'file') {
       const { error } = store.createNode(destParentNode.id, destName, 'file', sourceNode.content);
-      if (error) return { output: [`cp: ${error}`], isError: true };
+      if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
     } else {
       // For directory copy to a new name, use duplicateNode then rename
       const { error, id: newId } = store.duplicateNode(sourceNode.id, destParentNode.id);
-      if (error) return { output: [`cp: ${error}`], isError: true };
+      if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
       // Rename the copy to destName if different
-      if (newId && destName !== sourceNode.name) {
+      if (newId && destName !== sourceNode!.name) {
         store.renameNode(newId, destName);
       }
     }
   }
 
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 /**
@@ -264,11 +318,11 @@ export const cp: CommandHandler = (args, cwdId) => {
  *   - Works for both files and directories (VFS moveNode handles trees)
  *   - Circular-move protection is built into fs/operations.ts
  */
-export const mv: CommandHandler = (args, cwdId) => {
+export const mv: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { positional } = parseArgs(args);
 
   if (positional.length < 2) {
-    return { output: ['mv: missing file operand'], isError: true };
+    ['mv: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const sourcePath = positional[0];
@@ -278,7 +332,7 @@ export const mv: CommandHandler = (args, cwdId) => {
   // Resolve source
   const sourceNode = store.resolveRelativePath(cwdId, sourcePath);
   if (!sourceNode) {
-    return { output: [`mv: cannot stat '${sourcePath}': No such file or directory`], isError: true };
+    [`mv: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   // Resolve destination
@@ -286,16 +340,24 @@ export const mv: CommandHandler = (args, cwdId) => {
 
   if (destNode) {
     if (destNode.id === sourceNode.id) {
-      return { output: [`mv: '${sourcePath}' and '${destPath}' are the same file`], isError: true };
+      [`mv: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     if (destNode.type === 'directory') {
       // Move into existing directory
       const err = store.moveNode(sourceNode.id, destNode.id);
-      if (err) return { output: [`mv: ${err}`], isError: true };
+      if (err) { [`mv: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
     } else {
-      // Destination is an existing file — in real mv this overwrites, but for simplicity:
-      return { output: [`mv: cannot overwrite '${destPath}': File exists`], isError: true };
+      if (sourceNode.type === 'directory') {
+        [`mv: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+      }
+      store.deleteNode(destNode.id);
+      if (sourceNode.parentId === destNode.parentId) {
+        store.renameNode(sourceNode.id, destNode.name);
+      } else {
+        store.moveNode(sourceNode.id, destNode.parentId!);
+        store.renameNode(sourceNode.id, destNode.name);
+      }
     }
   } else {
     // Destination does not exist — resolve parent for move + rename
@@ -311,26 +373,26 @@ export const mv: CommandHandler = (args, cwdId) => {
     }
 
     if (!destParentNode || destParentNode.type !== 'directory') {
-      return { output: [`mv: cannot move '${sourcePath}' to '${destPath}': No such file or directory`], isError: true };
+      [`mv: cannot move '${sourcePath}' to '${destPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     // If source parent === dest parent, this is just a rename
-    if (sourceNode.parentId === destParentNode.id) {
-      const err = store.renameNode(sourceNode.id, destName);
-      if (err) return { output: [`mv: ${err}`], isError: true };
+    if (sourceNode!.parentId === destParentNode!.id) {
+      const err = store.renameNode(sourceNode!.id, destName);
+      if (err) { [`mv: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
     } else {
       // Move to new parent, then rename
       const moveErr = store.moveNode(sourceNode.id, destParentNode.id);
-      if (moveErr) return { output: [`mv: ${moveErr}`], isError: true };
+      if (moveErr) { [`mv: ${moveErr}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
 
       if (destName !== sourceNode.name) {
         const renameErr = store.renameNode(sourceNode.id, destName);
-        if (renameErr) return { output: [`mv: ${renameErr}`], isError: true };
+        if (renameErr) { [`mv: ${renameErr}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
       }
     }
   }
 
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 /**
@@ -342,11 +404,11 @@ export const mv: CommandHandler = (args, cwdId) => {
  * Only removes directories that have no children.
  * For non-empty directories, use `rm -r` instead.
  */
-export const rmdir: CommandHandler = (args, cwdId) => {
+export const rmdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { positional } = parseArgs(args);
 
   if (positional.length === 0) {
-    return { output: ['rmdir: missing operand'], isError: true };
+    ['rmdir: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   const store = useVFSStore.getState();
@@ -355,22 +417,22 @@ export const rmdir: CommandHandler = (args, cwdId) => {
     const node = store.resolveRelativePath(cwdId, target);
 
     if (!node) {
-      return { output: [`rmdir: failed to remove '${target}': No such file or directory`], isError: true };
+      [`rmdir: failed to remove '${target}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
     if (node.type !== 'directory') {
-      return { output: [`rmdir: failed to remove '${target}': Not a directory`], isError: true };
+      [`rmdir: failed to remove '${target}': Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     const children = store.getChildren(node.id);
     if (children.length > 0) {
-      return { output: [`rmdir: failed to remove '${target}': Directory not empty`], isError: true };
+      [`rmdir: failed to remove '${target}': Directory not empty`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
     const err = store.deleteNode(node.id);
-    if (err) return { output: [`rmdir: failed to remove '${target}': ${err}`], isError: true };
+    if (err) { [`rmdir: failed to remove '${target}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   }
 
-  return { output: [] };
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 /**
@@ -386,7 +448,7 @@ export const rmdir: CommandHandler = (args, cwdId) => {
  * Default path is '.' (current directory).
  * Outputs one matched path per line.
  */
-export const find: CommandHandler = (args, cwdId) => {
+export const find: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { options, positional } = parseArgs(args, ['name', 'type']);
   const store = useVFSStore.getState();
 
@@ -401,7 +463,7 @@ export const find: CommandHandler = (args, cwdId) => {
   }
 
   if (!startNode) {
-    return { output: [`find: '${searchPath}': No such file or directory`], isError: true };
+    [`find: '${searchPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   // Build name pattern (glob → regex)
@@ -430,5 +492,42 @@ export const find: CommandHandler = (args, cwdId) => {
     matches.push(path);
   });
 
-  return { output: matches };
+  matches.forEach((line: string) => process.stdout.writeLine(line)); return {};
+};
+
+export const ln: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+  const { flags, positional } = parseArgs(args);
+  const isSymlink = flags.s;
+  
+  if (positional.length < 2) { ['ln: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  
+  const targetPath = positional[0];
+  const linkName = positional[1];
+  
+  const store = useVFSStore.getState();
+  
+  const linkSegments = linkName.split('/').filter(Boolean);
+  const name = linkSegments.pop();
+  if (!name) { ['ln: invalid link name'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  
+  const parentPath = linkSegments.length > 0 ? (linkName.startsWith('/') ? '/' + linkSegments.join('/') : linkSegments.join('/')) : '.';
+  const parentNode = store.resolveRelativePath(cwdId, parentPath);
+  
+  if (!parentNode || parentNode!.type !== 'directory') {
+    [`ln: cannot create link '${linkName}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  }
+  
+  if (isSymlink) {
+    const { error } = store.createSymlink(parentNode!.id, name ?? '', targetPath);
+    if (error) { [`ln: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  } else {
+    const targetNode = store.resolveRelativePath(cwdId, targetPath);
+    if (!targetNode) { [`ln: failed to access '${targetPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+    if (targetNode!.type === 'directory') { [`ln: ${targetPath}: hard link not allowed for directory`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+    
+    const { error } = store.createLink(parentNode!.id, name ?? '', targetNode!.id);
+    if (error) { [`ln: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  }
+  
+  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };

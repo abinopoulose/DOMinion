@@ -4,6 +4,7 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
 import './QuickSettings.css';
 
 interface QuickSettingsProps {
@@ -33,6 +34,26 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
   const [showPowerMenu, setShowPowerMenu] = useState(false);
   const [activePillMenu, setActivePillMenu] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+
+  const handleScreenshot = async () => {
+    onClose();
+    // Wait for the quick settings menu to close
+    setTimeout(async () => {
+      try {
+        const canvas = await html2canvas(document.body, {
+          backgroundColor: null,
+          useCORS: true,
+        });
+        const image = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = image;
+        link.download = `Screenshot_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+        link.click();
+      } catch (err) {
+        console.error('Failed to take screenshot:', err);
+      }
+    }, 300);
+  };
 
   useEffect(() => {
     if (activePillMenu === 'wifi' || activePillMenu === 'bt') {
@@ -144,7 +165,7 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
         <div className="qs-actions-group">
           {!isLoginScreen && (
             <>
-              <div className="qs-action-circle" title="Take Screenshot">
+              <div className="qs-action-circle" title="Take Screenshot" onClick={handleScreenshot}>
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
                 </svg>

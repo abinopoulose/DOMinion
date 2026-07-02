@@ -27,7 +27,9 @@ export function createNode(
   parentId: string,
   name: string,
   type: VFSNodeType,
-  content: string = ''
+  content: string = '',
+  owner?: string,
+  group?: string
 ): { newMap: NodeMap; node: VFSNode; error?: string } {
   const parent = getNode(map, parentId);
   if (!parent) return { newMap: map, node: null as any, error: 'Parent directory does not exist' };
@@ -51,8 +53,8 @@ export function createNode(
     content,
     createdAt: now,
     modifiedAt: now,
-    owner: 'user',
-    group: 'user',
+    owner: owner || 'user',
+    group: group || 'user',
     permissions: type === 'directory' ? '755' : '644',
     meta: {
       extension

@@ -13,9 +13,26 @@ export interface TerminalAppState {
   nanoBuffer?: string;
   nanoModified?: boolean;
   nanoCursorLine?: number;
+  // === SUDO STATE (refactored) ===
   sudoPasswordPrompt?: boolean;
   sudoPendingCommand?: string;
+  sudoAttempts?: number;
   sudoAuthorized?: boolean;
+  sudoTargetUser?: string;
+  sudoCancellable?: boolean;
+
+  // === SU STATE (new) ===
+  suPasswordPrompt?: boolean;
+  effectiveUser?: string;
+  userStack?: string[];
+
+  // === PASSWD STATE ===
+  passwdState?: {
+    step: 'current' | 'new' | 'confirm';
+    targetUser: string;
+    newPasswordAttempt?: string;
+  };
+
   fontSize?: number;
 }
 
@@ -31,5 +48,6 @@ export type CommandHandler = (
   cwdId: string,
   updateCwd: (newCwdId: string) => void,
   clearHistory: () => void,
-  appState?: TerminalAppState
-) => CommandResult;
+  appState: TerminalAppState,
+  process: import('../../../fs/fd').ProcessState
+) => Partial<CommandResult>;

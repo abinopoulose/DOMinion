@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { useHardwareStore } from '../../../../hardware/store/useHardwareStore';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
+import { useWindowStore } from '../../store/useUbuntuWindowStore';
+import { PolkitDialog } from './PolkitDialog';
 import './SystemDialog.css';
 
 export function SystemDialog() {
@@ -21,7 +23,7 @@ export function SystemDialog() {
   }, [activeDialog, closeDialog]);
 
   useEffect(() => {
-    if (!activeDialog) return;
+    if (!activeDialog || activeDialog === 'auth' || activeDialog === 'polkit') return;
     
     const dialogToExecute = activeDialog;
 
@@ -29,8 +31,10 @@ export function SystemDialog() {
       useSystemDialogStore.getState().closeDialog();
       
       if (dialogToExecute === 'power_off') {
+        useWindowStore.getState().clearAllWindows();
         useHardwareStore.getState().powerOff();
       } else if (dialogToExecute === 'restart') {
+        useWindowStore.getState().clearAllWindows();
         useHardwareStore.getState().turnOn();
       } else if (dialogToExecute === 'log_out') {
         useUbuntuAuthStore.getState().logout();
@@ -54,14 +58,14 @@ export function SystemDialog() {
       message = 'The system will power off automatically in 60 seconds.';
       actionText = 'Power Off';
       isDestructive = true;
-      action = () => { closeDialog(); powerOff(); };
+      action = () => { closeDialog(); useWindowStore.getState().clearAllWindows(); powerOff(); };
       break;
     case 'restart':
       title = 'Restart';
       message = 'The system will restart automatically in 60 seconds.';
       actionText = 'Restart';
       isDestructive = true;
-      action = () => { closeDialog(); turnOn(); };
+      action = () => { closeDialog(); useWindowStore.getState().clearAllWindows(); turnOn(); };
       break;
     case 'log_out':
       title = 'Log Out';
@@ -77,6 +81,10 @@ export function SystemDialog() {
       isDestructive = false;
       action = () => { closeDialog(); /* Implement suspend if needed, for now just close */ };
       break;
+  }
+
+  if (activeDialog === 'auth' || activeDialog === 'polkit') {
+    return <PolkitDialog />;
   }
 
   return (

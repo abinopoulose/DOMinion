@@ -94,3 +94,202 @@
 .system-dialog-btn-destructive:hover {
   background: #c01c28;
 }
+
+/* === Polkit Authentication Dialog === */
+
+.polkit-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  animation: polkit-fade-in 0.2s ease-out;
+}
+
+@keyframes polkit-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.polkit-dialog {
+  background: var(--color-bg-window, #2d2d3f);
+  border: 1px solid var(--color-border, #3a3a4f);
+  border-radius: 12px;
+  padding: 32px;
+  width: 420px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6);
+  animation: polkit-scale-in 0.2s ease-out;
+}
+
+@keyframes polkit-scale-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.polkit-icon {
+  margin-bottom: 4px;
+}
+
+.polkit-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-text-primary, #F0F0F0);
+}
+
+.polkit-message {
+  font-size: 14px;
+  color: var(--color-text-secondary, #A0A0B0);
+  text-align: center;
+  line-height: 1.5;
+  max-width: 340px;
+}
+
+.polkit-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.polkit-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary, #A0A0B0);
+}
+
+.polkit-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.polkit-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary, #F0F0F0);
+}
+
+.polkit-user-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary, #A0A0B0);
+}
+
+.polkit-password-container {
+  width: 100%;
+}
+
+.polkit-password-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: var(--color-text-primary, #F0F0F0);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.polkit-password-input:focus {
+  border-color: var(--color-accent, #E95420);
+  box-shadow: 0 0 0 2px rgba(233, 84, 32, 0.2);
+}
+
+.polkit-password-input.polkit-password-error {
+  border-color: #e74c3c;
+  box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.2);
+}
+
+.polkit-error {
+  color: #e74c3c;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.polkit-details-section {
+  width: 100%;
+}
+
+.polkit-details-toggle {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary, #A0A0B0);
+  cursor: pointer;
+  padding: 4px 0;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.polkit-details-toggle:hover {
+  color: var(--color-text-primary, #F0F0F0);
+}
+
+.polkit-details-content {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #A0A0B0);
+  font-family: var(--font-mono, monospace);
+}
+
+.polkit-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.polkit-btn {
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.polkit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.polkit-btn-cancel {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-text-primary, #F0F0F0);
+}
+
+.polkit-btn-cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.polkit-btn-auth {
+  background: var(--color-accent, #E95420);
+  color: white;
+  font-weight: 600;
+}
+
+.polkit-btn-auth:hover:not(:disabled) {
+  background: var(--color-accent-hover, #FF6B3D);
+}

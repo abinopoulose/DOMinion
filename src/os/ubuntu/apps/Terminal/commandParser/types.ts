@@ -2,11 +2,28 @@ export interface ParsedCommand {
   name: string;
   args: string[];
   raw: string;
+  redirections?: { type: '>' | '>>' | '<'; target: string }[];
 }
 
 export interface CommandResult {
-  output: string[];
+  output?: string[];
   isError?: boolean;
+  nextCwdId?: string;
+  shouldClear?: boolean;
+  clearCmdHistory?: boolean;
+  newInteractiveApp?: 'nano';
+  newNanoFileId?: string;
+  newPasswdState?: {
+    step: 'current' | 'new' | 'confirm';
+    targetUser: string;
+    newPasswordAttempt?: string;
+  };
+}
+
+export interface SudoCommandResult extends CommandResult {
+  needsPassword?: boolean;
+  pendingCommand?: string;
+  targetUser?: string;
 }
 
 /**

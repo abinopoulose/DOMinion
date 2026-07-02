@@ -16,8 +16,8 @@
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(40px);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(50px);
   z-index: 0;
 }
 
@@ -55,7 +55,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,7 +64,7 @@
 .ubuntu-user-list-name {
   color: white;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 /* Login Prompt */
@@ -81,23 +81,21 @@
 }
 
 .ubuntu-login-avatar {
-  width: 128px;
-  height: 128px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   display: flex;
   justify-content: center;
   align-items: center;
   margin-bottom: 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 .ubuntu-login-name {
   color: white;
   margin: 0 0 24px 0;
-  font-size: 24px;
-  font-weight: 500;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  font-size: 20px;
+  font-weight: 400;
 }
 
 .ubuntu-login-form {
@@ -109,25 +107,25 @@
 
 .ubuntu-login-input-wrapper {
   position: relative;
-  width: 320px;
+  width: 280px;
+  display: flex;
+  align-items: center;
 }
 
 .ubuntu-login-input {
   width: 100%;
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 40px 10px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.1);
   color: white;
-  font-size: 16px;
+  font-size: 15px;
   outline: none;
-  backdrop-filter: blur(5px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
   transition: all 0.2s;
   box-sizing: border-box;
 }
 .ubuntu-login-input::placeholder {
-  color: rgba(255,255,255,0.5);
+  color: rgba(255,255,255,0.4);
 }
 .ubuntu-login-input:focus {
   border-color: #E95420;
@@ -135,30 +133,47 @@
   box-shadow: 0 0 0 2px rgba(233, 84, 32, 0.4);
 }
 
+.ubuntu-login-submit-btn {
+  position: absolute;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.ubuntu-login-submit-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
 .ubuntu-login-error {
   color: #ff8888;
-  margin-top: 16px;
+  margin-top: 12px;
   font-size: 14px;
   font-weight: 500;
   text-align: center;
+  animation: shake 0.4s ease;
 }
 
-.ubuntu-login-actions {
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.ubuntu-login-back {
   margin-top: 24px;
-  display: flex;
-  justify-content: center;
-}
-
-.ubuntu-login-cancel {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: white;
-  padding: 8px 24px;
-  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: color 0.2s;
 }
-.ubuntu-login-cancel:hover {
-  background: rgba(255, 255, 255, 0.2);
+.ubuntu-login-back:hover {
+  color: white;
 }

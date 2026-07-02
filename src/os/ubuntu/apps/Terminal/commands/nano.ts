@@ -36,8 +36,24 @@ export function handleNano(commandName: string, args: string[], cwdId: string): 
   let node = store.resolveRelativePath(cwdId, targetName);
 
   if (!node) {
+    let parentId = cwdId;
+    let fileName = targetName;
+    if (targetName.includes('/')) {
+      const parts = targetName.split('/');
+      fileName = parts.pop()!;
+      const parentPath = parts.join('/') || (targetName.startsWith('/') ? '/' : '.');
+      const parentNode = store.resolveRelativePath(cwdId, parentPath);
+      if (!parentNode) {
+        return { error: { output: [`${commandName}: cannot create '${targetName}': No such file or directory`], isError: true } };
+      }
+      if (parentNode.type !== 'directory') {
+        return { error: { output: [`${commandName}: cannot create '${targetName}': Not a directory`], isError: true } };
+      }
+      parentId = parentNode.id;
+    }
+
     // Create the file
-    const { error: err } = store.createNode(cwdId, targetName, 'file');
+    const { error: err } = store.createNode(parentId, fileName, 'file');
     if (err) {
       return {
         error: { output: [`${commandName}: ${err}`], isError: true },

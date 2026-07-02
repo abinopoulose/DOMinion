@@ -17,13 +17,43 @@ import {
   duplicateNode as duplicateNodeOp,
 } from '../fs/operations';
 import { resolvePath, getAbsolutePath, resolveRelativePath } from '../fs/pathResolver';
+import { type InodeTable } from '../fs/inode';
+import { nodeMapToInodeTable, buildCompatNodeMap } from '../fs/inodeCompat';
+import * as inodeOps from '../fs/inodeOperations';
 import { ROOT_ID, ROOT_HOME_ID, seedNodeMap, seedUserHome, getHomeId, getDesktopId, getTrashId } from '../fs/seed';
 import { UBUNTU_ACCOUNTS } from '../../../config/accounts';
 import { useUbuntuAuthStore } from './useUbuntuAuthStore';
 import { hasPermission } from '../fs/permissions';
 
+function canDeleteOrRename(map: NodeMap, nodeId: string, user: string): boolean {
+  if (user === 'root') return true;
+  const node = map[nodeId];
+  if (!node) return false;
+  const parentId = node.parentId;
+  if (!parentId) return false;
+  
+  if (!hasPermission(map, parentId, 'write', user)) return false;
+
+  const parent = map[parentId];
+  const parentMode = parseInt(parent.permissions || (parent.type === 'directory' ? '755' : '644'), 8);
+  if ((parentMode & 0o1000) !== 0) {
+    if (node.owner !== user && parent.owner !== user) return false;
+  }
+  return true;
+}
+import {
+  generatePasswdContent,
+  generateShadowContent,
+  generateSudoersContent,
+  generateGroupContent,
+} from '../fs/authSeed';
+
 let tempExecutionUser: string | null = null;
 
+/**
+ * INTERNAL ONLY. Sets a temporary execution user for VFS operations.
+ * Use `withElevation()` from SudoService instead of calling this directly.
+ */
 export function setTempExecutionUser(user: string | null) {
   tempExecutionUser = user;
 }
@@ -32,7 +62,7 @@ export function getAuthContext() {
   if (tempExecutionUser) {
     return { username: tempExecutionUser, role: 'admin' };
   }
-  const username = useUbuntuAuthStore.getState().currentUser || 'user';
+  const username = useUbuntuAuthStore.getState().currentUser || 'peasant';
   const role = UBUNTU_ACCOUNTS.find(u => u.username === username)?.role || 'standard';
   return { username, role };
 }
@@ -44,6 +74,11 @@ export interface ClipboardState {
 
 interface VFSStore {
   map: NodeMap;
+  inodeTable: InodeTable;
+  rootIno: number;
+  nextIno: number;
+  idToIno: Record<string, number>;
+  inoToId: Record<number, string>;
   clipboard: ClipboardState;
   
   // Clipboard
@@ -51,6 +86,8 @@ interface VFSStore {
 
   // Mutations (return error string if failed, undefined if success)
   createNode: (parentId: string, name: string, type: VFSNodeType, content?: string, executionUser?: string) => { id?: string; error?: string };
+  createLink: (parentId: string, name: string, targetId: string, executionUser?: string) => { error?: string };
+  createSymlink: (parentId: string, name: string, targetPath: string, executionUser?: string) => { id?: string; error?: string };
   deleteNode: (id: string, executionUser?: string) => string | undefined;
   renameNode: (id: string, newName: string, executionUser?: string) => string | undefined;
   moveNode: (id: string, newParentId: string, executionUser?: string) => string | undefined;
@@ -75,6 +112,11 @@ export const useVFSStore = create<VFSStore>()(
   persist(
     (set, get) => ({
       map: {},
+      inodeTable: {},
+      rootIno: 2,
+      nextIno: 3,
+      idToIno: {},
+      inoToId: {},
       clipboard: { action: null, nodeId: null },
 
       setClipboard: (action, nodeId) => set({ clipboard: { action, nodeId } }),
@@ -88,7 +130,7 @@ export const useVFSStore = create<VFSStore>()(
             error = 'Permission denied';
             return state;
           }
-          const result = createNodeOp(state.map, parentId, name, type, content);
+          const result = createNodeOp(state.map, parentId, name, type, content, user, user);
           if (result.error) {
             error = result.error;
             return state;
@@ -99,11 +141,70 @@ export const useVFSStore = create<VFSStore>()(
         return { id, error };
       },
 
+      createLink: (parentId, name, targetId, executionUser) => {
+        let error: string | undefined;
+        set((state) => {
+          const user = executionUser || getAuthContext().username;
+          if (!hasPermission(state.map, parentId, 'write', user)) {
+            error = 'Permission denied';
+            return state;
+          }
+          const parentIno = state.idToIno[parentId];
+          const targetIno = state.idToIno[targetId];
+          if (!parentIno || !targetIno) {
+            error = 'Node not found';
+            return state;
+          }
+          const result = inodeOps.linkInode(state.inodeTable, parentIno, name, targetIno);
+          if (result.error) {
+            error = result.error;
+            return state;
+          }
+          const newMap = buildCompatNodeMap(result.newTable, state.rootIno, state.inoToId);
+          return { inodeTable: result.newTable, map: newMap };
+        });
+        return { error };
+      },
+
+      createSymlink: (parentId, name, targetPath, executionUser) => {
+        let error: string | undefined;
+        let id: string | undefined;
+        set((state) => {
+          const user = executionUser || getAuthContext().username;
+          if (!hasPermission(state.map, parentId, 'write', user)) {
+            error = 'Permission denied';
+            return state;
+          }
+          const parentIno = state.idToIno[parentId];
+          if (!parentIno) {
+            error = 'Parent not found';
+            return state;
+          }
+          const uid = user === 'root' ? 0 : 1000;
+          const gid = user === 'root' ? 0 : 1000;
+          const result = inodeOps.symlinkInode(state.inodeTable, state.nextIno, parentIno, name, targetPath, uid, gid);
+          if (result.error) {
+            error = result.error;
+            return state;
+          }
+          const newIdToIno = { ...state.idToIno };
+          const newInoToId = { ...state.inoToId };
+          const newId = result.ino.toString();
+          newIdToIno[newId] = result.ino;
+          newInoToId[result.ino] = newId;
+          id = newId;
+
+          const newMap = buildCompatNodeMap(result.newTable, state.rootIno, newInoToId);
+          return { inodeTable: result.newTable, nextIno: result.nextIno, map: newMap, idToIno: newIdToIno, inoToId: newInoToId };
+        });
+        return { id, error };
+      },
+
       deleteNode: (id, executionUser) => {
         let error: string | undefined;
         set((state) => {
           const user = executionUser || getAuthContext().username;
-          if (!hasPermission(state.map, id, 'write', user)) {
+          if (!canDeleteOrRename(state.map, id, user)) {
             error = 'Permission denied';
             return state;
           }
@@ -121,7 +222,7 @@ export const useVFSStore = create<VFSStore>()(
         let error: string | undefined;
         set((state) => {
           const user = executionUser || getAuthContext().username;
-          if (!hasPermission(state.map, id, 'write', user)) {
+          if (!canDeleteOrRename(state.map, id, user)) {
             error = 'Permission denied';
             return state;
           }
@@ -139,7 +240,7 @@ export const useVFSStore = create<VFSStore>()(
         let error: string | undefined;
         set((state) => {
           const user = executionUser || getAuthContext().username;
-          if (!hasPermission(state.map, id, 'write', user) || !hasPermission(state.map, newParentId, 'write', user)) {
+          if (!canDeleteOrRename(state.map, id, user) || !hasPermission(state.map, newParentId, 'write', user)) {
             error = 'Permission denied';
             return state;
           }
@@ -231,7 +332,7 @@ export const useVFSStore = create<VFSStore>()(
         let error: string | undefined;
         set((state) => {
           const user = executionUser || getAuthContext().username;
-          if (!hasPermission(state.map, id, 'write', user)) {
+          if (!canDeleteOrRename(state.map, id, user)) {
             error = 'Permission denied';
             return state;
           }
@@ -350,6 +451,42 @@ export const useVFSStore = create<VFSStore>()(
     {
       name: 'ubuntu-vfs',
       storage: createJSONStorage(() => ubuntuIdbStorage),
+      partialize: (state) => {
+        const map = { ...state.map };
+        
+        // Find system directories we don't want to persist
+        const rootNode = map['root'];
+        if (rootNode) {
+          const volatileDirs = ['tmp', 'proc', 'dev'];
+          const volatileIds = new Set<string>();
+          
+          rootNode.children.forEach(childId => {
+            const childNode = map[childId];
+            if (childNode && volatileDirs.includes(childNode.name)) {
+              volatileIds.add(childId);
+              
+              // We want to keep the directory itself, but not its children.
+              // So we just clear the children array for persistence.
+              map[childId] = { ...childNode, children: [] };
+            }
+          });
+          
+          // Helper to recursively find all children of volatile dirs
+          const removeChildren = (id: string) => {
+            const node = state.map[id];
+            if (node && node.children) {
+              node.children.forEach(cId => {
+                delete map[cId];
+                removeChildren(cId);
+              });
+            }
+          };
+          
+          volatileIds.forEach(id => removeChildren(id));
+        }
+        
+        return { ...state, map };
+      },
       merge: (persistedState: any, currentState) => {
         // If there's no persisted state or map is empty, seed it
         if (!persistedState || !persistedState.map || Object.keys(persistedState.map).length === 0) {
@@ -360,8 +497,8 @@ export const useVFSStore = create<VFSStore>()(
         // Migration: add missing permissions, owner, group, and meta to existing nodes
         for (const id in migratedMap) {
           const node = migratedMap[id];
-          if (!node.owner) node.owner = 'user';
-          if (!node.group) node.group = 'user';
+          if (!node.owner) node.owner = 'peasant';
+          if (!node.group) node.group = 'peasant';
           if (!node.permissions) node.permissions = node.type === 'directory' ? '755' : '644';
           if (!node.meta) {
             let extension = '';
@@ -401,9 +538,41 @@ export const useVFSStore = create<VFSStore>()(
           checkAndCreateSystemDir('usr');
         }
 
+        // Ensure auth files exist in /etc (migration for existing VFS)
+        const etcNode = Object.values(migratedMap).find(
+          (n: any) => n.name === 'etc' && n.parentId === ROOT_ID
+        ) as VFSNode | undefined;
+        if (etcNode) {
+          const ensureEtcFile = (name: string, content: string, permissions: string, group?: string) => {
+            const fileExists = etcNode.children.some((cId: string) => migratedMap[cId]?.name === name);
+            if (!fileExists) {
+              const id = crypto.randomUUID();
+              migratedMap[id] = {
+                id, name, type: 'file', parentId: etcNode.id, children: [], content,
+                createdAt: Date.now(), modifiedAt: Date.now(),
+                owner: 'root', group: group || 'root', permissions,
+                meta: { extension: '' }
+              };
+              etcNode.children.push(id);
+            }
+          };
+
+          ensureEtcFile('passwd', generatePasswdContent(), '644');
+          ensureEtcFile('shadow', generateShadowContent(), '640', 'shadow');
+          ensureEtcFile('sudoers', generateSudoersContent(), '440');
+          ensureEtcFile('group', generateGroupContent(), '644');
+        }
+
+        // Find the actual /home directory ID in the graph
+        let actualHomeId = ROOT_HOME_ID;
+        const homeNode = Object.values(migratedMap).find((n: any) => n.name === 'home' && n.parentId === ROOT_ID);
+        if (homeNode) {
+          actualHomeId = (homeNode as any).id;
+        }
+
         // Ensure all registered users have a home directory (migration/seeding for new users)
         UBUNTU_ACCOUNTS.forEach(acc => {
-          seedUserHome(migratedMap, acc.username);
+          seedUserHome(migratedMap, acc.username, actualHomeId);
           // Enforce strict 750 permissions on home directories so other users cannot access them
           const homeId = getHomeId(acc.username);
           if (migratedMap[homeId]) {
@@ -411,8 +580,12 @@ export const useVFSStore = create<VFSStore>()(
           }
         });
 
-        return { ...currentState, ...persistedState, map: migratedMap };
+        const { table, rootIno, nextIno, idToIno, inoToId } = nodeMapToInodeTable(migratedMap, ROOT_ID);
+
+        return { ...currentState, ...persistedState, map: migratedMap, inodeTable: table, rootIno, nextIno, idToIno, inoToId };
       },
     }
   )
 );
+
+export const useUbuntuVFSStore = useVFSStore;

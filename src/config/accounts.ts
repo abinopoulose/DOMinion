@@ -1,6 +1,6 @@
 export const UBUNTU_ACCOUNTS = [
-  { username: 'user', password: 'password', role: 'standard' },
-  { username: 'abino', password: 'password', role: 'admin' },
+  { username: 'peasant', password: 'password', role: 'standard', displayName: 'LePeasant' },
+  { username: 'abino', password: 'password', role: 'admin', displayName: 'Abino Poulose' },
 ];
 
 export const WINDOWS_ACCOUNTS = [

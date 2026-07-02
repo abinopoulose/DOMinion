@@ -5,6 +5,8 @@ import * as textOps from './textOps';
 import * as sysInfo from './sysInfo';
 import * as shellOps from './shellOps';
 import * as misc from './misc';
+import * as userMgmt from './userMgmt';
+import { su } from './su';
 
 export const commandRegistry: Record<string, CommandHandler> = {
   // Navigation
@@ -20,6 +22,7 @@ export const commandRegistry: Record<string, CommandHandler> = {
   cp: fileOps.cp,
   mv: fileOps.mv,
   rmdir: fileOps.rmdir,
+  ln: fileOps.ln,
   find: fileOps.find,
   chmod: fileOps.chmod,
   chown: fileOps.chown,
@@ -46,6 +49,17 @@ export const commandRegistry: Record<string, CommandHandler> = {
   clear: misc.clear,
   help: misc.help,
   hostname: misc.hostname,
+  mount: misc.mount,
   poweroff: misc.poweroff,
   reboot: misc.reboot,
+
+  // User management (NEW)
+  id: userMgmt.id,
+  groups: userMgmt.groups,
+  passwd: userMgmt.passwd,
+  adduser: userMgmt.adduser,
+  useradd: userMgmt.adduser,  // alias
+
+  // Switch user
+  su,
 };

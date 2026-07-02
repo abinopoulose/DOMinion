@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { ubuntuIdbStorage } from './persistence';
 
 interface NetworkStore {
   wifiEnabled: boolean;
@@ -9,9 +11,11 @@ interface NetworkStore {
   toggleAirplaneMode: () => void;
 }
 
-export const useNetworkStore = create<NetworkStore>((set, get) => ({
-  wifiEnabled: true,
-  bluetoothEnabled: false,
+export const useNetworkStore = create<NetworkStore>()(
+  persist(
+    (set, get) => ({
+      wifiEnabled: true,
+      bluetoothEnabled: false,
   airplaneMode: false,
 
   toggleWifi: () => {
@@ -52,4 +56,10 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
       set({ airplaneMode: false });
     }
   },
-}));
+    }),
+    {
+      name: 'ubuntu-network-storage',
+      storage: createJSONStorage(() => ubuntuIdbStorage),
+    }
+  )
+);

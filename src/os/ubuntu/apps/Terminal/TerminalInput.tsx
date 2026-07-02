@@ -23,6 +23,14 @@ export const TerminalInput = forwardRef<TerminalInputRef, TerminalInputProps>(({
   }));
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'c' && e.ctrlKey) {
+      if (isPassword) {
+        e.preventDefault();
+        onCommand('__CTRL_C__');
+        return;
+      }
+    }
+    
     if (e.key === 'Enter') {
 
       onCommand(input); // pass exact input
@@ -60,6 +68,7 @@ export const TerminalInput = forwardRef<TerminalInputRef, TerminalInputProps>(({
         autoFocus
         spellCheck={false}
         autoComplete="off"
+        style={{ color: isPassword ? 'transparent' : undefined, caretColor: isPassword ? 'transparent' : 'inherit' }}
       />
     </div>
   );

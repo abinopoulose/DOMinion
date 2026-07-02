@@ -39,7 +39,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const vfsStore = useVFSStore();
   // Explicitly subscribe to map changes
   useVFSStore((s) => s.map); 
-  const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
+  const username = useUbuntuAuthStore((s) => s.currentUser) || 'peasant';
   const DESKTOP_ID = getDesktopId(username);
   const HOME_ID = getHomeId(username);
   const TRASH_ID = getTrashId(username);
