@@ -80,7 +80,7 @@ export const ls: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
     [`ls: cannot open directory '${targetPath}': Permission denied`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
-  let children = store.getChildren(targetId);
+  let children = store.getChildren(targetId, username);
   
   if (!showHidden) {
     children = children.filter(c => !c.name.startsWith('.'));

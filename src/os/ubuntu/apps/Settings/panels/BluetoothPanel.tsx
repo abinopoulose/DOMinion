@@ -6,10 +6,11 @@ export function BluetoothPanel() {
 
   const headerToggle = (
     <div 
-      className={`ubuntu-settings-toggle ${bluetoothEnabled ? 'active' : ''}`}
+      className={`ubuntu-settings-toggle ${bluetoothEnabled ? 'checked' : ''}`}
+      style={{ backgroundColor: bluetoothEnabled ? 'var(--color-accent)' : undefined }}
       onClick={toggleBluetooth}
     >
-      <div className="ubuntu-settings-toggle-knob" />
+      <div className="ubuntu-settings-toggle-knob" style={{ transform: bluetoothEnabled ? 'translateX(20px)' : 'translateX(0)' }} />
     </div>
   );
 

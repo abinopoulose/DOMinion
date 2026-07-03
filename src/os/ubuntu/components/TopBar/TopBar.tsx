@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useClock } from '../../hooks/useClock';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useNetworkStore } from '../../store/useNetworkStore';
+import { useBattery } from '../../hooks/useBattery';
 
 import { QuickSettings } from './QuickSettings';
 import './TopBar.css';
@@ -15,6 +16,7 @@ export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
   const activeWorkspace = useWorkspaceStore((s) => s.activeWorkspace);
   const workspaceCount = useWorkspaceStore((s) => s.workspaceCount);
   const wifiEnabled = useNetworkStore((s) => s.wifiEnabled);
+  const { level: batteryLevel, isCharging } = useBattery();
 
   return (
     <header className="topbar" id="topbar">
@@ -86,9 +88,22 @@ export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
             <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
           </svg>
           {/* Battery icon */}
-          <svg className="topbar__tray-icon" viewBox="0 0 24 24">
-            <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" />
-          </svg>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 500, marginRight: '2px' }}>
+              {batteryLevel !== null ? `${batteryLevel}%` : '100%'}
+            </span>
+            <svg className="topbar__tray-icon" viewBox="0 0 24 24">
+              <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" fill="currentColor" opacity="0.3" />
+              {/* Fill level based on battery percentage */}
+              <clipPath id="battery-clip">
+                <rect x="0" y={22 - (18 * ((batteryLevel ?? 100) / 100))} width="24" height={18 * ((batteryLevel ?? 100) / 100)} />
+              </clipPath>
+              <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" clipPath="url(#battery-clip)" />
+              {isCharging && (
+                <polygon points="11 6 7 12 13 12 9 18" fill="var(--color-accent)" stroke="none" />
+              )}
+            </svg>
+          </div>
         </div>
       </div>
       

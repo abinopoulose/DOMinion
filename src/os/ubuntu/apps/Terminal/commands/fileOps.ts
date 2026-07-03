@@ -60,11 +60,11 @@ export const touch: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
   if (node) {
     // If it exists, Unix touch updates timestamp. Since we don't display it yet, this is a no-op conceptually, 
     // but we can just update content with its own content to trigger a modifiedAt update
-    store.updateContent(node!.id, node!.content ?? '');
+    store.updateContent(node!.id, node!.content ?? '', username);
     [].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
-  const { error: err } = store.createNode(parentId, fileName, 'file', '');
+  const { error: err } = store.createNode(parentId, fileName, 'file', '', username);
   if (err) { [`touch: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
   [].forEach((line: string) => process.stdout.writeLine(line)); return {};
@@ -92,7 +92,8 @@ export const mkdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
     parentId = parentNode.id;
   }
 
-  const { error: err } = store.createNode(parentId, dirName, 'directory');
+  const username = _appState?.effectiveUser || getAuthContext().username;
+  const { error: err } = store.createNode(parentId, dirName, 'directory', undefined, username);
   if (err) { [`mkdir: cannot create directory '${name}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
   [].forEach((line: string) => process.stdout.writeLine(line)); return {};
@@ -121,6 +122,7 @@ export const rm: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
   }
 
   const store = useVFSStore.getState();
+  const username = _appState?.effectiveUser || getAuthContext().username;
 
   for (const target of positional) {
     const node = store.resolveRelativePath(cwdId, target);
@@ -134,7 +136,7 @@ export const rm: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
       [`rm: cannot remove '${target}': Is a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
-    const err = store.deleteNode(node.id);
+    const err = store.deleteNode(node.id, username);
     if (err) {
       [`rm: cannot remove '${target}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
@@ -167,7 +169,7 @@ export const chmod: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
     [`chmod: changing permissions of '${targetName}': Operation not permitted`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
-  const err = store.updatePermissions(node!.id, permissions);
+  const err = store.updatePermissions(node!.id, permissions, username);
   if (err) { [`chmod: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
   [].forEach((line: string) => process.stdout.writeLine(line)); return {};
@@ -195,7 +197,7 @@ export const chown: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
     [`chown: cannot access '${targetName}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
   
-  const err = store.updateOwner(node!.id, owner || undefined, group || undefined);
+  const err = store.updateOwner(node!.id, owner || undefined, group || undefined, username);
   if (err) { [`chown: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   
   [].forEach((line: string) => process.stdout.writeLine(line)); return {};
@@ -226,6 +228,7 @@ export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
   const sourcePath = positional[0];
   const destPath = positional[1];
   const store = useVFSStore.getState();
+  const username = _appState?.effectiveUser || getAuthContext().username;
 
   // Resolve source
   const sourceNode = store.resolveRelativePath(cwdId, sourcePath);
@@ -254,14 +257,14 @@ export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
         const existing = store.getChildren(destNode.id).find(c => c.name === sourceNode.name);
         if (existing) {
           // Overwrite: update content
-          store.updateContent(existing.id, sourceNode.content);
+          store.updateContent(existing.id, sourceNode.content, username);
         } else {
-          const { error } = store.createNode(destNode.id, sourceNode.name, 'file', sourceNode.content);
+          const { error } = store.createNode(destNode.id, sourceNode.name, 'file', sourceNode.content, username);
           if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
         }
       } else {
         // Directory → copy into dest directory
-        const { error } = store.duplicateNode(sourceNode.id, destNode.id);
+        const { error } = store.duplicateNode(sourceNode.id, destNode.id, username);
         if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
       }
     } else {
@@ -269,7 +272,7 @@ export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
       if (sourceNode.type === 'directory') {
         [`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
       }
-      store.updateContent(destNode.id, sourceNode.content);
+      store.updateContent(destNode.id, sourceNode.content, username);
     }
   } else {
     // Destination does not exist — resolve parent
@@ -289,15 +292,15 @@ export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
     }
 
     if (sourceNode.type === 'file') {
-      const { error } = store.createNode(destParentNode.id, destName, 'file', sourceNode.content);
+      const { error } = store.createNode(destParentNode.id, destName, 'file', sourceNode.content, username);
       if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
     } else {
       // For directory copy to a new name, use duplicateNode then rename
-      const { error, id: newId } = store.duplicateNode(sourceNode.id, destParentNode.id);
+      const { error, id: newId } = store.duplicateNode(sourceNode.id, destParentNode.id, username);
       if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
       // Rename the copy to destName if different
       if (newId && destName !== sourceNode!.name) {
-        store.renameNode(newId, destName);
+        store.renameNode(newId, destName, username);
       }
     }
   }
@@ -328,6 +331,7 @@ export const mv: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
   const sourcePath = positional[0];
   const destPath = positional[1];
   const store = useVFSStore.getState();
+  const username = _appState?.effectiveUser || getAuthContext().username;
 
   // Resolve source
   const sourceNode = store.resolveRelativePath(cwdId, sourcePath);
@@ -345,18 +349,18 @@ export const mv: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
 
     if (destNode.type === 'directory') {
       // Move into existing directory
-      const err = store.moveNode(sourceNode.id, destNode.id);
+      const err = store.moveNode(sourceNode.id, destNode.id, username);
       if (err) { [`mv: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
     } else {
       if (sourceNode.type === 'directory') {
         [`mv: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
       }
-      store.deleteNode(destNode.id);
+      store.deleteNode(destNode.id, username);
       if (sourceNode.parentId === destNode.parentId) {
-        store.renameNode(sourceNode.id, destNode.name);
+        store.renameNode(sourceNode.id, destNode.name, username);
       } else {
-        store.moveNode(sourceNode.id, destNode.parentId!);
-        store.renameNode(sourceNode.id, destNode.name);
+        store.moveNode(sourceNode.id, destNode.parentId!, username);
+        store.renameNode(sourceNode.id, destNode.name, username);
       }
     }
   } else {
@@ -378,15 +382,15 @@ export const mv: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
 
     // If source parent === dest parent, this is just a rename
     if (sourceNode!.parentId === destParentNode!.id) {
-      const err = store.renameNode(sourceNode!.id, destName);
+      const err = store.renameNode(sourceNode!.id, destName, username);
       if (err) { [`mv: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
     } else {
       // Move to new parent, then rename
-      const moveErr = store.moveNode(sourceNode.id, destParentNode.id);
+      const moveErr = store.moveNode(sourceNode.id, destParentNode.id, username);
       if (moveErr) { [`mv: ${moveErr}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
 
       if (destName !== sourceNode.name) {
-        const renameErr = store.renameNode(sourceNode.id, destName);
+        const renameErr = store.renameNode(sourceNode.id, destName, username);
         if (renameErr) { [`mv: ${renameErr}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
       }
     }
@@ -412,6 +416,7 @@ export const rmdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
   }
 
   const store = useVFSStore.getState();
+  const username = _appState?.effectiveUser || getAuthContext().username;
 
   for (const target of positional) {
     const node = store.resolveRelativePath(cwdId, target);
@@ -423,12 +428,12 @@ export const rmdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
       [`rmdir: failed to remove '${target}': Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
-    const children = store.getChildren(node.id);
+    const children = store.getChildren(node.id, username);
     if (children.length > 0) {
       [`rmdir: failed to remove '${target}': Directory not empty`].forEach((line: string) => process.stderr.writeLine(line)); return {};
     }
 
-    const err = store.deleteNode(node.id);
+    const err = store.deleteNode(node.id, username);
     if (err) { [`rmdir: failed to remove '${target}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   }
 
@@ -451,6 +456,7 @@ export const rmdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
 export const find: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { options, positional } = parseArgs(args, ['name', 'type']);
   const store = useVFSStore.getState();
+  const username = _appState?.effectiveUser || getAuthContext().username;
 
   // Determine search root
   const searchPath = positional.length > 0 ? positional[0] : '.';
@@ -483,7 +489,7 @@ export const find: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _ap
   // Collect matches
   const matches: string[] = [];
 
-  walkTree(startNode.id, searchPath, (node, path) => {
+  walkTree(startNode.id, searchPath, username || 'user', (node, path) => {
     // Apply filters
     if (typeFilter === 'f' && node.type !== 'file') return;
     if (typeFilter === 'd' && node.type !== 'directory') return;
@@ -505,6 +511,7 @@ export const ln: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
   const linkName = positional[1];
   
   const store = useVFSStore.getState();
+  const username = _appState?.effectiveUser || getAuthContext().username;
   
   const linkSegments = linkName.split('/').filter(Boolean);
   const name = linkSegments.pop();
@@ -518,14 +525,14 @@ export const ln: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
   }
   
   if (isSymlink) {
-    const { error } = store.createSymlink(parentNode!.id, name ?? '', targetPath);
+    const { error } = store.createSymlink(parentNode!.id, name ?? '', targetPath, username);
     if (error) { [`ln: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   } else {
     const targetNode = store.resolveRelativePath(cwdId, targetPath);
     if (!targetNode) { [`ln: failed to access '${targetPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
     if (targetNode!.type === 'directory') { [`ln: ${targetPath}: hard link not allowed for directory`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
     
-    const { error } = store.createLink(parentNode!.id, name ?? '', targetNode!.id);
+    const { error } = store.createLink(parentNode!.id, name ?? '', targetNode!.id, username);
     if (error) { [`ln: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   }
   

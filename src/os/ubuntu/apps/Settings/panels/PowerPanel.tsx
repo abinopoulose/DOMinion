@@ -3,36 +3,11 @@ import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
 import { useSettingsStore } from '../store/useSettingsStore';
 import './PowerPanel.css';
 
+import { useBattery } from '../../hooks/useBattery';
+
 export function PowerPanel() {
   const { powerMode, setPowerMode, screenBlank, setScreenBlank } = useSettingsStore();
-  const [batteryLevel, setBatteryLevel] = useState<number | null>(null);
-  const [isCharging, setIsCharging] = useState(false);
-
-  useEffect(() => {
-    let battery: any = null;
-    const updateBattery = () => {
-      if (battery) {
-        setBatteryLevel(Math.round(battery.level * 100));
-        setIsCharging(battery.charging);
-      }
-    };
-    
-    if ('getBattery' in navigator) {
-      (navigator as any).getBattery().then((b: any) => {
-        battery = b;
-        updateBattery();
-        b.addEventListener('levelchange', updateBattery);
-        b.addEventListener('chargingchange', updateBattery);
-      });
-    }
-    
-    return () => {
-      if (battery) {
-        battery.removeEventListener('levelchange', updateBattery);
-        battery.removeEventListener('chargingchange', updateBattery);
-      }
-    };
-  }, []);
+  const { level: batteryLevel, isCharging } = useBattery();
 
   return (
     <SettingsPanelWrapper title="Power">

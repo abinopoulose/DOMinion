@@ -1,28 +1,29 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useSettingsStore } from './store/useSettingsStore';
 import type { SettingsPanel } from './store/useSettingsStore';
-import { WifiPanel } from './panels/WifiPanel';
-import { SystemPanel } from './panels/SystemPanel';
-import { AccessibilityPanel } from './panels/AccessibilityPanel';
-import { AppearancePanel } from './panels/AppearancePanel';
-import { AppsPanel } from './panels/AppsPanel';
-import { BluetoothPanel } from './panels/BluetoothPanel';
-import { ColorPanel } from './panels/ColorPanel';
-import { DisplaysPanel } from './panels/DisplaysPanel';
-import { KeyboardPanel } from './panels/KeyboardPanel';
-import { MouseTouchpadPanel } from './panels/MouseTouchpadPanel';
-import { MultitaskingPanel } from './panels/MultitaskingPanel';
-import { NetworkPanel } from './panels/NetworkPanel';
-import { NotificationsPanel } from './panels/NotificationsPanel';
-import { OnlineAccountsPanel } from './panels/OnlineAccountsPanel';
-import { PowerPanel } from './panels/PowerPanel';
-import { PrintersPanel } from './panels/PrintersPanel';
-import { PrivacyPanel } from './panels/PrivacyPanel';
-import { RemovableMediaPanel } from './panels/RemovableMediaPanel';
-import { SearchPanel } from './panels/SearchPanel';
-import { SharingPanel } from './panels/SharingPanel';
-import { SoundPanel } from './panels/SoundPanel';
-import { UbuntuDesktopPanel } from './panels/UbuntuDesktopPanel';
+
+const WifiPanel = lazy(() => import('./panels/WifiPanel').then(m => ({ default: m.WifiPanel })));
+const SystemPanel = lazy(() => import('./panels/SystemPanel').then(m => ({ default: m.SystemPanel })));
+const AccessibilityPanel = lazy(() => import('./panels/AccessibilityPanel').then(m => ({ default: m.AccessibilityPanel })));
+const AppearancePanel = lazy(() => import('./panels/AppearancePanel').then(m => ({ default: m.AppearancePanel })));
+const AppsPanel = lazy(() => import('./panels/AppsPanel').then(m => ({ default: m.AppsPanel })));
+const BluetoothPanel = lazy(() => import('./panels/BluetoothPanel').then(m => ({ default: m.BluetoothPanel })));
+const ColorPanel = lazy(() => import('./panels/ColorPanel').then(m => ({ default: m.ColorPanel })));
+const DisplaysPanel = lazy(() => import('./panels/DisplaysPanel').then(m => ({ default: m.DisplaysPanel })));
+const KeyboardPanel = lazy(() => import('./panels/KeyboardPanel').then(m => ({ default: m.KeyboardPanel })));
+const MouseTouchpadPanel = lazy(() => import('./panels/MouseTouchpadPanel').then(m => ({ default: m.MouseTouchpadPanel })));
+const MultitaskingPanel = lazy(() => import('./panels/MultitaskingPanel').then(m => ({ default: m.MultitaskingPanel })));
+const NetworkPanel = lazy(() => import('./panels/NetworkPanel').then(m => ({ default: m.NetworkPanel })));
+const NotificationsPanel = lazy(() => import('./panels/NotificationsPanel').then(m => ({ default: m.NotificationsPanel })));
+const OnlineAccountsPanel = lazy(() => import('./panels/OnlineAccountsPanel').then(m => ({ default: m.OnlineAccountsPanel })));
+const PowerPanel = lazy(() => import('./panels/PowerPanel').then(m => ({ default: m.PowerPanel })));
+const PrintersPanel = lazy(() => import('./panels/PrintersPanel').then(m => ({ default: m.PrintersPanel })));
+const PrivacyPanel = lazy(() => import('./panels/PrivacyPanel').then(m => ({ default: m.PrivacyPanel })));
+const RemovableMediaPanel = lazy(() => import('./panels/RemovableMediaPanel').then(m => ({ default: m.RemovableMediaPanel })));
+const SearchPanel = lazy(() => import('./panels/SearchPanel').then(m => ({ default: m.SearchPanel })));
+const SharingPanel = lazy(() => import('./panels/SharingPanel').then(m => ({ default: m.SharingPanel })));
+const SoundPanel = lazy(() => import('./panels/SoundPanel').then(m => ({ default: m.SoundPanel })));
+const UbuntuDesktopPanel = lazy(() => import('./panels/UbuntuDesktopPanel').then(m => ({ default: m.UbuntuDesktopPanel })));
 import './Settings.css';
 
 const PANELS: { id: SettingsPanel; label: string }[] = [
@@ -124,56 +125,58 @@ export function Settings() {
         </ul>
       </aside>
       <main className="ubuntu-settings-content">
-        {activePanel === 'wifi' ? (
-          <WifiPanel />
-        ) : activePanel === 'network' ? (
-          <NetworkPanel />
-        ) : activePanel === 'notifications' ? (
-          <NotificationsPanel />
-        ) : activePanel === 'online-accounts' ? (
-          <OnlineAccountsPanel />
-        ) : activePanel === 'power' ? (
-          <PowerPanel />
-        ) : activePanel === 'printers' ? (
-          <PrintersPanel />
-        ) : activePanel === 'privacy' ? (
-          <PrivacyPanel />
-        ) : activePanel === 'removable-media' ? (
-          <RemovableMediaPanel />
-        ) : activePanel === 'search' ? (
-          <SearchPanel />
-        ) : activePanel === 'sharing' ? (
-          <SharingPanel />
-        ) : activePanel === 'sound' ? (
-          <SoundPanel />
-        ) : activePanel === 'ubuntu-desktop' ? (
-          <UbuntuDesktopPanel />
-        ) : activePanel === 'accessibility' ? (
-          <AccessibilityPanel />
-        ) : activePanel === 'apps' ? (
-          <AppsPanel />
-        ) : activePanel === 'bluetooth' ? (
-          <BluetoothPanel />
-        ) : activePanel === 'color' ? (
-          <ColorPanel />
-        ) : activePanel === 'displays' ? (
-          <DisplaysPanel />
-        ) : activePanel === 'keyboard' ? (
-          <KeyboardPanel />
-        ) : activePanel === 'mouse' ? (
-          <MouseTouchpadPanel />
-        ) : activePanel === 'multitasking' ? (
-          <MultitaskingPanel />
-        ) : activePanel === 'appearance' ? (
-          <AppearancePanel />
-        ) : activePanel === 'system' ? (
-          <SystemPanel />
-        ) : (
-          <div className="ubuntu-settings-panel-placeholder">
-            <h1>{PANELS.find(p => p.id === activePanel)?.label}</h1>
-            <p>Panel content will be implemented in subsequent tasks.</p>
-          </div>
-        )}
+        <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 24, height: 24, border: '2px solid #ccc', borderTop: '2px solid #E95420', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
+          {activePanel === 'wifi' ? (
+            <WifiPanel />
+          ) : activePanel === 'network' ? (
+            <NetworkPanel />
+          ) : activePanel === 'notifications' ? (
+            <NotificationsPanel />
+          ) : activePanel === 'online-accounts' ? (
+            <OnlineAccountsPanel />
+          ) : activePanel === 'power' ? (
+            <PowerPanel />
+          ) : activePanel === 'printers' ? (
+            <PrintersPanel />
+          ) : activePanel === 'privacy' ? (
+            <PrivacyPanel />
+          ) : activePanel === 'removable-media' ? (
+            <RemovableMediaPanel />
+          ) : activePanel === 'search' ? (
+            <SearchPanel />
+          ) : activePanel === 'sharing' ? (
+            <SharingPanel />
+          ) : activePanel === 'sound' ? (
+            <SoundPanel />
+          ) : activePanel === 'ubuntu-desktop' ? (
+            <UbuntuDesktopPanel />
+          ) : activePanel === 'accessibility' ? (
+            <AccessibilityPanel />
+          ) : activePanel === 'apps' ? (
+            <AppsPanel />
+          ) : activePanel === 'bluetooth' ? (
+            <BluetoothPanel />
+          ) : activePanel === 'color' ? (
+            <ColorPanel />
+          ) : activePanel === 'displays' ? (
+            <DisplaysPanel />
+          ) : activePanel === 'keyboard' ? (
+            <KeyboardPanel />
+          ) : activePanel === 'mouse' ? (
+            <MouseTouchpadPanel />
+          ) : activePanel === 'multitasking' ? (
+            <MultitaskingPanel />
+          ) : activePanel === 'appearance' ? (
+            <AppearancePanel />
+          ) : activePanel === 'system' ? (
+            <SystemPanel />
+          ) : (
+            <div className="ubuntu-settings-panel-placeholder">
+              <h1>{PANELS.find(p => p.id === activePanel)?.label}</h1>
+              <p>Panel content will be implemented in subsequent tasks.</p>
+            </div>
+          )}
+        </Suspense>
       </main>
     </div>
   );

@@ -10,7 +10,7 @@
   box-shadow: var(--shadow-window);
   overflow: hidden;
   will-change: transform, opacity, width, height, top, left;
-  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease, border-radius 0.2s ease, width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease, border-radius 0.2s ease;
   transform-origin: center center;
   border: var(--border-window);
   background: var(--bg-window);
@@ -19,14 +19,14 @@
 .window--maximized {
   border-radius: 0 !important;
   border: none;
-  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: top 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), bottom 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), left 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), right 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), border-radius 0.2s ease;
 }
 
 .window--unfocused {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
-.window--dragging, .window--resizing {
+.window--dragging, .window--resizing, .window--unmaximizing {
   transition: none !important;
 }
 

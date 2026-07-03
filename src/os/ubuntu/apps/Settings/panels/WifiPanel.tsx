@@ -7,10 +7,11 @@ export function WifiPanel() {
 
   const toggleSwitch = (
     <div 
-      className={`ubuntu-settings-toggle ${wifiEnabled ? 'active' : ''}`}
+      className={`ubuntu-settings-toggle ${wifiEnabled ? 'checked' : ''}`}
+      style={{ backgroundColor: wifiEnabled ? 'var(--color-accent)' : undefined }}
       onClick={toggleWifi}
     >
-      <div className="ubuntu-settings-toggle-knob" />
+      <div className="ubuntu-settings-toggle-knob" style={{ transform: wifiEnabled ? 'translateX(20px)' : 'translateX(0)' }} />
     </div>
   );
 

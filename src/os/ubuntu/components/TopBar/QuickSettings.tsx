@@ -3,6 +3,7 @@ import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { useNetworkStore } from '../../store/useNetworkStore';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
+import { useBattery } from '../../hooks/useBattery';
 import { useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import './QuickSettings.css';
@@ -34,6 +35,7 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
   const [showPowerMenu, setShowPowerMenu] = useState(false);
   const [activePillMenu, setActivePillMenu] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const { level: batteryLevel } = useBattery();
 
   const handleScreenshot = async () => {
     onClose();
@@ -159,7 +161,7 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4zM11 20H9v-2h2v2zm0-4H9V9h2v7z" />
           </svg>
-          <span>100%</span>
+          <span>{batteryLevel ?? 100}%</span>
         </div>
         
         <div className="qs-actions-group">

@@ -1,18 +1,18 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, lazy, Suspense } from 'react'
 import { useHardwareStore } from './hardware/store/useHardwareStore'
 import { useUbuntuAuthStore } from './os/ubuntu/store/useUbuntuAuthStore'
 import { useWindowsAuthStore } from './os/windows/store/useWindowsAuthStore'
 import { useSettingsStore } from './os/ubuntu/apps/Settings/store/useSettingsStore'
 
-// Hardware components
-import { POST } from './hardware/components/post/POST'
-import { BIOS } from './hardware/components/bios/BIOS'
-import { Grub } from './hardware/components/grub/Grub'
+// Lazy load Hardware components
+const POST = lazy(() => import('./hardware/components/post/POST').then(m => ({ default: m.POST })))
+const BIOS = lazy(() => import('./hardware/components/bios/BIOS').then(m => ({ default: m.BIOS })))
+const Grub = lazy(() => import('./hardware/components/grub/Grub').then(m => ({ default: m.Grub })))
 
-// OS components
-import { UbuntuLogin } from './os/ubuntu/components/Login/UbuntuLogin'
-import { WindowsLogin } from './os/windows/components/Login/WindowsLogin'
-import { WindowsDesktop } from './os/windows/components/Desktop/WindowsDesktop'
+// Lazy load OS components
+const UbuntuLogin = lazy(() => import('./os/ubuntu/components/Login/UbuntuLogin').then(m => ({ default: m.UbuntuLogin })))
+const WindowsLogin = lazy(() => import('./os/windows/components/Login/WindowsLogin').then(m => ({ default: m.WindowsLogin })))
+const WindowsDesktop = lazy(() => import('./os/windows/components/Desktop/WindowsDesktop').then(m => ({ default: m.WindowsDesktop })))
 
 // Ubuntu UI
 import { useWindowStore } from './os/ubuntu/store/useUbuntuWindowStore'
@@ -27,11 +27,13 @@ import fileManagerIcon from './os/ubuntu/assets/icons/file-manager.svg'
 import browserIcon from './os/ubuntu/assets/icons/browser.svg'
 import textIcon from './os/ubuntu/assets/icons/text.svg'
 import settingsIcon from './os/ubuntu/assets/icons/settings.svg'
-import { Terminal, TerminalHeaderControls } from './os/ubuntu/apps/Terminal/Terminal'
-import { FileManager } from './os/ubuntu/apps/FileManager/FileManager'
-import { Browser } from './os/ubuntu/apps/Browser/Browser'
-import { TextEditor } from './os/ubuntu/apps/TextEditor/TextEditor'
-import { Settings } from './os/ubuntu/apps/Settings/Settings'
+// Lazy load Apps
+const Terminal = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.Terminal })))
+const TerminalHeaderControls = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.TerminalHeaderControls })))
+const FileManager = lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManager })))
+const Browser = lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.Browser })))
+const TextEditor = lazy(() => import('./os/ubuntu/apps/TextEditor/TextEditor').then(m => ({ default: m.TextEditor })))
+const Settings = lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.Settings })))
 import { SystemDialog } from './os/ubuntu/components/SystemDialog/SystemDialog'
 import './App.css'
 
@@ -178,7 +180,11 @@ function UbuntuEnvironment() {
     };
   }, [nextWorkspace, prevWorkspace, toggleOverview, switchDesktopShortcut, switchAppShortcut, cycleWindows]);
 
-  if (!currentUser) return <UbuntuLogin />;
+  if (!currentUser) return (
+    <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#2E222A' }} />}>
+      <UbuntuLogin />
+    </Suspense>
+  );
 
   return (
     <div className="shell" style={{ filter: nightLight ? 'sepia(0.35) hue-rotate(-15deg)' : 'none', transition: 'filter 0.5s ease-in-out' }}>
@@ -190,9 +196,11 @@ function UbuntuEnvironment() {
           key={win.id}
           id={win.id}
           icon={<img src={APP_META[win.appId]?.icon} alt="" style={{ width: 16, height: 16 }} />}
-          headerControls={win.appId === 'terminal' ? <TerminalHeaderControls windowId={win.id} /> : undefined}
+          headerControls={win.appId === 'terminal' ? <Suspense fallback={null}><TerminalHeaderControls windowId={win.id} /></Suspense> : undefined}
         >
-          <MockAppContent appId={win.appId} windowId={win.id} />
+          <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid #E95420', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
+            <MockAppContent appId={win.appId} windowId={win.id} />
+          </Suspense>
         </Window>
       ))}
 
@@ -207,9 +215,17 @@ function UbuntuEnvironment() {
 function WindowsEnvironment() {
   const currentUser = useWindowsAuthStore((s) => s.currentUser);
   
-  if (!currentUser) return <WindowsLogin />;
+  if (!currentUser) return (
+    <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#0067b8' }} />}>
+      <WindowsLogin />
+    </Suspense>
+  );
   
-  return <WindowsDesktop />;
+  return (
+    <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#0067b8' }} />}>
+      <WindowsDesktop />
+    </Suspense>
+  );
 }
 
 export default function App() {
@@ -247,9 +263,9 @@ export default function App() {
   }, [powerState]);
 
   if (powerState === 'off') return <div style={{ width: '100vw', height: '100vh', background: 'black' }} />;
-  if (powerState === 'post') return <POST />;
-  if (powerState === 'bios') return <BIOS />;
-  if (powerState === 'grub') return <Grub />;
+  if (powerState === 'post') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><POST /></Suspense>;
+  if (powerState === 'bios') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><BIOS /></Suspense>;
+  if (powerState === 'grub') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><Grub /></Suspense>;
   
   if (powerState === 'shutting_down') {
     if (activeOS === 'ubuntu') {

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { verifySudoPassword } from '../../services/sudoService';
+import { UBUNTU_ACCOUNTS } from '../../../../config/accounts';
 
 /**
  * GNOME Polkit Authentication Agent Dialog.
@@ -19,6 +20,11 @@ export function PolkitDialog() {
   const { polkitRequest, closeDialog } = useSystemDialogStore();
   const currentUser = useUbuntuAuthStore((s) => s.currentUser) || 'user';
 
+  const currentUserObj = UBUNTU_ACCOUNTS.find(a => a.username === currentUser);
+  const isCurrentUserAdmin = currentUserObj?.role === 'admin' || currentUser === 'root';
+  const adminUsers = UBUNTU_ACCOUNTS.filter(a => a.role === 'admin');
+
+  const [authTargetUser, setAuthTargetUser] = useState(isCurrentUserAdmin ? currentUser : (adminUsers[0]?.username || 'root'));
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
@@ -39,7 +45,7 @@ export function PolkitDialog() {
     setIsVerifying(true);
 
     const result = await verifySudoPassword(
-      currentUser,
+      authTargetUser,
       password,
       '__polkit__',  // Special window ID for Polkit sessions
       attempts + 1
@@ -106,7 +112,32 @@ export function PolkitDialog() {
             </svg>
           </div>
           <div className="polkit-user-info">
-            <div className="polkit-user-name">{currentUser}</div>
+            {isCurrentUserAdmin ? (
+              <div className="polkit-user-name">{authTargetUser}</div>
+            ) : (
+              <select
+                value={authTargetUser}
+                onChange={(e) => setAuthTargetUser(e.target.value)}
+                className="polkit-user-name"
+                style={{ 
+                  background: 'transparent', 
+                  color: 'inherit', 
+                  border: '1px solid var(--color-border)', 
+                  borderRadius: '4px', 
+                  padding: '2px 4px', 
+                  fontSize: '14px', 
+                  outline: 'none',
+                  marginBottom: '4px',
+                  width: '100%'
+                }}
+              >
+                {adminUsers.map(admin => (
+                  <option key={admin.username} value={admin.username} style={{ background: 'var(--color-bg-window)', color: 'var(--color-text-primary)' }}>
+                    {admin.displayName || admin.username}
+                  </option>
+                ))}
+              </select>
+            )}
             <div className="polkit-user-hint">Password:</div>
           </div>
         </div>

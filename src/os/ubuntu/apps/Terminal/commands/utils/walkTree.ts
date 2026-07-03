@@ -19,10 +19,11 @@ import type { VFSNode } from '../../../../fs/types';
 export function walkTree(
   nodeId: string,
   currentPath: string,
+  username: string,
   visitor: (node: VFSNode, path: string) => void
 ): void {
   const store = useVFSStore.getState();
-  const node = store.getNode(nodeId);
+  const node = store.getNode(nodeId, username);
   if (!node) return;
 
   // Visit the current node
@@ -30,12 +31,12 @@ export function walkTree(
 
   // If directory, recurse into children
   if (node.type === 'directory') {
-    const children = store.getChildren(nodeId);
+    const children = store.getChildren(nodeId, username);
     for (const child of children) {
       const childPath = currentPath === '.'
         ? `./${child.name}`
         : `${currentPath}/${child.name}`;
-      walkTree(child.id, childPath, visitor);
+      walkTree(child.id, childPath, username, visitor);
     }
   }
 }

@@ -577,6 +577,26 @@ export const useVFSStore = create<VFSStore>()(
           const homeId = getHomeId(acc.username);
           if (migratedMap[homeId]) {
             migratedMap[homeId].permissions = '750';
+            migratedMap[homeId].owner = acc.username;
+            migratedMap[homeId].group = acc.username;
+            
+            // Fix ownership for children recursively due to previous bad migration
+            const updateChildren = (parentId: string) => {
+              const pNode = migratedMap[parentId];
+              if (pNode && pNode.children) {
+                pNode.children.forEach(cId => {
+                  const cNode = migratedMap[cId];
+                  if (cNode) {
+                    if (cNode.owner === 'peasant' || cNode.owner === 'root' || !cNode.owner) {
+                      cNode.owner = acc.username;
+                      cNode.group = acc.username;
+                    }
+                    updateChildren(cId);
+                  }
+                });
+              }
+            };
+            updateChildren(homeId);
           }
         });
 

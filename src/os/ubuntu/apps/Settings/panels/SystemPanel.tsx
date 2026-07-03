@@ -3,15 +3,17 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { hardwareConfig } from '../../../../../hardware/hardwareConfig';
 import { useState, useEffect } from 'react';
 import type { SystemSubPage } from '../store/useSettingsStore';
+import { useUbuntuAuthStore } from '../../../store/useUbuntuAuthStore';
+import { UBUNTU_ACCOUNTS } from '../../../../../config/accounts';
 import './SystemPanel.css';
 
-const SYSTEM_PAGES: { id: SystemSubPage; label: string }[] = [
-  { id: 'region-language', label: 'Region & Language' },
-  { id: 'date-time', label: 'Date & Time' },
-  { id: 'users', label: 'Users' },
-  { id: 'remote-desktop', label: 'Remote Desktop' },
-  { id: 'secure-shell', label: 'Secure Shell' },
-  { id: 'about', label: 'About' },
+const SYSTEM_PAGES: { id: SystemSubPage; label: string; icon: JSX.Element }[] = [
+  { id: 'region-language', label: 'Region & Language', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> },
+  { id: 'date-time', label: 'Date & Time', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+  { id: 'users', label: 'Users', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
+  { id: 'remote-desktop', label: 'Remote Desktop', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg> },
+  { id: 'secure-shell', label: 'Secure Shell', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg> },
+  { id: 'about', label: 'About', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg> },
 ];
 
 function DateTimeSubPage() {
@@ -27,8 +29,8 @@ function DateTimeSubPage() {
     <div className="ubuntu-settings-list-group">
       <div className="ubuntu-settings-list-item clickable" onClick={() => setAutoTime(!autoTime)}>
         <span>Automatic Date & Time</span>
-        <div className={`ubuntu-settings-toggle ${autoTime ? 'checked' : ''}`} style={{ backgroundColor: autoTime ? 'var(--color-accent)' : 'var(--color-surface-active)' }}>
-          <div className="ubuntu-settings-toggle-knob" style={{ transform: autoTime ? 'translateX(24px)' : 'translateX(0)' }} />
+        <div className={`ubuntu-settings-toggle ${autoTime ? 'checked' : ''}`}>
+          <div className="ubuntu-settings-toggle-knob" />
         </div>
       </div>
       <div className="ubuntu-settings-list-item">
@@ -39,8 +41,61 @@ function DateTimeSubPage() {
   );
 }
 
+async function performFactoryReset() {
+  // 1. Clear all IndexedDB databases
+  if (window.indexedDB && indexedDB.databases) {
+    try {
+      const dbs = await indexedDB.databases();
+      for (const db of dbs) {
+        if (db.name) {
+          indexedDB.deleteDatabase(db.name);
+        }
+      }
+    } catch (_) {
+      // Fallback: delete known database names
+      const knownDbs = ['ubuntu-idb-storage', 'keyval-store'];
+      knownDbs.forEach(name => indexedDB.deleteDatabase(name));
+    }
+  }
+
+  // 2. Clear localStorage
+  localStorage.clear();
+
+  // 3. Clear sessionStorage
+  sessionStorage.clear();
+
+  // 4. Unregister all service workers
+  try {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        await reg.unregister();
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to unregister service workers:', e);
+  }
+
+  // 5. Clear caches
+  try {
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        await caches.delete(name);
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to clear caches:', e);
+  }
+
+  // 6. Reload the page to start fresh
+  window.location.reload();
+}
+
 export function SystemPanel() {
   const { systemSubPage, setSystemSubPage, goBackFromSubPage } = useSettingsStore();
+  const currentUser = useUbuntuAuthStore((s) => s.currentUser);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   if (systemSubPage !== 'root') {
     const pageTitle = SYSTEM_PAGES.find((p) => p.id === systemSubPage)?.label || 'System';
@@ -72,15 +127,20 @@ export function SystemPanel() {
     } else if (systemSubPage === 'date-time') {
       content = <DateTimeSubPage />;
     } else if (systemSubPage === 'users') {
+      const account = UBUNTU_ACCOUNTS.find(a => a.username === currentUser);
+      const displayName = account?.displayName || currentUser || 'User';
+      const role = account?.role || 'standard';
+      const initial = displayName.charAt(0).toUpperCase();
+
       content = (
         <div className="ubuntu-settings-list-group">
           <div className="ubuntu-settings-list-item" style={{ padding: '16px', gap: '16px' }}>
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '24px' }}>
-              U
+              {initial}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span style={{ fontWeight: '500', fontSize: '18px' }}>Ubuntu User</span>
-              <span style={{ color: 'var(--color-text-secondary)' }}>Administrator</span>
+              <span style={{ fontWeight: '500', fontSize: '18px' }}>{displayName}</span>
+              <span style={{ color: 'var(--color-text-secondary)' }}>{role === 'admin' ? 'Administrator' : 'Standard User'}</span>
             </div>
           </div>
         </div>
@@ -156,12 +216,61 @@ export function SystemPanel() {
             className="ubuntu-settings-list-item clickable"
             onClick={() => setSystemSubPage(page.id)}
           >
-            <span>{page.label}</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {page.icon}
+              </div>
+              <span>{page.label}</span>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </div>
         ))}
+      </div>
+
+      {/* Factory Reset Section */}
+      <div className="ubuntu-settings-list-group" style={{ marginTop: '24px' }}>
+        <div className="ubuntu-settings-list-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+          <div>
+            <span style={{ fontWeight: 500 }}>Factory Reset</span>
+            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
+              Clears all local browser data (IndexedDB, localStorage, caches) and reloads the application from scratch. All settings, files, and user data will be erased.
+            </p>
+          </div>
+          {!showResetConfirm ? (
+            <button
+              className="system-factory-reset-btn"
+              onClick={() => setShowResetConfirm(true)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+              Reset to Factory Defaults
+            </button>
+          ) : (
+            <div className="system-factory-reset-confirm">
+              <p style={{ fontSize: '13px', color: '#c01c28', fontWeight: 500, margin: '0 0 8px 0' }}>
+                ⚠ This action cannot be undone. All data will be permanently deleted.
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="system-factory-reset-btn system-factory-reset-btn--danger"
+                  onClick={performFactoryReset}
+                >
+                  Yes, Erase Everything
+                </button>
+                <button
+                  className="system-factory-reset-btn system-factory-reset-btn--cancel"
+                  onClick={() => setShowResetConfirm(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </SettingsPanelWrapper>
   );
