@@ -3,7 +3,7 @@
   position: absolute;
   top: 36px;
   right: 12px;
-  width: 360px;
+  width: 420px;
   background: #f6f6f6;
   border-radius: 28px;
   border: 1px solid rgba(0, 0, 0, 0.05);
@@ -177,13 +177,19 @@
   background: #da4c1a;
 }
 
+.qs-pill-group.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
 .qs-pill-main {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 8px;
+  padding: 0 12px;
   cursor: pointer;
+  min-width: 0;
 }
 
 .qs-pill-icon {
@@ -207,7 +213,7 @@
 }
 
 .qs-pill-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 400;
   color: inherit;
   white-space: nowrap;
@@ -216,7 +222,7 @@
 }
 
 .qs-pill-subtitle {
-  font-size: 13px;
+  font-size: 12px;
   opacity: 0.9;
   margin-top: 1px;
   white-space: nowrap;
@@ -236,9 +242,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 10px;
   cursor: pointer;
   border-left: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
 }
 
 .qs-pill-group.active .qs-pill-arrow {

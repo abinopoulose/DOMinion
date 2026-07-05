@@ -8,6 +8,7 @@ import fileManagerIcon from '../../assets/icons/file-manager.svg';
 import browserIcon from '../../assets/icons/browser.svg';
 import textIcon from '../../assets/icons/text.svg';
 import settingsIcon from '../../assets/icons/settings.svg';
+import calculatorIcon from '../../assets/icons/calculator.svg';
 
 import './WorkspaceOverview.css';
 
@@ -16,6 +17,7 @@ const APP_ICONS: Record<string, string> = {
   'file-manager': fileManagerIcon,
   browser: browserIcon,
   'text-editor': textIcon,
+  calculator: calculatorIcon,
   settings: settingsIcon,
 };
 
@@ -283,10 +285,12 @@ function MiniWindow({
   scaleX: number;
   scaleY: number;
 }) {
-  const left = win.position.x * scaleX;
-  const top = win.position.y * scaleY;
-  const width = Math.max(win.size.width * scaleX, 12);
-  const height = Math.max(win.size.height * scaleY, 8);
+  const left = win.position?.x * scaleX || 0;
+  const top = win.position?.y * scaleY || 0;
+  const rawWidth = win.size?.width ?? 300;
+  const rawHeight = win.size?.height ?? 200;
+  const width = Math.max(rawWidth * scaleX, 12);
+  const height = Math.max(rawHeight * scaleY, 8);
 
   return (
     <div

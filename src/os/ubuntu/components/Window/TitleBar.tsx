@@ -15,6 +15,7 @@ interface TitleBarProps {
     onPointerUp: (e: React.PointerEvent<HTMLElement>) => void;
   };
   headerControls?: ReactNode;
+  fullHeaderControls?: boolean;
 }
 
 export function TitleBar({
@@ -26,6 +27,7 @@ export function TitleBar({
   onDoubleClick,
   dragHandlers,
   headerControls,
+  fullHeaderControls,
 }: TitleBarProps) {
   return (
     <div
@@ -35,14 +37,15 @@ export function TitleBar({
       onPointerMove={dragHandlers.onPointerMove}
       onPointerUp={dragHandlers.onPointerUp}
     >
-      <div className="titlebar__left" style={{ zIndex: 2 }}>
-        {icon && <span className="titlebar__icon">{icon}</span>}
+      <div className="titlebar__left" style={{ zIndex: 2, flex: fullHeaderControls ? 1 : undefined }}>
+        {icon && !fullHeaderControls && <span className="titlebar__icon">{icon}</span>}
+        {fullHeaderControls && headerControls}
       </div>
 
-      <span className="titlebar__title">{title}</span>
+      {!fullHeaderControls && <span className="titlebar__title">{title}</span>}
 
       <div className="titlebar__controls">
-        {headerControls && (
+        {headerControls && !fullHeaderControls && (
           <div className="titlebar__custom-controls" style={{ display: 'flex', gap: '4px', marginRight: '8px' }}>
             {headerControls}
           </div>

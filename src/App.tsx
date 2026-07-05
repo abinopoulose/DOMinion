@@ -27,13 +27,16 @@ import fileManagerIcon from './os/ubuntu/assets/icons/file-manager.svg'
 import browserIcon from './os/ubuntu/assets/icons/browser.svg'
 import textIcon from './os/ubuntu/assets/icons/text.svg'
 import settingsIcon from './os/ubuntu/assets/icons/settings.svg'
+import calculatorIcon from './os/ubuntu/assets/icons/calculator.svg'
 // Lazy load Apps
 const Terminal = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.Terminal })))
 const TerminalHeaderControls = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.TerminalHeaderControls })))
 const FileManager = lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManager })))
 const Browser = lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.Browser })))
+const BrowserHeaderControls = lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.BrowserHeaderControls })))
 const TextEditor = lazy(() => import('./os/ubuntu/apps/TextEditor/TextEditor').then(m => ({ default: m.TextEditor })))
 const Settings = lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.Settings })))
+const Calculator = lazy(() => import('./os/ubuntu/apps/Calculator/Calculator').then(m => ({ default: m.Calculator })))
 import { SystemDialog } from './os/ubuntu/components/SystemDialog/SystemDialog'
 import './App.css'
 
@@ -42,6 +45,7 @@ const APP_META: Record<string, { title: string; icon: string; defaultSize: { wid
   'file-manager': { title: 'Files', icon: fileManagerIcon, defaultSize: { width: 750, height: 500 } },
   browser: { title: 'Browser', icon: browserIcon, defaultSize: { width: 900, height: 600 } },
   'text-editor': { title: 'Text Editor', icon: textIcon, defaultSize: { width: 600, height: 500 } },
+  calculator: { title: 'Calculator', icon: calculatorIcon, defaultSize: { width: 320, height: 480 } },
   settings: { title: 'Settings', icon: settingsIcon, defaultSize: { width: 900, height: 600 } },
 }
 
@@ -50,6 +54,7 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
   if (appId === 'file-manager') return <FileManager windowId={windowId} />;
   if (appId === 'browser') return <Browser windowId={windowId} />;
   if (appId === 'text-editor') return <TextEditor windowId={windowId} />;
+  if (appId === 'calculator') return <Calculator windowId={windowId} />;
   if (appId === 'settings') return <Settings />;
   return null;
 }
@@ -70,7 +75,7 @@ function UbuntuEnvironment() {
   const windowList = allWindows.filter((w) => w.workspaceId === activeWorkspace);
 
   const toggleWindowFromDock = useCallback((appId: string) => {
-    const typedAppId = appId as 'terminal' | 'file-manager' | 'browser' | 'text-editor' | 'settings'
+    const typedAppId = appId as 'terminal' | 'file-manager' | 'browser' | 'text-editor' | 'calculator' | 'settings'
     const appWindows = allWindows.filter((w) => w.appId === typedAppId && w.workspaceId === activeWorkspace)
 
     if (appWindows.length === 0) {
@@ -87,6 +92,7 @@ function UbuntuEnvironment() {
   }, [allWindows, activeWorkspace, openWindow, restoreWindow])
 
   const nightLight = useSettingsStore((s) => s.nightLight);
+  const screenBrightness = useSettingsStore((s) => s.screenBrightness ?? 100);
   const theme = useSettingsStore((s) => s.theme);
   const settingsWallpaper = useSettingsStore((s: any) => s.wallpaper);
   const activeWallpaper = settingsWallpaper || '/ubuntu_wallpaper.jpg';
@@ -186,8 +192,10 @@ function UbuntuEnvironment() {
     </Suspense>
   );
 
+  const filterString = `brightness(${screenBrightness / 100}) ${nightLight ? 'sepia(0.35) hue-rotate(-15deg)' : ''}`.trim();
+
   return (
-    <div className="shell" style={{ filter: nightLight ? 'sepia(0.35) hue-rotate(-15deg)' : 'none', transition: 'filter 0.5s ease-in-out' }}>
+    <div className="shell" style={{ filter: filterString, transition: 'filter 0.1s ease-out' }}>
       <TopBar />
       <Desktop onUnfocusAll={unfocusAll} />
 
@@ -196,7 +204,11 @@ function UbuntuEnvironment() {
           key={win.id}
           id={win.id}
           icon={<img src={APP_META[win.appId]?.icon} alt="" style={{ width: 16, height: 16 }} />}
-          headerControls={win.appId === 'terminal' ? <Suspense fallback={null}><TerminalHeaderControls windowId={win.id} /></Suspense> : undefined}
+          headerControls={
+            win.appId === 'terminal' ? <Suspense fallback={null}><TerminalHeaderControls windowId={win.id} /></Suspense> :
+            win.appId === 'browser' ? <Suspense fallback={null}><BrowserHeaderControls windowId={win.id} /></Suspense> : undefined
+          }
+          fullHeaderControls={win.appId === 'browser'}
         >
           <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid #E95420', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
             <MockAppContent appId={win.appId} windowId={win.id} />

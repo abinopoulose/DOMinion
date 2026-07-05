@@ -3,12 +3,16 @@ import { useNetworkStore } from '../../../store/useNetworkStore';
 import './WifiPanel.css';
 
 export function WifiPanel() {
-  const { wifiEnabled, toggleWifi } = useNetworkStore();
+  const { wifiEnabled, toggleWifi, airplaneMode } = useNetworkStore();
 
   const toggleSwitch = (
     <div 
       className={`ubuntu-settings-toggle ${wifiEnabled ? 'checked' : ''}`}
-      style={{ backgroundColor: wifiEnabled ? 'var(--color-accent)' : undefined }}
+      style={{ 
+        backgroundColor: wifiEnabled ? 'var(--color-accent)' : undefined,
+        opacity: airplaneMode ? 0.4 : 1,
+        pointerEvents: airplaneMode ? 'none' : 'auto'
+      }}
       onClick={toggleWifi}
     >
       <div className="ubuntu-settings-toggle-knob" style={{ transform: wifiEnabled ? 'translateX(20px)' : 'translateX(0)' }} />
@@ -33,9 +37,9 @@ export function WifiPanel() {
               <line x1="12" y1="20" x2="12.01" y2="20" />
             </svg>
           </div>
-          <h3 className="ubuntu-wifi-empty-title">Wi-Fi is Off</h3>
+          <h3 className="ubuntu-wifi-empty-title">{airplaneMode ? 'Wi-Fi is Disabled' : 'Wi-Fi is Off'}</h3>
           <p className="ubuntu-wifi-empty-subtitle">
-            Turn on Wi-Fi to connect to networks.
+            {airplaneMode ? 'Turn off Airplane Mode to enable Wi-Fi.' : 'Turn on Wi-Fi to connect to networks.'}
           </p>
         </div>
       )}

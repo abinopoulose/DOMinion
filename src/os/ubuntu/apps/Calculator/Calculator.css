@@ -1,0 +1,121 @@
+.calculator-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg-primary, #ffffff);
+  color: var(--color-text-primary, #333333);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ubuntu, 'Helvetica Neue', sans-serif;
+  user-select: none;
+}
+
+.calc-display {
+  padding: 24px 20px;
+  background: var(--color-bg-secondary, #f5f5f5);
+  text-align: right;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-bottom: 1px solid var(--color-border, #e0e0e0);
+}
+
+.calc-equation {
+  font-size: 16px;
+  color: var(--color-text-secondary, #777777);
+  min-height: 24px;
+  margin-bottom: 8px;
+}
+
+.calc-value {
+  font-size: 56px;
+  font-weight: 300;
+  letter-spacing: -1px;
+}
+
+.calc-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
+  flex: 1;
+  background: var(--color-bg-primary, #ffffff);
+  padding: 8px;
+  gap: 8px;
+}
+
+.calc-buttons button {
+  border: none;
+  border-radius: 8px;
+  font-size: 24px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 0.1s ease, transform 0.05s ease;
+}
+
+.calc-buttons button:active {
+  transform: scale(0.96);
+}
+
+.calc-btn-num {
+  background: var(--color-bg-secondary, #f0f0f0);
+  color: var(--color-text-primary, #333);
+}
+
+.calc-btn-num:hover {
+  background: #e0e0e0;
+}
+
+.calc-btn-action {
+  background: #e0e0e0;
+  color: var(--color-text-primary, #333);
+}
+
+.calc-btn-action:hover {
+  background: #d0d0d0;
+}
+
+.calc-btn-op {
+  background: rgba(233, 84, 32, 0.15); /* Ubuntu orange tint */
+  color: #e95420;
+  font-weight: 500;
+}
+
+.calc-btn-op:hover {
+  background: rgba(233, 84, 32, 0.25);
+}
+
+.calc-btn-equal {
+  background: #e95420;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.calc-btn-equal:hover {
+  background: #d94d1a;
+}
+
+.calc-zero {
+  grid-column: span 2;
+}
+
+/* Dark mode overrides (assuming standard Ubuntu classes) */
+.theme-dark .calculator-app {
+  --color-bg-primary: #1e1e1e;
+  --color-bg-secondary: #252526;
+  --color-text-primary: #f5f5f5;
+  --color-text-secondary: #a0a0a0;
+  --color-border: #333333;
+}
+
+.theme-dark .calc-btn-num {
+  background: #333333;
+}
+.theme-dark .calc-btn-num:hover {
+  background: #444444;
+}
+
+.theme-dark .calc-btn-action {
+  background: #444444;
+}
+.theme-dark .calc-btn-action:hover {
+  background: #555555;
+}

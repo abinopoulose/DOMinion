@@ -21,6 +21,140 @@ interface BrowserAppState {
   tabs: TabState[];
   activeTabId: string;
 }
+export const defaultBrowserAppState: BrowserAppState = {
+  tabs: [{ id: 'default', url: '', title: 'New Tab', history: [''], historyIndex: 0 }],
+  activeTabId: 'default',
+};
+
+export function BrowserHeaderControls({ windowId }: BrowserProps) {
+  const windowState = useWindowStore(useCallback((s) => s.windows.find((w) => w.id === windowId), [windowId]));
+  const updateAppState = useWindowStore((s) => s.updateAppState);
+  const appState = (windowState?.appState as BrowserAppState) || defaultBrowserAppState;
+  
+  if (!appState.activeTabId && appState.tabs.length > 0) {
+    appState.activeTabId = appState.tabs[0].id;
+  }
+  
+  const { tabs, activeTabId } = appState;
+
+  const updateState = (updates: Partial<BrowserAppState>) => {
+    updateAppState(windowId, { ...appState, ...updates });
+  };
+
+  const handleNewTab = (e: React.MouseEvent) => {
+    e.stopPropagation(); // prevent window dragging
+    const newTabId = uuidv4();
+    const newTabs = [...tabs, { id: newTabId, url: '', title: 'New Tab', history: [''], historyIndex: 0 }];
+    updateState({ tabs: newTabs, activeTabId: newTabId });
+  };
+
+  const handleCloseTab = (tabId: string) => {
+    const newTabs = tabs.filter(t => t.id !== tabId);
+    if (newTabs.length === 0) {
+      useWindowStore.getState().closeWindow(windowId);
+    } else if (activeTabId === tabId) {
+      updateState({ tabs: newTabs, activeTabId: newTabs[newTabs.length - 1].id });
+    } else {
+      updateState({ tabs: newTabs });
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
+    const tabToMove = tabs.find(t => t.id === tabId);
+    if (!tabToMove) return;
+    (window as any)._browserTabConsumed = false;
+    e.dataTransfer.setData('application/x-browser-tab', JSON.stringify({ 
+      sourceWindowId: windowId, 
+      tab: tabToMove 
+    }));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>, tabId: string) => {
+    if (!(window as any)._browserTabConsumed) {
+      if (tabs.length <= 1) return;
+      
+      const tabToMove = tabs.find(t => t.id === tabId);
+      if (!tabToMove) return;
+
+      handleCloseTab(tabId);
+      
+      useWindowStore.getState().openWindow('browser', {
+        tabs: [tabToMove],
+        activeTabId: tabId
+      }, { position: { x: Math.max(0, e.clientX - 60), y: Math.max(28, e.clientY - 20) } });
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    (window as any)._browserTabConsumed = true; // Mark as consumed
+    
+    const dataStr = e.dataTransfer.getData('application/x-browser-tab');
+    if (!dataStr) return;
+    
+    try {
+      const data = JSON.parse(dataStr);
+      if (data.sourceWindowId === windowId) return; // same window drag not handled yet
+      
+      const allWindows = useWindowStore.getState().windows;
+      const sourceWindow = allWindows.find(w => w.id === data.sourceWindowId);
+      
+      if (sourceWindow) {
+        const sourceAppState = sourceWindow.appState as BrowserAppState;
+        const newSourceTabs = sourceAppState.tabs.filter((t: TabState) => t.id !== data.tab.id);
+        
+        if (newSourceTabs.length === 0) {
+           useWindowStore.getState().closeWindow(sourceWindow.id);
+        } else {
+           const newActive = sourceAppState.activeTabId === data.tab.id ? newSourceTabs[newSourceTabs.length - 1].id : sourceAppState.activeTabId;
+           useWindowStore.getState().updateAppState(sourceWindow.id, { tabs: newSourceTabs, activeTabId: newActive });
+        }
+      }
+      
+      updateState({
+        tabs: [...tabs, data.tab],
+        activeTabId: data.tab.id
+      });
+    } catch (err) {}
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.dataTransfer.types.includes('application/x-browser-tab')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    }
+  };
+
+  return (
+    <div 
+      className="browser-tab-bar" 
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      {tabs.map((tab) => (
+        <div key={tab.id} onPointerDown={(e) => e.stopPropagation()}>
+          <BrowserTab
+            id={tab.id}
+            title={tab.title}
+            isActive={tab.id === activeTabId}
+            onClick={(id) => updateState({ activeTabId: id })}
+            onClose={handleCloseTab}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          />
+        </div>
+      ))}
+      <button 
+        className="browser-new-tab-btn" 
+        onClick={handleNewTab}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        +
+      </button>
+    </div>
+  );
+}
 
 export function Browser({ windowId }: BrowserProps) {
   const windowState = useWindowStore(useCallback((s) => s.windows.find((w) => w.id === windowId), [windowId]));
@@ -28,11 +162,9 @@ export function Browser({ windowId }: BrowserProps) {
   const updateWindowTitle = useWindowStore((s) => s.updateWindowTitle);
 
   const [urlInputValue, setUrlInputValue] = useState('');
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
-  const defaultAppState = useMemo<BrowserAppState>(() => ({
-    tabs: [{ id: uuidv4(), url: '', title: 'New Tab', history: [''], historyIndex: 0 }],
-    activeTabId: '',
-  }), []);
+  const defaultAppState = defaultBrowserAppState;
 
   const appState = (windowState?.appState as BrowserAppState) || defaultAppState;
 
@@ -124,20 +256,6 @@ export function Browser({ windowId }: BrowserProps) {
 
   return (
     <div className="browser">
-      <div className="browser-tab-bar">
-        {tabs.map((tab) => (
-          <BrowserTab
-            key={tab.id}
-            id={tab.id}
-            title={tab.title}
-            isActive={tab.id === activeTabId}
-            onClick={(id) => updateState({ activeTabId: id })}
-            onClose={handleCloseTab}
-          />
-        ))}
-        <button className="browser-new-tab-btn" onClick={handleNewTab}>+</button>
-      </div>
-      
       <div className="browser-toolbar">
         <button className="browser-nav-btn" onClick={handleBack} disabled={activeTab.historyIndex <= 0}>←</button>
         <button className="browser-nav-btn" onClick={handleForward} disabled={activeTab.historyIndex >= activeTab.history.length - 1}>→</button>
@@ -156,6 +274,43 @@ export function Browser({ windowId }: BrowserProps) {
             placeholder="Search or enter address"
           />
         </div>
+        
+        <button 
+          className="browser-nav-btn" 
+          onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+          style={{ backgroundColor: showSettingsMenu ? '#42414d' : 'transparent' }}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+          </svg>
+        </button>
+        
+        {showSettingsMenu && (
+          <>
+            <div 
+              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} 
+              onClick={() => setShowSettingsMenu(false)}
+            />
+            <div className="browser-settings-menu">
+              <div className="browser-settings-item" onClick={() => { handleNewTab(); setShowSettingsMenu(false); }}>
+                New Tab
+              </div>
+              <div className="browser-settings-item" onClick={() => { useWindowStore.getState().openWindow('browser'); setShowSettingsMenu(false); }}>
+                New Window
+              </div>
+              <div className="browser-settings-divider" />
+              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Bookmarks</div>
+              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>History</div>
+              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Downloads</div>
+              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Passwords</div>
+              <div className="browser-settings-divider" />
+              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Add-ons and themes</div>
+              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Settings</div>
+              <div className="browser-settings-divider" />
+              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Help</div>
+            </div>
+          </>
+        )}
       </div>
       
       <BrowserContent 

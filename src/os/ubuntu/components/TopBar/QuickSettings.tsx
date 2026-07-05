@@ -27,9 +27,8 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
     toggleAirplaneMode 
   } = useNetworkStore();
 
-  const { systemVolume, setSystemVolume, accentColor } = useSettingsStore();
+  const { systemVolume, setSystemVolume, accentColor, powerMode, setPowerMode, screenBrightness, setScreenBrightness } = useSettingsStore();
 
-  const [brightness, setBrightness] = useState(80);
   const [darkMode, setDarkMode] = useState(false);
   const [nightLight, setNightLight] = useState(false);
   const [showPowerMenu, setShowPowerMenu] = useState(false);
@@ -58,19 +57,20 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
   };
 
   useEffect(() => {
-    if (activePillMenu === 'wifi' || activePillMenu === 'bt') {
+    if ((activePillMenu === 'wifi' && wifiOn) || (activePillMenu === 'bt' && btOn)) {
       setIsSearching(true);
       const timer = setTimeout(() => setIsSearching(false), 15000);
       return () => clearTimeout(timer);
     }
-  }, [activePillMenu]);
+  }, [activePillMenu, wifiOn, btOn]);
   
   const pills = [
     {
       id: 'wifi',
-      active: wifiOn,
+      active: wifiOn && !airplane,
+      disabled: airplane,
       title: 'Wi-Fi',
-      subtitle: wifiOn ? 'On' : 'Off',
+      subtitle: airplane ? 'Disabled' : (wifiOn ? 'On' : 'Off'),
       hasArrow: true,
       onClick: toggleWifi,
       menuItems: [],
@@ -83,9 +83,10 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
     },
     {
       id: 'bt',
-      active: btOn,
+      active: btOn && !airplane,
+      disabled: airplane,
       title: 'Bluetooth',
-      subtitle: btOn ? 'On' : 'Off',
+      subtitle: airplane ? 'Disabled' : (btOn ? 'On' : 'Off'),
       hasArrow: true,
       onClick: toggleBluetooth,
       menuItems: [],
@@ -100,7 +101,7 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
       id: 'power',
       active: false,
       title: 'Power Mode',
-      subtitle: 'Balanced',
+      subtitle: powerMode.charAt(0).toUpperCase() + powerMode.slice(1).replace('-', ' '),
       hasArrow: true,
       onClick: () => {},
       menuItems: ['Performance', 'Balanced', 'Power Saver'],
@@ -228,10 +229,10 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
           <input 
             type="range" 
             className="qs-slider-new" 
-            min="0" max="100" 
-            value={brightness}
-            onChange={(e) => setBrightness(Number(e.target.value))}
-            style={{ background: `linear-gradient(to right, ${accentColor} ${brightness}%, #dfdfdf ${brightness}%)` }}
+            min="10" max="100" 
+            value={screenBrightness}
+            onChange={(e) => setScreenBrightness(Number(e.target.value))}
+            style={{ background: `linear-gradient(to right, ${accentColor} ${((screenBrightness - 10) / 90) * 100}%, #dfdfdf ${((screenBrightness - 10) / 90) * 100}%)` }}
           />
         </div>
       </div>
@@ -240,7 +241,7 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
       <div className="quick-settings__pills">
         {pills.map((pill, index) => (
           <div key={pill.id} style={{ position: 'relative', zIndex: activePillMenu === pill.id ? 100 : 1 }}>
-            <div className={`qs-pill-group ${pill.active ? 'active' : ''}`}>
+            <div className={`qs-pill-group ${pill.active ? 'active' : ''} ${(pill as any).disabled ? 'disabled' : ''}`}>
             <div className="qs-pill-main" onClick={pill.onClick}>
               <div className="qs-pill-icon">{pill.icon}</div>
               <div className="qs-pill-content">
@@ -269,20 +270,46 @@ export function QuickSettings({ onClose, isLoginScreen = false }: QuickSettingsP
               <div className="qs-pill-dropdown-header">Select {pill.title}</div>
               
               {pill.menuItems && pill.menuItems.length > 0 ? (
-                pill.menuItems.map(item => (
-                  <div key={item} className="qs-pill-dropdown-item" onClick={() => setActivePillMenu(null)}>
-                    {item}
-                  </div>
-                ))
+                pill.menuItems.map(item => {
+                  const isActivePower = pill.id === 'power' && powerMode === item.toLowerCase().replace(' ', '-');
+                  return (
+                    <div 
+                      key={item} 
+                      className="qs-pill-dropdown-item" 
+                      onClick={() => {
+                        if (pill.id === 'power') {
+                          setPowerMode(item.toLowerCase().replace(' ', '-') as any);
+                        }
+                        setActivePillMenu(null);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontWeight: isActivePower ? 700 : 500 }}
+                    >
+                      {item}
+                      {isActivePower && (
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="var(--color-accent, #e95420)">
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                      )}
+                    </div>
+                  );
+                })
               ) : (
                 <div className="qs-pill-dropdown-empty">
-                  {isSearching && (pill.id === 'wifi' || pill.id === 'bt') ? (
-                    <div className="qs-searching-spinner">
-                      <svg className="qs-spinner" viewBox="0 0 50 50">
-                        <circle cx="25" cy="25" r="20" fill="none" strokeWidth="5"></circle>
-                      </svg>
-                      {pill.id === 'wifi' ? 'Searching for Wi-Fi...' : 'Searching for devices...'}
-                    </div>
+                  {(pill.id === 'wifi' || pill.id === 'bt') ? (
+                    pill.active ? (
+                      isSearching ? (
+                        <div className="qs-searching-spinner">
+                          <svg className="qs-spinner" viewBox="0 0 50 50">
+                            <circle cx="25" cy="25" r="20" fill="none" strokeWidth="5"></circle>
+                          </svg>
+                          {pill.id === 'wifi' ? 'Searching for Wi-Fi...' : 'Searching for devices...'}
+                        </div>
+                      ) : (
+                        pill.emptyMessage
+                      )
+                    ) : (
+                      `${pill.title} is turned off`
+                    )
                   ) : (
                     pill.emptyMessage
                   )}

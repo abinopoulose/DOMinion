@@ -10,6 +10,7 @@ export interface WindowProps {
   id: string;
   icon?: ReactNode;
   headerControls?: ReactNode;
+  fullHeaderControls?: boolean;
   children: ReactNode;
 }
 
@@ -17,6 +18,7 @@ export function Window({
   id,
   icon,
   headerControls,
+  fullHeaderControls,
   children,
 }: WindowProps) {
   const win = useWindowStore(useCallback((state) => state.windows.find((w) => w.id === id), [id]));
@@ -242,6 +244,7 @@ export function Window({
         onDoubleClick={tileState ? handleUntile : handleMaximize}
         dragHandlers={dragHandlers}
         headerControls={headerControls}
+        fullHeaderControls={fullHeaderControls}
       />
       <div className="window__content">
         {children}

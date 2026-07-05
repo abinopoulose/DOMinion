@@ -11,7 +11,7 @@ interface WindowStore {
   previewFocusWindowId: string | null;
 
   setPreviewFocusWindowId: (id: string | null) => void;
-  openWindow: (appId: AppId, initialAppState?: unknown) => void;
+  openWindow: (appId: AppId, initialAppState?: unknown, options?: { position?: { x: number, y: number } }) => string | void;
   closeWindow: (id: string) => void;
   focusWindow: (id: string) => void;
   minimizeWindow: (id: string) => void;
@@ -33,6 +33,7 @@ const DEFAULT_SIZES: Record<AppId, { width: number; height: number }> = {
   'file-manager': { width: 800, height: 550 },
   browser: { width: 900, height: 600 },
   'text-editor': { width: 600, height: 500 },
+  calculator: { width: 320, height: 480 },
   settings: { width: 900, height: 600 },
 };
 
@@ -41,6 +42,7 @@ const APP_TITLES: Record<AppId, string> = {
   'file-manager': 'Files',
   browser: 'Browser',
   'text-editor': 'Text Editor',
+  calculator: 'Calculator',
   settings: 'Settings',
 };
 
@@ -53,7 +55,7 @@ export const useWindowStore = create<WindowStore>()(
 
       setPreviewFocusWindowId: (id) => set({ previewFocusWindowId: id }),
 
-      openWindow: (appId: AppId, initialAppState?: unknown) => {
+      openWindow: (appId: AppId, initialAppState?: unknown, options?: { position?: { x: number, y: number } }) => {
         const { windows, nextZIndex } = get();
 
         // Enforce singleton for settings app
@@ -69,7 +71,7 @@ export const useWindowStore = create<WindowStore>()(
               ),
               nextZIndex: state.nextZIndex + 1,
             }));
-            return;
+            return existingSettings.id;
           }
         }
 
@@ -83,7 +85,7 @@ export const useWindowStore = create<WindowStore>()(
           id,
           appId,
           title: APP_TITLES[appId],
-          position: { x: 120 + cascadeOffset, y: 60 + cascadeOffset },
+          position: options?.position || { x: 120 + cascadeOffset, y: 60 + cascadeOffset },
           size: DEFAULT_SIZES[appId],
           zIndex: nextZIndex,
           isMinimized: false,
@@ -97,6 +99,8 @@ export const useWindowStore = create<WindowStore>()(
           windows: [...state.windows.map(w => ({ ...w, isFocused: false })), newWindow],
           nextZIndex: state.nextZIndex + 1,
         }));
+        
+        return id;
       },
 
       closeWindow: (id: string) => {

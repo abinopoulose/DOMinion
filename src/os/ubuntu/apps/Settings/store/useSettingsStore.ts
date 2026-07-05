@@ -50,6 +50,7 @@ interface SettingsState {
   screenBlank: string;
   systemVolume: number;
   inputVolume: number;
+  screenBrightness: number;
   hotCorner: boolean;
   activeScreenEdges: boolean;
   workspaceType: 'dynamic' | 'fixed';
@@ -81,6 +82,7 @@ interface SettingsState {
   setScreenBlank: (value: string) => void;
   setSystemVolume: (v: number) => void;
   setInputVolume: (v: number) => void;
+  setScreenBrightness: (v: number) => void;
   setHotCorner: (v: boolean) => void;
   setActiveScreenEdges: (v: boolean) => void;
   setWorkspaceType: (v: 'dynamic' | 'fixed') => void;
@@ -114,6 +116,7 @@ export const useSettingsStore = create<SettingsState>()(
       screenBlank: '5',
       systemVolume: 70,
       inputVolume: 50,
+      screenBrightness: 100,
       hotCorner: true,
       activeScreenEdges: true,
       workspaceType: 'dynamic',
@@ -144,6 +147,7 @@ export const useSettingsStore = create<SettingsState>()(
       setScreenBlank: (screenBlank) => set({ screenBlank }),
       setSystemVolume: (systemVolume) => set({ systemVolume }),
       setInputVolume: (inputVolume) => set({ inputVolume }),
+      setScreenBrightness: (screenBrightness) => set({ screenBrightness }),
       setHotCorner: (hotCorner) => set({ hotCorner }),
       setActiveScreenEdges: (activeScreenEdges) => set({ activeScreenEdges }),
       setWorkspaceType: (workspaceType) => set({ workspaceType }),
@@ -175,6 +179,7 @@ export const useSettingsStore = create<SettingsState>()(
         screenBlank: state.screenBlank,
         systemVolume: state.systemVolume,
         inputVolume: state.inputVolume,
+        screenBrightness: state.screenBrightness,
         hotCorner: state.hotCorner,
         activeScreenEdges: state.activeScreenEdges,
         workspaceType: state.workspaceType,

@@ -2,12 +2,16 @@ import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
 import { useNetworkStore } from '../../../store/useNetworkStore';
 
 export function BluetoothPanel() {
-  const { bluetoothEnabled, toggleBluetooth } = useNetworkStore();
+  const { bluetoothEnabled, toggleBluetooth, airplaneMode } = useNetworkStore();
 
   const headerToggle = (
     <div 
       className={`ubuntu-settings-toggle ${bluetoothEnabled ? 'checked' : ''}`}
-      style={{ backgroundColor: bluetoothEnabled ? 'var(--color-accent)' : undefined }}
+      style={{ 
+        backgroundColor: bluetoothEnabled ? 'var(--color-accent)' : undefined,
+        opacity: airplaneMode ? 0.4 : 1,
+        pointerEvents: airplaneMode ? 'none' : 'auto'
+      }}
       onClick={toggleBluetooth}
     >
       <div className="ubuntu-settings-toggle-knob" style={{ transform: bluetoothEnabled ? 'translateX(20px)' : 'translateX(0)' }} />
@@ -37,8 +41,12 @@ export function BluetoothPanel() {
             <path d="m6.5 6.5 11 11L12 23V1l5.5 5.5-11 11" />
             <line x1="2" y1="2" x2="22" y2="22" />
           </svg>
-          <h2 style={{ fontSize: '24px', fontWeight: 'normal', margin: '0 0 8px 0', color: 'var(--color-text-primary)' }}>Bluetooth is Off</h2>
-          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>Turn on Bluetooth to connect devices.</p>
+          <h2 style={{ fontSize: '24px', fontWeight: 'normal', margin: '0 0 8px 0', color: 'var(--color-text-primary)' }}>
+            {airplaneMode ? 'Bluetooth is Disabled' : 'Bluetooth is Off'}
+          </h2>
+          <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', margin: 0 }}>
+            {airplaneMode ? 'Turn off Airplane Mode to enable Bluetooth.' : 'Turn on Bluetooth to connect devices.'}
+          </p>
         </div>
       )}
     </SettingsPanelWrapper>
