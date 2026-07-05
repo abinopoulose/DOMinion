@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 const wallpaper = '/ubuntu_wallpaper.jpg';
 import homeIcon from '../../assets/icons/home.svg';
 import trashIcon from '../../assets/icons/trash.svg';
@@ -11,6 +12,9 @@ import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { getIconForFile } from '../../utils/iconResolver';
 import type { VFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
+import { useSelectionBox } from '../../hooks/useSelectionBox';
+import { TrashConfirmDialog } from '../TrashConfirmDialog/TrashConfirmDialog';
+import { initDynamicDrag, updateDynamicDrag, cleanupDynamicDrag } from '../../utils/dragGhost';
 import './Desktop.css';
 
 interface DesktopIconItem {
@@ -31,7 +35,10 @@ interface DesktopProps {
 }
 
 export function Desktop({ onUnfocusAll }: DesktopProps) {
-  const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [trashConfirm, setTrashConfirm] = useState<string[] | null>(null);
+  // Ref on .desktop itself — it receives all pointer events
+  const desktopRef = useRef<HTMLDivElement>(null);
   const { menu, show: showContextMenu, hide: hideContextMenu } = useContextMenu();
   const showDesktopIcons = useSettingsStore((s: any) => s.showDesktopIcons);
   const settingsWallpaper = useSettingsStore((s: any) => s.wallpaper);
@@ -181,13 +188,19 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     setEditingId(null);
   };
 
-  const handleIconClick = (id: string) => {
-    setSelectedIcon(id);
+  const handleIconClick = (id: string, multi: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(multi ? prev : []);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
     setEditingId(null);
+    desktopRef.current?.focus();
   };
 
   const handleDesktopClick = () => {
-    setSelectedIcon(null);
+    setSelectedIds(new Set());
     setEditingId(null);
     onUnfocusAll();
   };
@@ -199,10 +212,33 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
   const handleFileContextMenu = (e: React.MouseEvent, file: VFSNode) => {
     e.stopPropagation();
-    setSelectedIcon(file.id);
+    if (!selectedIds.has(file.id)) setSelectedIds(new Set([file.id]));
     setContextNode(file);
     showContextMenu(e);
   };
+
+  const handleDeleteRequest = (ids: string[]) => setTrashConfirm(ids);
+
+  const handleTrashConfirm = () => {
+    if (!trashConfirm) return;
+    trashConfirm.forEach(id => useVFSStore.getState().moveToTrash(id));
+    setSelectedIds(new Set());
+    setTrashConfirm(null);
+  };
+
+  // Rubber-band selection
+  // NOTE: containerRef is .desktop (not .desktop__icons which has pointer-events:none)
+  // Items must have data-sel-id attribute
+  const { selectionRect, handlePointerDown: handleSelectionPointerDown } = useSelectionBox({
+    containerRef: desktopRef as React.RefObject<HTMLElement>,
+    itemSelector: '[data-sel-id]',
+    onSelect: (ids) => setSelectedIds(new Set(ids)),
+    // Don't start lasso when clicking on a context menu
+    shouldSkip: (t) => !!t.closest('.context-menu'),
+    allowStartOnItems: false,
+  });
+
+  // Note: Keyboard events are now handled via onKeyDown on the desktop div
 
   const clipboard = useVFSStore((s) => s.clipboard);
 
@@ -236,7 +272,10 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
       label: 'Cut',
       disabled: !canWriteNode,
       onClick: () => {
-        useVFSStore.getState().setClipboard('cut', contextNode.id);
+        const ids = selectedIds.size > 1 && selectedIds.has(contextNode.id)
+          ? [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id))
+          : [contextNode.id];
+        useVFSStore.getState().setClipboard('cut', ids[0]);
         hideContextMenu();
       }
     },
@@ -244,17 +283,25 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
       id: 'copy',
       label: 'Copy',
       onClick: () => {
-        useVFSStore.getState().setClipboard('copy', contextNode.id);
+        const ids = selectedIds.size > 1 && selectedIds.has(contextNode.id)
+          ? [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id))
+          : [contextNode.id];
+        useVFSStore.getState().setClipboard('copy', ids[0]);
         hideContextMenu();
       }
     },
     { id: 'sep-2', label: '', separator: true },
     {
       id: 'delete',
-      label: 'Delete',
+      label: selectedIds.size > 1 && selectedIds.has(contextNode.id)
+        ? `Move ${selectedIds.size} Items to Trash`
+        : 'Move to Trash',
       disabled: !canWriteNode,
       onClick: () => {
-        useVFSStore.getState().moveToTrash(contextNode.id);
+        const ids = selectedIds.size > 1 && selectedIds.has(contextNode.id)
+          ? [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id))
+          : [contextNode.id];
+        handleDeleteRequest(ids);
         hideContextMenu();
       }
     },
@@ -296,15 +343,51 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
   return (
     <div
+      ref={desktopRef}
       className="desktop"
-      style={{ backgroundImage: `url(${activeWallpaper})` }}
+      tabIndex={0}
+      style={{ backgroundImage: `url(${activeWallpaper})`, outline: 'none' }}
       onClick={handleDesktopClick}
       onContextMenu={handleContextMenu}
+      onKeyDown={(e) => {
+        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          setSelectedIds(new Set(combinedIcons.map(i => i.id)));
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+          if (selectedIds.size > 0) {
+            const ids = [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id));
+            if (ids.length > 0) useVFSStore.getState().setClipboard('copy', ids);
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+          if (selectedIds.size > 0) {
+            const ids = [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id));
+            if (ids.length > 0) useVFSStore.getState().setClipboard('cut', ids);
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+          const store = useVFSStore.getState();
+          const { action, nodeIds } = store.clipboard;
+          if (action && nodeIds && nodeIds.length > 0 && hasPermission(store.map, DESKTOP_ID, 'write', username)) {
+            if (action === 'cut') {
+              nodeIds.forEach(id => store.moveNode(id, DESKTOP_ID));
+              store.setClipboard(null, []);
+            } else if (action === 'copy') {
+              nodeIds.forEach(id => store.duplicateNode(id, DESKTOP_ID));
+            }
+          }
+        } else if (e.key === 'Delete' && selectedIds.size > 0 && !editingId) {
+          e.preventDefault();
+          setTrashConfirm([...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id)));
+        }
+      }}
       onDragOver={(e) => e.preventDefault()}
+      onPointerDown={handleSelectionPointerDown}
       onDrop={(e) => {
         e.preventDefault();
         const desktopIconId = e.dataTransfer.getData('application/x-desktop-icon');
-        const nodeId = e.dataTransfer.getData('application/x-vfs-node');
+        const multi = e.dataTransfer.getData('application/x-vfs-nodes');
+        const single = e.dataTransfer.getData('application/x-vfs-node');
         
         if (desktopIconId) {
           const rawX = e.clientX - dragOffset.x;
@@ -321,90 +404,136 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
           const maxRow = Math.max(0, Math.floor((window.innerHeight - OFFSET_Y - (dockPosition === 'bottom' ? dockWidth : 0)) / GRID_Y) - 1);
           const maxCol = Math.max(0, Math.floor((window.innerWidth - OFFSET_X - (dockPosition === 'right' ? dockWidth : 0)) / GRID_X) - 1);
           
-          targetCol = Math.max(0, Math.min(targetCol, maxCol));
-          targetRow = Math.max(0, Math.min(targetRow, maxRow));
-          
+          const idsToMove = selectedIds.has(desktopIconId) && selectedIds.size > 1 
+            ? Array.from(selectedIds).filter(id => layoutPositions[id])
+            : [desktopIconId];
+            
           const occupied = new Set<string>();
           for (const [id, pos] of Object.entries(layoutPositions)) {
-            if (id === desktopIconId) continue;
+            if (idsToMove.includes(id)) continue;
             const c = Math.round((pos.x - OFFSET_X) / GRID_X);
             const r = Math.round((pos.y - OFFSET_Y) / GRID_Y);
             occupied.add(`${c},${r}`);
           }
 
-          let r = 0;
-          let finalCol = targetCol;
-          let finalRow = targetRow;
-          let found = false;
-          while (r < 20 && !found) {
-            for (let dc = -r; dc <= r; dc++) {
-              for (let dr = -r; dr <= r; dr++) {
-                if (Math.max(Math.abs(dc), Math.abs(dr)) === r) {
-                  const c = targetCol + dc;
-                  const row = targetRow + dr;
-                  if (c >= 0 && row >= 0 && !occupied.has(`${c},${row}`)) {
-                    finalCol = c;
-                    finalRow = row;
-                    found = true;
-                    break;
+          const findSlot = (tC: number, tR: number) => {
+            let radius = 0;
+            let startC = Math.max(0, Math.min(tC, maxCol));
+            let startR = Math.max(0, Math.min(tR, maxRow));
+            let found = false;
+            let finalC = startC, finalR = startR;
+            while (radius < 30 && !found) {
+              for (let dc = -radius; dc <= radius; dc++) {
+                for (let dr = -radius; dr <= radius; dr++) {
+                  if (Math.max(Math.abs(dc), Math.abs(dr)) === radius) {
+                    const c = startC + dc;
+                    const row = startR + dr;
+                    if (c >= 0 && c <= maxCol && row >= 0 && row <= maxRow && !occupied.has(`${c},${row}`)) {
+                      finalC = c;
+                      finalR = row;
+                      found = true;
+                      break;
+                    }
                   }
                 }
+                if (found) break;
               }
-              if (found) break;
+              radius++;
             }
-            r++;
+            occupied.add(`${finalC},${finalR}`);
+            return { c: finalC, r: finalR };
+          };
+
+          const newPositions = { ...desktopIconPositions };
+          const leadPos = layoutPositions[desktopIconId];
+          const leadC = Math.round((leadPos.x - OFFSET_X) / GRID_X);
+          const leadR = Math.round((leadPos.y - OFFSET_Y) / GRID_Y);
+
+          // Place lead icon first so it gets priority for the exact slot
+          const leadSlot = findSlot(targetCol, targetRow);
+          newPositions[desktopIconId] = { 
+            c: leadSlot.c, r: leadSlot.r, 
+            x: OFFSET_X + leadSlot.c * GRID_X, y: OFFSET_Y + leadSlot.r * GRID_Y 
+          };
+
+          // Place the rest relative to the lead icon's new position
+          for (const id of idsToMove) {
+            if (id === desktopIconId) continue;
+            const origPos = layoutPositions[id];
+            const origC = Math.round((origPos.x - OFFSET_X) / GRID_X);
+            const origR = Math.round((origPos.y - OFFSET_Y) / GRID_Y);
+            
+            const relativeTargetC = leadSlot.c + (origC - leadC);
+            const relativeTargetR = leadSlot.r + (origR - leadR);
+            
+            const slot = findSlot(relativeTargetC, relativeTargetR);
+            newPositions[id] = {
+              c: slot.c, r: slot.r,
+              x: OFFSET_X + slot.c * GRID_X, y: OFFSET_Y + slot.r * GRID_Y
+            };
           }
 
-          const finalX = OFFSET_X + finalCol * GRID_X;
-          const finalY = OFFSET_Y + finalRow * GRID_Y;
-
-          setDesktopIconPositions({
-            ...desktopIconPositions,
-            [desktopIconId]: { c: finalCol, r: finalRow, x: finalX, y: finalY }
-          });
+          setDesktopIconPositions(newPositions);
         }
         
-        if (nodeId && !desktopIconId) {
-          useVFSStore.getState().moveNode(nodeId, DESKTOP_ID);
+        if (multi && !desktopIconId) {
+          (JSON.parse(multi) as string[]).forEach(id => useVFSStore.getState().moveNode(id, DESKTOP_ID));
+        } else if (single && !desktopIconId) {
+          useVFSStore.getState().moveNode(single, DESKTOP_ID);
         }
       }}
     >
-      <div className="desktop__icons">
+      <div className="desktop__icons" ref={undefined} style={{ position: 'relative' }}>
         {combinedIcons.map((item) => {
           let pos = layoutPositions[item.id];
 
           return (
             <div
               key={item.id}
-              className={`desktop-icon${selectedIcon === item.id ? ' desktop-icon--selected' : ''}`}
+              data-sel-id={item.id}
+              className={`desktop-icon${selectedIds.has(item.id) ? ' desktop-icon--selected' : ''}`}
               style={{ left: pos.x, top: pos.y, width: `${dockIconSize + 32}px` }}
               draggable
             onDragStart={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               setDragOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
               e.dataTransfer.setData('application/x-desktop-icon', item.id);
+              
+              const idsToDrag = selectedIds.has(item.id) ? Array.from(selectedIds) : [item.id];
+              initDynamicDrag(e, idsToDrag, item.id, '.desktop-icon');
+              
               if (!item.isStatic) {
                 e.dataTransfer.setData('application/x-vfs-node', item.id);
+                if (selectedIds.has(item.id) && selectedIds.size > 1) {
+                  e.dataTransfer.setData('application/x-vfs-nodes', JSON.stringify([...selectedIds]));
+                }
               }
             }}
+            onDrag={updateDynamicDrag}
+            onDragEnd={cleanupDynamicDrag}
             onDragOver={(e) => {
               e.preventDefault();
               if (item.type === 'directory') e.stopPropagation();
             }}
             onDrop={(e) => {
               if (!item.isStatic && item.type === 'directory') {
-                const nodeId = e.dataTransfer.getData('application/x-vfs-node');
-                const desktopIconId = e.dataTransfer.getData('application/x-desktop-icon');
-                if (nodeId && nodeId !== item.id && !desktopIconId) {
+                const multi = e.dataTransfer.getData('application/x-vfs-nodes');
+                const single = e.dataTransfer.getData('application/x-vfs-node');
+                if (multi) {
                   e.preventDefault();
                   e.stopPropagation();
-                  useVFSStore.getState().moveNode(nodeId, item.id);
+                  (JSON.parse(multi) as string[]).filter(id => id !== item.id).forEach(id =>
+                    useVFSStore.getState().moveNode(id, item.id));
+                } else if (single && single !== item.id) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  useVFSStore.getState().moveNode(single, item.id);
                 }
               }
             }}
             onClick={(e) => {
               e.stopPropagation();
-              handleIconClick(item.id);
+              handleIconClick(item.id, e.ctrlKey || e.metaKey);
             }}
             onDoubleClick={(e) => {
               e.stopPropagation();
@@ -474,6 +603,24 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
           );
         })}
       </div>
+
+      {/* Rubber-band selection box on desktop */}
+      {selectionRect && (
+        <div
+          style={{
+            position: 'absolute',
+            left: selectionRect.x,
+            top: selectionRect.y,
+            width: selectionRect.width,
+            height: selectionRect.height,
+            border: '1px solid rgba(233,84,32,0.8)',
+            background: 'rgba(233,84,32,0.12)',
+            pointerEvents: 'none',
+            borderRadius: '2px',
+            zIndex: 100,
+          }}
+        />
+      )}
 
       {menu.isVisible && (
         <ContextMenu
@@ -546,6 +693,15 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {trashConfirm && trashConfirm.length > 0 && createPortal(
+        <TrashConfirmDialog
+          names={trashConfirm.map(id => combinedIcons.find(i => i.id === id)?.label || id)}
+          onConfirm={handleTrashConfirm}
+          onCancel={() => setTrashConfirm(null)}
+        />,
+        document.body
       )}
     </div>
   );

@@ -120,15 +120,38 @@ export const ls: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
     outputLines.forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
-  const outputStr = children.map(c => {
+  const items = children.map(c => {
     if (c.type === 'directory') {
       return `\x1b[1;34m${c.name}/\x1b[0m`;
     }
     return c.name;
-  }).join('  ');
+  });
 
-  if (outputStr) {
-    [outputStr].forEach((line: string) => process.stdout.writeLine(line));
+  if (items.length > 0) {
+    const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+    
+    // Sort items case-insensitive
+    items.sort((a, b) => stripAnsi(a).toLowerCase().localeCompare(stripAnsi(b).toLowerCase()));
+
+    const terminalWidth = 100; // Reasonable default for our terminal
+    const maxLen = Math.max(...items.map(s => stripAnsi(s).length));
+    const colWidth = maxLen + 2; 
+    const cols = Math.max(1, Math.floor(terminalWidth / colWidth));
+    const rows = Math.ceil(items.length / cols);
+
+    for (let r = 0; r < rows; r++) {
+      let line = '';
+      for (let c = 0; c < cols; c++) {
+        const index = c * rows + r;
+        if (index < items.length) {
+          const item = items[index];
+          const visibleLen = stripAnsi(item).length;
+          line += item + ' '.repeat(colWidth - visibleLen);
+        }
+      }
+      process.stdout.writeLine(line.trimEnd());
+    }
   }
+
   return {};
 };

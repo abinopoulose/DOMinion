@@ -23,6 +23,21 @@ function parseAnsi(text: string): string {
   return html;
 }
 
+export function PromptText({ text }: { text: string }) {
+  const match = text.match(/^([^@]+@[^:]+):(.*)([\$#]) $/);
+  if (match) {
+    return (
+      <span className="terminal-prompt" style={{ whiteSpace: 'pre' }}>
+        <span style={{ color: '#4e9a06', fontWeight: 'bold' }}>{match[1]}</span>
+        <span style={{ color: '#ffffff' }}>:</span>
+        <span style={{ color: '#3465a4', fontWeight: 'bold' }}>{match[2]}</span>
+        <span style={{ color: '#ffffff' }}>{match[3]} </span>
+      </span>
+    );
+  }
+  return <span className="terminal-prompt" style={{ whiteSpace: 'pre' }}>{text}</span>;
+}
+
 export function TerminalOutput({ history }: TerminalOutputProps) {
   return (
     <>
@@ -33,7 +48,7 @@ export function TerminalOutput({ history }: TerminalOutputProps) {
       {history.map((entry) => (
         <div key={entry.id} className="terminal-entry">
           <div className="terminal-prompt-line">
-            <span className="terminal-prompt">{entry.prompt}</span>
+            <PromptText text={entry.prompt} />
             <span className="terminal-command-text">{entry.command}</span>
           </div>
           {entry.output.length > 0 && (

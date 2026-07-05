@@ -69,7 +69,7 @@ export function getAuthContext() {
 
 export interface ClipboardState {
   action: 'cut' | 'copy' | null;
-  nodeId: string | null;
+  nodeIds: string[];
 }
 
 interface VFSStore {
@@ -81,8 +81,7 @@ interface VFSStore {
   inoToId: Record<number, string>;
   clipboard: ClipboardState;
   
-  // Clipboard
-  setClipboard: (action: 'cut' | 'copy' | null, nodeId: string | null) => void;
+  setClipboard: (action: 'cut' | 'copy' | null, nodeIds: string[]) => void;
 
   // Mutations (return error string if failed, undefined if success)
   createNode: (parentId: string, name: string, type: VFSNodeType, content?: string, executionUser?: string) => { id?: string; error?: string };
@@ -117,9 +116,9 @@ export const useVFSStore = create<VFSStore>()(
       nextIno: 3,
       idToIno: {},
       inoToId: {},
-      clipboard: { action: null, nodeId: null },
+      clipboard: { action: null, nodeIds: [] },
 
-      setClipboard: (action, nodeId) => set({ clipboard: { action, nodeId } }),
+      setClipboard: (action, nodeIds) => set({ clipboard: { action, nodeIds } }),
 
       createNode: (parentId, name, type, content, executionUser) => {
         let error: string | undefined;

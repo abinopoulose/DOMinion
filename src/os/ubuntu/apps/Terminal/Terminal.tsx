@@ -9,6 +9,7 @@ import type { TerminalAppState } from './commands/types';
 import { parseCommand } from './commandParser';
 import { handleNano } from './commands/nano';
 import { commandRegistry } from './commands';
+import { handleAutocomplete } from './autocomplete';
 import { openFile, writeToFile, readFile, closeFile, type ProcessState } from '../../fs/fd';
 import { getHomeId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
@@ -41,7 +42,7 @@ export function Terminal({ windowId }: TerminalProps) {
     fontSize: 13,
   };
 
-  let { cwdId, history, commandHistory, interactiveApp, nanoFileId, fontSize = 13 } = appState;
+  let { cwdId = HOME_ID, history = [], commandHistory = [], interactiveApp, nanoFileId, fontSize = 13 } = appState;
 
   // Auto-scroll to bottom when history changes
   useEffect(() => {
@@ -730,9 +731,36 @@ export function Terminal({ windowId }: TerminalProps) {
                     step === 'new' ? `New password: ` : `Retype new password: `;
     isPasswordMode = true;
   }
+  const handleTab = (currentInput: string, setInput: (v: string) => void) => {
+    const result = handleAutocomplete(currentInput, cwdId);
+    if (result.completion !== undefined) {
+      setInput(result.completion);
+    }
+    if (result.suggestions && result.suggestions.length > 0) {
+      const newHistoryEntry: HistoryEntry = {
+        id: uuidv4(),
+        prompt: currentPrompt,
+        command: currentInput,
+        output: result.suggestions,
+      };
+      updateAppState(windowId, {
+        ...appState,
+        history: [...history, newHistoryEntry],
+      });
+    }
+  };
 
   return (
-    <div className="terminal-app" onClick={() => { if (!window.getSelection()?.toString()) inputRef.current?.focus(); }} onKeyDown={handleKeyDown} tabIndex={-1} style={{ fontSize: `${fontSize}px` }}>
+    <div 
+      className="terminal-app" 
+      onClick={(e) => { 
+        if ((e.target as HTMLElement).tagName === 'INPUT') return;
+        if (!window.getSelection()?.toString()) inputRef.current?.focus(); 
+      }} 
+      onKeyDown={handleKeyDown} 
+      tabIndex={-1} 
+      style={{ fontSize: `${fontSize}px` }}
+    >
       <div className="terminal-scroll-area" ref={scrollAreaRef}>
         <TerminalOutput history={history} />
         <TerminalInput
@@ -741,6 +769,7 @@ export function Terminal({ windowId }: TerminalProps) {
           onCommand={handleCommand}
           commandHistory={commandHistory}
           isPassword={isPasswordMode}
+          onTab={handleTab}
         />
       </div>
     </div>
@@ -820,7 +849,7 @@ export function TerminalHeaderControls({ windowId }: { windowId: string }) {
           <div 
             style={{
               position: 'absolute', top: '100%', right: 0, marginTop: '8px',
-              background: 'var(--bg-panel, #333)', border: '1px solid var(--color-border, #444)', borderRadius: '6px',
+              background: 'var(--color-bg-window, #333)', border: '1px solid var(--color-border, #444)', borderRadius: '6px',
               padding: '4px 0', minWidth: '150px', zIndex: 9999,
               boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
             }}

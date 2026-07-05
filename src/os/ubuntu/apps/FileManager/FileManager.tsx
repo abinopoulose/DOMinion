@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useWindowStore, useVFSStore } from '../../store';
 import { getHomeId, getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
@@ -12,6 +13,7 @@ import type { VFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
 import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { withElevation } from '../../services/sudoService';
+import { TrashConfirmDialog } from '../../components/TrashConfirmDialog/TrashConfirmDialog';
 import './FileManager.css';
 
 /**
@@ -74,6 +76,8 @@ export function FileManager({ windowId }: FileManagerProps) {
   const [contextNode, setContextNode] = useState<VFSNode | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [trashConfirm, setTrashConfirm] = useState<string[] | null>(null);
 
   const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
   const HOME_ID = getHomeId(username);
@@ -169,6 +173,34 @@ export function FileManager({ windowId }: FileManagerProps) {
     );
   };
 
+  // Mass operations
+  const handleMassCopy = () => {
+    if (selectedIds.length === 0) return;
+    vfsStore.setClipboard('copy', selectedIds);
+  };
+
+  const handleMassCut = () => {
+    if (selectedIds.length === 0) return;
+    vfsStore.setClipboard('cut', selectedIds);
+  };
+
+  const handleDeleteRequest = (ids: string[]) => {
+    setTrashConfirm(ids);
+  };
+
+  const handleTrashConfirm = () => {
+    if (!trashConfirm) return;
+    trashConfirm.forEach(id => {
+      attemptWithPolkit(
+        () => vfsStore.moveToTrash(id),
+        `Authentication is needed to move this item to trash.`,
+        'org.freedesktop.filemanager.delete'
+      );
+    });
+    setSelectedIds([]);
+    setTrashConfirm(null);
+  };
+
   const [propertiesNode, setPropertiesNode] = useState<VFSNode | null>(null);
 
   const handleContextMenu = (e: React.MouseEvent, node?: VFSNode) => {
@@ -247,7 +279,10 @@ export function FileManager({ windowId }: FileManagerProps) {
           label: 'Cut',
           icon: !canWriteNode ? 'lock' : undefined,
           onClick: () => {
-            vfsStore.setClipboard('cut', contextNode.id);
+            const ids = selectedIds.includes(contextNode.id) && selectedIds.length > 1
+              ? selectedIds
+              : [contextNode.id];
+            vfsStore.setClipboard('cut', ids);
             hideMenu();
           }
         },
@@ -255,21 +290,25 @@ export function FileManager({ windowId }: FileManagerProps) {
           id: 'copy',
           label: 'Copy',
           onClick: () => {
-            vfsStore.setClipboard('copy', contextNode.id);
+            const ids = selectedIds.includes(contextNode.id) && selectedIds.length > 1
+              ? selectedIds
+              : [contextNode.id];
+            vfsStore.setClipboard('copy', ids);
             hideMenu();
           }
         },
         { id: 'sep-2', label: '', separator: true },
         {
           id: 'delete',
-          label: 'Delete',
+          label: selectedIds.includes(contextNode.id) && selectedIds.length > 1
+            ? `Move ${selectedIds.length} Items to Trash`
+            : 'Move to Trash',
           icon: !canWriteNode ? 'lock' : undefined,
           onClick: () => {
-            attemptWithPolkit(
-              () => vfsStore.moveToTrash(contextNode.id),
-              `Authentication is needed to delete '${contextNode.name}'.`,
-              'org.freedesktop.filemanager.delete'
-            );
+            const ids = selectedIds.includes(contextNode.id) && selectedIds.length > 1
+              ? selectedIds
+              : [contextNode.id];
+            handleDeleteRequest(ids);
             hideMenu();
           }
         },
@@ -354,20 +393,28 @@ export function FileManager({ windowId }: FileManagerProps) {
         {
           id: 'paste',
           label: 'Paste',
-          disabled: !clipboard.nodeId,
+          disabled: !clipboard.nodeIds || clipboard.nodeIds.length === 0,
           icon: !canWriteCwd ? 'lock' : undefined,
           onClick: () => {
-            const { action, nodeId } = clipboard;
-            if (!nodeId) return;
+            const { action, nodeIds } = clipboard;
+            if (!nodeIds || nodeIds.length === 0) return;
             
             attemptWithPolkit(
               () => {
+                let firstError;
                 if (action === 'cut') {
-                  const err = vfsStore.moveNode(nodeId, cwdId);
-                  if (!err) vfsStore.setClipboard(null, null);
-                  return err;
+                  nodeIds.forEach(id => {
+                    const err = vfsStore.moveNode(id, cwdId);
+                    if (err && !firstError) firstError = err;
+                  });
+                  if (!firstError) vfsStore.setClipboard(null, []);
+                  return firstError;
                 } else if (action === 'copy') {
-                  return vfsStore.duplicateNode(nodeId, cwdId).error;
+                  nodeIds.forEach(id => {
+                    const err = vfsStore.duplicateNode(id, cwdId).error;
+                    if (err && !firstError) firstError = err;
+                  });
+                  return firstError;
                 }
                 return undefined;
               },
@@ -382,7 +429,52 @@ export function FileManager({ windowId }: FileManagerProps) {
   }, [contextNode, cwdId, vfsStore, navigateTo, hideMenu, username]);
 
   return (
-    <div className="file-manager">
+    <div
+      className="file-manager"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+          e.preventDefault();
+          setSelectedIds(files.map(f => f.id));
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+          if (selectedIds.length > 0) {
+            vfsStore.setClipboard('copy', selectedIds);
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'x') {
+          if (selectedIds.length > 0) {
+            vfsStore.setClipboard('cut', selectedIds);
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+          const { action, nodeIds } = vfsStore.clipboard;
+          if (action && nodeIds && nodeIds.length > 0) {
+            attemptWithPolkit(
+              () => {
+                let firstError;
+                if (action === 'cut') {
+                  nodeIds.forEach(id => {
+                    const err = vfsStore.moveNode(id, cwdId);
+                    if (err && !firstError) firstError = err;
+                  });
+                  if (!firstError) vfsStore.setClipboard(null, []);
+                  return firstError;
+                } else if (action === 'copy') {
+                  nodeIds.forEach(id => {
+                    const err = vfsStore.duplicateNode(id, cwdId).error;
+                    if (err && !firstError) firstError = err;
+                  });
+                  return firstError;
+                }
+                return undefined;
+              },
+              `Authentication is needed to paste into this location.`,
+              'org.freedesktop.filemanager.paste'
+            );
+          }
+        }
+      }}
+    >
       <Sidebar currentCwdId={cwdId} onNavigate={navigateTo} />
       
       <div className="fm-main">
@@ -391,43 +483,90 @@ export function FileManager({ windowId }: FileManagerProps) {
           onNavigate={navigateTo}
           canGoBack={historyIndex > 0}
           canGoForward={historyIndex < historyStack.length - 1}
+          canGoUp={!!vfsStore.getNode(cwdId)?.parentId}
           onBack={goBack}
           onForward={goForward}
+          onUp={() => {
+            const parentId = vfsStore.getNode(cwdId)?.parentId;
+            if (parentId) navigateTo(parentId);
+          }}
           viewMode={viewMode}
           onViewModeChange={(mode) => updateState({ viewMode: mode })}
         />
         
-        <div 
-          className="fm-content-area" 
+        <div
+          className="fm-content-area"
           onContextMenu={(e) => handleContextMenu(e)}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
+            const multiNodes = e.dataTransfer.getData('application/x-vfs-nodes');
             const nodeId = e.dataTransfer.getData('application/x-vfs-node');
-            if (nodeId) {
+            if (multiNodes) {
+              const ids: string[] = JSON.parse(multiNodes);
+              ids.forEach(id => useVFSStore.getState().moveNode(id, cwdId));
+            } else if (nodeId) {
               useVFSStore.getState().moveNode(nodeId, cwdId);
             }
           }}
         >
+          {/* Mass-ops toolbar — shown when items are selected */}
+          {selectedIds.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '6px 12px',
+              background: 'var(--bg-titlebar)',
+              borderBottom: '1px solid var(--color-border)',
+              fontSize: '13px',
+            }}>
+              <span style={{ color: 'var(--color-text-secondary)', marginRight: 4 }}>
+                {selectedIds.length} selected
+              </span>
+              <button
+                style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer', fontSize: 13 }}
+                onClick={handleMassCopy}
+              >Copy</button>
+              <button
+                style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text-primary)', cursor: 'pointer', fontSize: 13 }}
+                onClick={handleMassCut}
+              >Cut</button>
+              <button
+                style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: '#E95420', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                onClick={() => handleDeleteRequest(selectedIds)}
+              >Move to Trash</button>
+              <button
+                style={{ marginLeft: 'auto', padding: '4px 10px', borderRadius: 6, border: '1px solid var(--color-border)', background: 'transparent', color: 'var(--color-text-secondary)', cursor: 'pointer', fontSize: 13 }}
+                onClick={() => setSelectedIds([])}
+              >✕</button>
+            </div>
+          )}
           {viewMode === 'grid' ? (
-            <FileGrid 
-              files={files} 
-              onNavigate={navigateTo} 
-              onOpenFile={handleOpenFile} 
+            <FileGrid
+              files={files}
+              onNavigate={navigateTo}
+              onOpenFile={handleOpenFile}
               onRename={handleRename}
               onContextMenu={handleContextMenu}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              onDeleteRequest={handleDeleteRequest}
               editingId={editingId}
               editValue={editValue}
               setEditingId={setEditingId}
               setEditValue={setEditValue}
             />
           ) : (
-            <FileList 
-              files={files} 
-              onNavigate={navigateTo} 
-              onOpenFile={handleOpenFile} 
+            <FileList
+              files={files}
+              onNavigate={navigateTo}
+              onOpenFile={handleOpenFile}
               onRename={handleRename}
               onContextMenu={handleContextMenu}
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              onDeleteRequest={handleDeleteRequest}
               editingId={editingId}
               editValue={editValue}
               setEditingId={setEditingId}
@@ -439,6 +578,15 @@ export function FileManager({ windowId }: FileManagerProps) {
 
       {menu.isVisible && (
         <ContextMenu x={menu.x} y={menu.y} items={contextMenuItems} />
+      )}
+
+      {trashConfirm && createPortal(
+        <TrashConfirmDialog
+          names={trashConfirm.map(id => files.find(f => f.id === id)?.name || id)}
+          onConfirm={handleTrashConfirm}
+          onCancel={() => setTrashConfirm(null)}
+        />,
+        document.body
       )}
 
       {propertiesNode && (

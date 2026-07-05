@@ -12,6 +12,7 @@
   padding: 8px 0;
   box-sizing: border-box;
   outline: none;
+  user-select: text;
 }
 
 .terminal-scroll-area {
@@ -83,6 +84,15 @@
   padding: 0;
   margin: 0;
   caret-color: #ffffff;
+}
+
+.terminal-cursor {
+  animation: terminal-blink 1s step-end infinite;
+}
+
+@keyframes terminal-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 
 .terminal-welcome {

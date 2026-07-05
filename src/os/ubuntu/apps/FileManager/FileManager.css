@@ -6,6 +6,7 @@
   color: var(--color-text-primary);
   font-size: 13px;
   overflow: hidden;
+  outline: none;
 }
 
 .fm-sidebar {
@@ -161,17 +162,22 @@
   overflow-y: auto;
   padding: 16px;
   background: var(--color-bg-window);
+  display: flex;
+  flex-direction: column;
 }
 
 .fm-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   gap: 16px;
+  flex: 1;
+  align-content: start;
 }
 
 .fm-list {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .fm-list-header {
@@ -194,6 +200,7 @@
   border: 1px solid transparent;
   gap: 8px;
   text-align: center;
+  min-width: 0;
 }
 
 .fm-item-list {
@@ -211,8 +218,12 @@
 }
 
 .fm-item-grid.selected, .fm-item-list.selected {
-  background: rgba(46, 194, 126, 0.1);
+  background: rgba(233, 84, 32, 0.2);
   border-color: var(--color-accent);
+}
+
+.fm-item-grid.selected:hover, .fm-item-list.selected:hover {
+  background: rgba(233, 84, 32, 0.3);
 }
 
 .fm-item-icon {
@@ -226,7 +237,9 @@
 }
 
 .fm-item-name {
-  word-break: break-word;
+  width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-all;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -237,6 +250,9 @@
 .fm-item-list .fm-item-name {
   white-space: nowrap;
   -webkit-line-clamp: unset;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fm-empty-state {
