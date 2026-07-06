@@ -66,12 +66,23 @@ interface SettingsState {
   desktopIconOrder: string[];
   desktopIconPositions: Record<string, { x: number; y: number }>;
   pinnedApps: string[];
+  isSearchActive: boolean;
+  searchQuery: string;
+  
+  // Clock Settings
+  clockTimeFormat: '24-hour' | 'AM / PM';
+  clockShowWeekday: boolean;
+  clockShowDate: boolean;
+  clockShowSeconds: boolean;
+  clockShowWeekNumbers: boolean;
   
   // Actions
   setActivePanel: (panel: SettingsPanel) => void;
   setSystemSubPage: (page: SystemSubPage) => void;
   setKeyboardSubPage: (page: 'root' | 'shortcuts') => void;
   goBackFromSubPage: () => void;
+  setIsSearchActive: (v: boolean) => void;
+  setSearchQuery: (v: string) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setAccentColor: (color: string) => void;
   setNightLight: (enabled: boolean) => void;
@@ -99,6 +110,11 @@ interface SettingsState {
   setDesktopIconOrder: (v: string[]) => void;
   setDesktopIconPositions: (v: Record<string, { x: number; y: number }>) => void;
   setPinnedApps: (v: string[]) => void;
+  setClockTimeFormat: (v: '24-hour' | 'AM / PM') => void;
+  setClockShowWeekday: (v: boolean) => void;
+  setClockShowDate: (v: boolean) => void;
+  setClockShowSeconds: (v: boolean) => void;
+  setClockShowWeekNumbers: (v: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -134,11 +150,20 @@ export const useSettingsStore = create<SettingsState>()(
       desktopIconOrder: [],
       desktopIconPositions: {},
       pinnedApps: ['file-manager', 'terminal', 'browser', 'settings'],
+      isSearchActive: false,
+      searchQuery: '',
+      clockTimeFormat: '24-hour',
+      clockShowWeekday: false,
+      clockShowDate: true,
+      clockShowSeconds: false,
+      clockShowWeekNumbers: false,
       
       setActivePanel: (panel) => set({ activePanel: panel, systemSubPage: 'root', keyboardSubPage: 'root' }),
       setSystemSubPage: (page) => set({ systemSubPage: page }),
       setKeyboardSubPage: (page) => set({ keyboardSubPage: page }),
       goBackFromSubPage: () => set({ systemSubPage: 'root', keyboardSubPage: 'root' }),
+      setIsSearchActive: (isSearchActive) => set({ isSearchActive }),
+      setSearchQuery: (searchQuery) => set({ searchQuery }),
       setTheme: (theme) => set({ theme }),
       setAccentColor: (accentColor) => set({ accentColor }),
       setNightLight: (nightLight) => set({ nightLight }),
@@ -166,6 +191,11 @@ export const useSettingsStore = create<SettingsState>()(
       setDesktopIconOrder: (desktopIconOrder) => set({ desktopIconOrder }),
       setDesktopIconPositions: (desktopIconPositions) => set({ desktopIconPositions }),
       setPinnedApps: (pinnedApps) => set({ pinnedApps }),
+      setClockTimeFormat: (clockTimeFormat) => set({ clockTimeFormat }),
+      setClockShowWeekday: (clockShowWeekday) => set({ clockShowWeekday }),
+      setClockShowDate: (clockShowDate) => set({ clockShowDate }),
+      setClockShowSeconds: (clockShowSeconds) => set({ clockShowSeconds }),
+      setClockShowWeekNumbers: (clockShowWeekNumbers) => set({ clockShowWeekNumbers }),
     }),
     {
       name: 'ubuntu-settings-storage',
@@ -198,6 +228,11 @@ export const useSettingsStore = create<SettingsState>()(
         desktopIconOrder: state.desktopIconOrder,
         desktopIconPositions: state.desktopIconPositions,
         pinnedApps: state.pinnedApps,
+        clockTimeFormat: state.clockTimeFormat,
+        clockShowWeekday: state.clockShowWeekday,
+        clockShowDate: state.clockShowDate,
+        clockShowSeconds: state.clockShowSeconds,
+        clockShowWeekNumbers: state.clockShowWeekNumbers,
       }),
     }
   )

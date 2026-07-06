@@ -159,7 +159,7 @@ export function Window({
   if (isMinimized && animState !== 'minimizing') return null;
   
   // Calculate workspace boundaries dynamically
-  const dockSize = dockAutoHide ? 0 : dockIconSize;
+  const dockSize = dockAutoHide ? 0 : dockIconSize + 12;
   const topbarHeight = 28;
 
   let maxTop = topbarHeight;

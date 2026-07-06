@@ -1,5 +1,6 @@
 import type { CommandHandler } from './types';
 import { useVFSStore } from '../../../store';
+import { getAuthContext } from '../../../store/useUbuntuVFSStore';
 import { parseArgs } from '../commandParser';
 import { walkTree } from './utils';
 
@@ -63,7 +64,8 @@ export const grep: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _ap
     if (startNode.type === 'file') {
       files.push({ name: startPath, content: startNode.content });
     } else {
-      walkTree(startNode.id, startPath === '.' ? '.' : startPath, (node, path) => {
+      const username = _appState?.effectiveUser || getAuthContext().username;
+      walkTree(startNode.id, startPath === '.' ? '.' : startPath, username, (node, path) => {
         if (node.type === 'file') {
           files.push({ name: path, content: node.content });
         }

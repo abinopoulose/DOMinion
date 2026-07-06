@@ -1,7 +1,31 @@
 import { useNetworkStore } from '../../../store/useNetworkStore';
+import { useState, useEffect } from 'react';
 
 export function BluetoothPanel() {
   const { bluetoothEnabled, airplaneMode } = useNetworkStore();
+  const [isScanning, setIsScanning] = useState(false);
+  const deviceName = localStorage.getItem('ubuntu-hostname') || 'ubuntu-web';
+
+  useEffect(() => {
+    if (bluetoothEnabled) {
+      setIsScanning(true);
+      const timer = setTimeout(() => {
+        setIsScanning(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setIsScanning(false);
+    }
+  }, [bluetoothEnabled]);
+
+  const handleScan = () => {
+    if (!isScanning) {
+      setIsScanning(true);
+      setTimeout(() => {
+        setIsScanning(false);
+      }, 5000);
+    }
+  };
 
   return (
     <div className="ubuntu-settings-panel-wrapper">
@@ -9,18 +33,36 @@ export function BluetoothPanel() {
         {bluetoothEnabled ? (
           <>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary, #666)', lineHeight: 1.5, margin: '0 0 12px 0' }}>
-              Visible as “pride” and available for Bluetooth file transfers. Transferred files are placed<br/>
+              Visible as “{deviceName}” and available for Bluetooth file transfers. Transferred files are placed<br/>
               in the <span style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>Downloads</span> folder.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontWeight: 600, fontSize: '14px', marginBottom: '-12px', marginTop: '4px' }}>
               <span>Devices</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8">
-                <path d="M21 2v6h-6"></path>
-                <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-                <path d="M3 22v-6h6"></path>
-                <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
-              </svg>
+              {isScanning ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" style={{ animation: 'spin 1s linear infinite' }}>
+                  <line x1="12" y1="2" x2="12" y2="6"></line>
+                  <line x1="12" y1="18" x2="12" y2="22"></line>
+                  <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                  <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+                  <line x1="2" y1="12" x2="6" y2="12"></line>
+                  <line x1="18" y1="12" x2="22" y2="12"></line>
+                  <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+                  <line x1="16.24" y1="4.93" x2="19.07" y2="7.76"></line>
+                  <style>{`
+                    @keyframes spin {
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}</style>
+                </svg>
+              ) : (
+                <svg onClick={handleScan} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" style={{ cursor: 'pointer' }}>
+                  <path d="M21 2v6h-6"></path>
+                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                  <path d="M3 22v-6h6"></path>
+                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                </svg>
+              )}
             </div>
 
             <div className="ubuntu-settings-list-group">

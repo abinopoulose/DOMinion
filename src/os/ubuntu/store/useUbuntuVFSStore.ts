@@ -583,7 +583,7 @@ export const useVFSStore = create<VFSStore>()(
             const updateChildren = (parentId: string) => {
               const pNode = migratedMap[parentId];
               if (pNode && pNode.children) {
-                pNode.children.forEach(cId => {
+                pNode.children.forEach((cId: string) => {
                   const cNode = migratedMap[cId];
                   if (cNode) {
                     if (cNode.owner === 'peasant' || cNode.owner === 'root' || !cNode.owner) {

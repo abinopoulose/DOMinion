@@ -4,7 +4,7 @@ import { useNetworkStore } from '../../../store/useNetworkStore';
 import { PANELS } from '../config/panels';
 
 export function SettingsHeaderControls({ windowId: _windowId }: { windowId: string }) {
-  const { activePanel, systemSubPage, keyboardSubPage, goBackFromSubPage } = useSettingsStore();
+  const { activePanel, systemSubPage, keyboardSubPage, goBackFromSubPage, isSearchActive, setIsSearchActive } = useSettingsStore();
   const panel = PANELS.find(p => p.id === activePanel);
   const { bluetoothEnabled, toggleBluetooth, airplaneMode, wifiEnabled } = useNetworkStore();
 
@@ -38,7 +38,20 @@ export function SettingsHeaderControls({ windowId: _windowId }: { windowId: stri
         borderRight: '1px solid rgba(0,0,0,0.08)',
         flexShrink: 0 
       }}>
-        <div style={{ position: 'absolute', left: 16, opacity: 0.5, display: 'flex' }}>
+        <div 
+          onClick={() => setIsSearchActive(!isSearchActive)}
+          style={{ 
+            position: 'absolute', 
+            left: 16, 
+            opacity: isSearchActive ? 1 : 0.5, 
+            display: 'flex',
+            cursor: 'pointer',
+            padding: '4px',
+            borderRadius: '4px',
+            backgroundColor: isSearchActive ? 'rgba(0,0,0,0.05)' : 'transparent',
+            WebkitAppRegion: 'no-drag'
+          } as any}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>

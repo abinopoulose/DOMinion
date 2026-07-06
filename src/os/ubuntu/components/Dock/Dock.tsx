@@ -4,6 +4,9 @@ import fileManagerIcon from '../../assets/icons/file-manager.svg';
 import browserIcon from '../../assets/icons/browser.svg';
 import settingsIcon from '../../assets/icons/settings.svg';
 import textIcon from '../../assets/icons/text.svg';
+import trashIcon from '../../assets/icons/trash.svg';
+import { getTrashId } from '../../fs/seed';
+import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { useWindowStore } from '../../store/useUbuntuWindowStore';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
@@ -112,8 +115,8 @@ export function Dock() {
     }
 
     const checkOverlap = () => {
-      const dockWidth = dockPosition === 'left' || dockPosition === 'right' ? dockIconSize : window.innerWidth;
-      const dockHeight = dockPosition === 'bottom' ? dockIconSize : window.innerHeight - 28; // 28 is topbar height
+      const dockWidth = dockPosition === 'left' || dockPosition === 'right' ? dockIconSize + 12 : window.innerWidth;
+      const dockHeight = dockPosition === 'bottom' ? dockIconSize + 12 : window.innerHeight - 28; // 28 is topbar height
       
       let dockRect;
       if (dockPosition === 'left') {
@@ -314,8 +317,8 @@ export function Dock() {
       className={`dock ${dockPosition} ${dockAutoHide ? 'auto-hide' : ''} ${isOverlapped ? 'overlapped' : ''}`}
       id="dock"
       style={{
-        width: dockPosition === 'left' || dockPosition === 'right' ? `${dockIconSize}px` : 'auto',
-        height: dockPosition === 'bottom' ? `${dockIconSize}px` : '100%',
+        width: dockPosition === 'left' || dockPosition === 'right' ? `${dockIconSize + 12}px` : 'auto',
+        height: dockPosition === 'bottom' ? `${dockIconSize + 12}px` : '100%',
         flexDirection: dockPosition === 'bottom' ? 'row' : 'column',
         justifyContent: 'flex-start',
         padding: dockPosition === 'bottom' ? '0 16px' : '8px 0',
@@ -404,6 +407,39 @@ export function Dock() {
             </div>
           );
         })}
+        {/* Trash Icon at the bottom of docked apps */}
+        <div style={{ 
+          width: dockPosition === 'bottom' ? '1px' : '32px', 
+          height: dockPosition === 'bottom' ? '32px' : '1px', 
+          background: 'rgba(255,255,255,0.12)', 
+          margin: dockPosition === 'bottom' ? '0 4px' : '4px 0',
+          flexShrink: 0
+        }} />
+        <DockIcon
+          id="trash"
+          label="Trash"
+          icon={trashIcon}
+          isActive={windows.some(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant'))}
+          isFocused={focusedAppId === 'file-manager' && (windows.find(w => w.isFocused)?.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')}
+          size={dockIconSize}
+          onClick={() => {
+            const trashId = getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant');
+            const trashWindows = windows.filter(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === trashId);
+            if (trashWindows.length > 0) {
+              const win = trashWindows[0];
+              if (win.isMinimized) {
+                useWindowStore.getState().restoreWindow(win.id);
+                useWindowStore.getState().focusWindow(win.id);
+              } else if (win.isFocused) {
+                useWindowStore.getState().minimizeWindow(win.id);
+              } else {
+                useWindowStore.getState().focusWindow(win.id);
+              }
+            } else {
+              openWindow('file-manager', { cwdId: trashId });
+            }
+          }}
+        />
       </div>
       <div 
         className="dock__show-apps" 
@@ -424,8 +460,16 @@ export function Dock() {
         onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-dock-hover)'} 
         onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
       >
-        <svg viewBox="-2 -2 28 28" fill="#d3d3d3" width={dockIconSize * 0.7} height={dockIconSize * 0.7} style={{ opacity: 0.9, overflow: 'visible' }}>
-          <path d="M17.61.455a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zM12.92.8C8.923.777 5.137 2.941 3.148 6.451a4.5 4.5 0 0 1 .26-.007 4.92 4.92 0 0 1 2.585.737A8.316 8.316 0 0 1 12.688 3.6 4.944 4.944 0 0 1 13.723.834 11.008 11.008 0 0 0 12.92.8zm9.226 4.994a4.915 4.915 0 0 1-1.918 2.246 8.36 8.36 0 0 1-.273 8.303 4.89 4.89 0 0 1 1.632 2.54 11.156 11.156 0 0 0 .559-13.089zM3.41 7.932A3.41 3.41 0 0 0 0 11.342a3.41 3.41 0 0 0 3.41 3.409 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zm2.027 7.866a4.908 4.908 0 0 1-2.915.358 11.1 11.1 0 0 0 7.991 6.698 11.234 11.234 0 0 0 2.422.249 4.879 4.879 0 0 1-.999-2.85 8.484 8.484 0 0 1-.836-.136 8.304 8.304 0 0 1-5.663-4.32zm11.405.928a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41z"/>
+        <svg viewBox="0 0 24 24" fill="white" width={dockIconSize * 0.5} height={dockIconSize * 0.5} style={{ opacity: 0.9 }}>
+          <circle cx="5" cy="5" r="2.5"/>
+          <circle cx="12" cy="5" r="2.5"/>
+          <circle cx="19" cy="5" r="2.5"/>
+          <circle cx="5" cy="12" r="2.5"/>
+          <circle cx="12" cy="12" r="2.5"/>
+          <circle cx="19" cy="12" r="2.5"/>
+          <circle cx="5" cy="19" r="2.5"/>
+          <circle cx="12" cy="19" r="2.5"/>
+          <circle cx="19" cy="19" r="2.5"/>
         </svg>
       </div>
 

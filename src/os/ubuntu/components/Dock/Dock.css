@@ -80,31 +80,43 @@
 /* --- Active indicator dot --- */
 .dock-icon__indicator {
   position: absolute;
-  left: 2px;
+  left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-accent, #E95420); /* Yaru orange dot */
+  width: 4px;
+  height: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--color-accent, #E95420);
   opacity: 0;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, height 0.2s ease;
 }
 
 .dock.right .dock-icon__indicator {
   left: auto;
-  right: 2px;
+  right: 0;
+  border-radius: 4px 0 0 4px;
 }
 
 .dock.bottom .dock-icon__indicator {
   left: 50%;
   top: auto;
-  bottom: 2px;
+  bottom: 0;
   transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 4px 4px 0 0;
+}
+
+.dock.bottom .dock-icon__indicator--focused {
+  width: 16px;
 }
 
 .dock-icon__indicator--active {
   opacity: 1;
+}
+
+.dock-icon__indicator--focused {
+  height: 16px;
 }
 
 /* --- Tooltip --- */

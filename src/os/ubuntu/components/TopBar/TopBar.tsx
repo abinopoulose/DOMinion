@@ -33,8 +33,8 @@ export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
               gap: '6px',
               padding: '6px 12px',
               background: isOverviewOpen 
-                ? 'rgba(255,255,255,0.2)' 
-                : 'rgba(255,255,255,0.08)',
+                ? 'rgba(255,255,255,0.1)' 
+                : 'transparent',
               borderRadius: '999px',
               cursor: 'pointer',
               transition: 'background 0.2s ease',
@@ -59,7 +59,7 @@ export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
       </div>
 
       {/* Center: Clock */}
-      <div className="topbar__center" style={{ fontWeight: 600 }}>
+      <div className="topbar__center">
         {clock}
       </div>
 
@@ -88,19 +88,13 @@ export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
             <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
           </svg>
           {/* Battery icon */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 500, marginRight: '2px' }}>
-              {batteryLevel !== null ? `${batteryLevel}%` : '100%'}
-            </span>
-            <svg className="topbar__tray-icon" viewBox="0 0 24 24">
-              <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" fill="currentColor" opacity="0.3" />
-              {/* Fill level based on battery percentage */}
-              <clipPath id="battery-clip">
-                <rect x="0" y={22 - (18 * ((batteryLevel ?? 100) / 100))} width="24" height={18 * ((batteryLevel ?? 100) / 100)} />
-              </clipPath>
-              <path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z" clipPath="url(#battery-clip)" />
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <svg className="topbar__tray-icon" viewBox="0 0 24 24" style={{ width: '18px', height: '18px' }}>
+              <path d="M16.5 6.5h-13C2.67 6.5 2 7.17 2 8v8c0 .83.67 1.5 1.5 1.5h13c.83 0 1.5-.67 1.5-1.5V8c0-.83-.67-1.5-1.5-1.5z" fill="currentColor" opacity="0.3" />
+              <path d="M19 10h2v4h-2v-4z" fill="currentColor" opacity="0.3" />
+              <rect x="3.5" y="8" width={11.5 * ((batteryLevel ?? 100) / 100)} height="8" fill="currentColor" />
               {isCharging && (
-                <polygon points="11 6 7 12 13 12 9 18" fill="var(--color-accent)" stroke="none" />
+                <polygon points="10 7.5 7 12.5 9.5 12.5 9 16.5 12 11.5 9.5 11.5" fill="var(--color-accent)" stroke="none" />
               )}
             </svg>
           </div>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 const wallpaper = '/ubuntu_wallpaper.jpg';
 import homeIcon from '../../assets/icons/home.svg';
@@ -98,7 +98,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     const positions: Record<string, {x: number, y: number}> = {};
     const occupied = new Set<string>();
 
-    const dockWidth = dockAutoHide ? 0 : dockIconSize;
+    const dockWidth = dockAutoHide ? 0 : dockIconSize + 12;
     const GRID_X = 100;
     const GRID_Y = 100;
     const OFFSET_X = (dockPosition === 'left' ? dockWidth : 0) + 16;
@@ -275,7 +275,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
         const ids = selectedIds.size > 1 && selectedIds.has(contextNode.id)
           ? [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id))
           : [contextNode.id];
-        useVFSStore.getState().setClipboard('cut', ids[0]);
+        useVFSStore.getState().setClipboard('cut', ids);
         hideContextMenu();
       }
     },
@@ -286,7 +286,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
         const ids = selectedIds.size > 1 && selectedIds.has(contextNode.id)
           ? [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id))
           : [contextNode.id];
-        useVFSStore.getState().setClipboard('copy', ids[0]);
+        useVFSStore.getState().setClipboard('copy', ids);
         hideContextMenu();
       }
     },
@@ -322,17 +322,17 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     {
       id: 'paste',
       label: 'Paste',
-      disabled: !clipboard.nodeId || !canWriteDesktop,
+      disabled: !clipboard.nodeIds || clipboard.nodeIds.length === 0 || !canWriteDesktop,
       onClick: () => {
         const store = useVFSStore.getState();
-        const { action, nodeId } = store.clipboard;
-        if (!nodeId) return;
+        const { action, nodeIds } = store.clipboard;
+        if (!nodeIds || nodeIds.length === 0) return;
         
         if (action === 'cut') {
-          store.moveNode(nodeId, DESKTOP_ID);
-          store.setClipboard(null, null); // Clear clipboard after cut
+          nodeIds.forEach(id => store.moveNode(id, DESKTOP_ID));
+          store.setClipboard(null, []); // Clear clipboard after cut
         } else if (action === 'copy') {
-          store.duplicateNode(nodeId, DESKTOP_ID);
+          nodeIds.forEach(id => store.duplicateNode(id, DESKTOP_ID));
         }
         hideContextMenu();
       }

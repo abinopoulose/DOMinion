@@ -34,7 +34,7 @@ export function DockIcon({
     >
       <span className="dock-icon__tooltip">{label}</span>
       <img className="dock-icon__img" src={icon} alt={label} draggable={false} style={{ width: size - 12, height: size - 12 }} />
-      <div className={`dock-icon__indicator${isActive ? ' dock-icon__indicator--active' : ''}`} />
+      <div className={`dock-icon__indicator${isActive ? ' dock-icon__indicator--active' : ''}${isFocused ? ' dock-icon__indicator--focused' : ''}`} />
     </div>
   );
 }

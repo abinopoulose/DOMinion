@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { useSettingsStore } from './store/useSettingsStore';
 import { SettingsSidebar } from './components/SettingsSidebar';
 export { SettingsHeaderControls } from './components/SettingsHeaderControls';
@@ -31,11 +31,10 @@ import './components/SettingsPanelWrapper.css';
 
 export function Settings() {
   const { activePanel } = useSettingsStore();
-  const [searchQuery] = useState('');
 
   return (
     <div className="ubuntu-settings-app">
-      <SettingsSidebar searchQuery={searchQuery} />
+      <SettingsSidebar />
       <main className="ubuntu-settings-content">
         <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 24, height: 24, border: '2px solid #ccc', borderTop: '2px solid var(--color-accent, #E95420)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
           {activePanel === 'wifi' ? (

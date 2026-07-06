@@ -39,6 +39,7 @@ export const touch: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
   
   const store = useVFSStore.getState();
   const name = args[0];
+  const username = _appState?.effectiveUser || getAuthContext().username;
   
   let parentId = cwdId;
   let fileName = name;
