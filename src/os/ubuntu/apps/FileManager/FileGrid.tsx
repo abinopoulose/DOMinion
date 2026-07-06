@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import type { VFSNode } from '../../fs/types';
 import { getIconForFile } from '../../utils/iconResolver';
 import { useVFSStore } from '../../store';
@@ -16,7 +16,7 @@ interface FileGridProps {
   onContextMenu: (e: React.MouseEvent, node?: VFSNode) => void;
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
-  onDeleteRequest?: (ids: string[]) => void;
+
   editingId: string | null;
   editValue: string;
   setEditingId: (id: string | null) => void;
@@ -31,7 +31,7 @@ export function FileGrid({
   onContextMenu,
   selectedIds,
   onSelectionChange,
-  onDeleteRequest,
+
   editingId,
   editValue,
   setEditingId,
@@ -75,17 +75,7 @@ export function FileGrid({
     allowStartOnItems: false,
   });
 
-  // --- Delete key ---
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' && selectedIds.length > 0 && !editingId) {
-        e.preventDefault();
-        onDeleteRequest?.([...selectedIds]);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [selectedIds, editingId, onDeleteRequest]);
+
 
   const commitRename = () => {
     if (editingId && editValue.trim()) onRename(editingId, editValue.trim());

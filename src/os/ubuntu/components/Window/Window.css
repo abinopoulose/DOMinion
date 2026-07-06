@@ -89,8 +89,8 @@
 }
 
 .titlebar__btn {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -100,33 +100,36 @@
   justify-content: center;
   transition: filter 0.15s ease;
   padding: 0;
-  background: var(--color-surface-active, rgba(0, 0, 0, 0.1));
+  background: rgba(0, 0, 0, 0.05);
+  transition: background 0.15s ease;
 }
 
 .titlebar__btn:active {
-  filter: brightness(0.85);
+  background: rgba(0, 0, 0, 0.15);
 }
 
 .titlebar__btn:hover {
-  filter: brightness(0.9);
+  background: rgba(0, 0, 0, 0.1);
 }
 
-.titlebar__btn--close {
-  background: #E95420; /* Yaru Orange */
+.titlebar__btn--close:hover {
+  background: #C7162B; /* GNOME Close red */
 }
 
 .titlebar__btn-icon {
-  width: 8px;
-  height: 8px;
-  stroke: var(--color-text-primary, #000);
+  width: 10px;
+  height: 10px;
+  stroke: var(--text-primary);
   fill: none;
-  stroke-width: 2;
+  stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+  opacity: 0.7;
 }
 
-.titlebar__btn--close .titlebar__btn-icon {
+.titlebar__btn--close:hover .titlebar__btn-icon {
   stroke: #ffffff;
+  opacity: 1;
 }
 
 /* ============================================================

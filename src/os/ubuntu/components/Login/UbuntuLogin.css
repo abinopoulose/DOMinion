@@ -128,9 +128,9 @@
   color: rgba(255,255,255,0.4);
 }
 .ubuntu-login-input:focus {
-  border-color: #E95420;
+  border-color: var(--color-accent, #E95420);
   background: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 0 2px rgba(233, 84, 32, 0.4);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 40%, transparent);
 }
 
 .ubuntu-login-submit-btn {

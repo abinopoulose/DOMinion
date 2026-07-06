@@ -182,7 +182,7 @@
 /* --- Settings Menu --- */
 .browser-settings-menu {
   position: absolute;
-  top: 90px;
+  top: 48px;
   right: 12px;
   background-color: var(--bg-context-menu);
   border: 1px solid var(--color-context-border);
@@ -208,6 +208,12 @@
 
 .browser-settings-item:hover {
   background-color: var(--color-surface-hover);
+}
+
+.browser-settings-item.disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
 }
 
 .browser-settings-divider {

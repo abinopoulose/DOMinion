@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { VFSNode } from '../../fs/types';
 import { getIconForFile } from '../../utils/iconResolver';
 import { useVFSStore } from '../../store';
@@ -14,8 +14,8 @@ interface FileListProps {
   onRename: (id: string, newName: string) => void;
   onContextMenu: (e: React.MouseEvent, node?: VFSNode) => void;
   selectedIds: string[];
+
   onSelectionChange: (ids: string[]) => void;
-  onDeleteRequest?: (ids: string[]) => void;
   editingId: string | null;
   editValue: string;
   setEditingId: (id: string | null) => void;
@@ -30,7 +30,7 @@ export function FileList({
   onContextMenu,
   selectedIds,
   onSelectionChange,
-  onDeleteRequest,
+
   editingId,
   editValue,
   setEditingId,

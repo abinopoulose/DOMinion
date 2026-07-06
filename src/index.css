@@ -33,7 +33,7 @@ body {
   --bg-dock-hover: rgba(255, 255, 255, 0.1);
   --bg-window: #fafafa;
   --bg-titlebar: #ebebeb;
-  --bg-selection: #E95420; /* Ubuntu Orange */
+  --bg-selection: var(--color-accent);
   --text-primary: #2d2d2d;
   --text-secondary: #555555;
   --border-window: 1px solid #c9c9c9;
@@ -51,12 +51,12 @@ body {
   --color-surface:         #f0f0f0;
   --color-surface-hover:   #e0e0e0;
   --color-surface-active:  #d0d0d0;
-  --color-accent:          var(--bg-selection);
+  --color-accent:          #E95420;
   --color-accent-hover:    #FF6B3D;
   --color-text-primary:    var(--text-primary);
   --color-text-secondary:  var(--text-secondary);
   --color-border:          #dcdcdc;
-  --color-close:           #E95420;
+  --color-close:           var(--color-accent);
   --color-minimize:        #F5C211;
   --color-maximize:        #2EC27E;
 

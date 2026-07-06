@@ -72,7 +72,7 @@
 
 .workspace-thumbnail--active {
   border-color: var(--color-accent, #E95420) !important;
-  box-shadow: 0 0 0 1px var(--color-accent, #E95420), 0 4px 20px rgba(233, 84, 32, 0.25);
+  box-shadow: 0 0 0 1px var(--color-accent, #E95420), 0 4px 20px color-mix(in srgb, var(--color-accent) 25%, transparent);
 }
 
 /* Wallpaper preview inside thumbnail */
@@ -241,7 +241,7 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #E95420;
+  background: var(--color-accent, #E95420);
   border: 2px solid rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;

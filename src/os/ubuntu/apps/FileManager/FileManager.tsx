@@ -401,7 +401,7 @@ export function FileManager({ windowId }: FileManagerProps) {
             
             attemptWithPolkit(
               () => {
-                let firstError;
+                let firstError: string | undefined;
                 if (action === 'cut') {
                   nodeIds.forEach(id => {
                     const err = vfsStore.moveNode(id, cwdId);
@@ -451,7 +451,7 @@ export function FileManager({ windowId }: FileManagerProps) {
           if (action && nodeIds && nodeIds.length > 0) {
             attemptWithPolkit(
               () => {
-                let firstError;
+                let firstError: string | undefined;
                 if (action === 'cut') {
                   nodeIds.forEach(id => {
                     const err = vfsStore.moveNode(id, cwdId);
@@ -472,6 +472,9 @@ export function FileManager({ windowId }: FileManagerProps) {
               'org.freedesktop.filemanager.paste'
             );
           }
+        } else if (e.key === 'Delete' && selectedIds.length > 0 && !editingId) {
+          e.preventDefault();
+          setTrashConfirm([...selectedIds]);
         }
       }}
     >
@@ -533,7 +536,7 @@ export function FileManager({ windowId }: FileManagerProps) {
                 onClick={handleMassCut}
               >Cut</button>
               <button
-                style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: '#E95420', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: 'var(--color-accent)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                 onClick={() => handleDeleteRequest(selectedIds)}
               >Move to Trash</button>
               <button

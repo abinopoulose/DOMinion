@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+
 import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
 import { useSettingsStore } from '../store/useSettingsStore';
 import './PowerPanel.css';

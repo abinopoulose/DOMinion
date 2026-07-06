@@ -36,6 +36,7 @@ const Browser = lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => 
 const BrowserHeaderControls = lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.BrowserHeaderControls })))
 const TextEditor = lazy(() => import('./os/ubuntu/apps/TextEditor/TextEditor').then(m => ({ default: m.TextEditor })))
 const Settings = lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.Settings })))
+const SettingsHeaderControls = lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.SettingsHeaderControls })))
 const Calculator = lazy(() => import('./os/ubuntu/apps/Calculator/Calculator').then(m => ({ default: m.Calculator })))
 import { SystemDialog } from './os/ubuntu/components/SystemDialog/SystemDialog'
 import './App.css'
@@ -94,13 +95,15 @@ function UbuntuEnvironment() {
   const nightLight = useSettingsStore((s) => s.nightLight);
   const screenBrightness = useSettingsStore((s) => s.screenBrightness ?? 100);
   const theme = useSettingsStore((s) => s.theme);
+  const accentColor = useSettingsStore((s) => s.accentColor);
   const settingsWallpaper = useSettingsStore((s: any) => s.wallpaper);
   const activeWallpaper = settingsWallpaper || '/ubuntu_wallpaper.jpg';
 
   useEffect(() => {
     document.body.classList.remove('theme-light', 'theme-dark');
     document.body.classList.add(`theme-${theme}`);
-  }, [theme]);
+    document.documentElement.style.setProperty('--color-accent', accentColor);
+  }, [theme, accentColor]);
 
   // Keyboard shortcuts for workspace management and app switching
   const switchDesktopShortcut = useSettingsStore((s) => s.switchDesktopShortcut);
@@ -206,11 +209,12 @@ function UbuntuEnvironment() {
           icon={<img src={APP_META[win.appId]?.icon} alt="" style={{ width: 16, height: 16 }} />}
           headerControls={
             win.appId === 'terminal' ? <Suspense fallback={null}><TerminalHeaderControls windowId={win.id} /></Suspense> :
-            win.appId === 'browser' ? <Suspense fallback={null}><BrowserHeaderControls windowId={win.id} /></Suspense> : undefined
+            win.appId === 'browser' ? <Suspense fallback={null}><BrowserHeaderControls windowId={win.id} /></Suspense> : 
+            win.appId === 'settings' ? <Suspense fallback={null}><SettingsHeaderControls windowId={win.id} /></Suspense> : undefined
           }
-          fullHeaderControls={win.appId === 'browser'}
+          fullHeaderControls={win.appId === 'browser' || win.appId === 'settings'}
         >
-          <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid #E95420', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
+          <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid var(--color-accent, #E95420)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
             <MockAppContent appId={win.appId} windowId={win.id} />
           </Suspense>
         </Window>
@@ -283,7 +287,7 @@ export default function App() {
     if (activeOS === 'ubuntu') {
       return (
         <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-          <svg viewBox="0 0 24 24" width="100" height="100" fill="#E95420">
+          <svg viewBox="0 0 24 24" width="100" height="100" fill="var(--color-accent, #E95420)">
             <path d="M17.61.455a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zM12.92.8C8.923.777 5.137 2.941 3.148 6.451a4.5 4.5 0 0 1 .26-.007 4.92 4.92 0 0 1 2.585.737A8.316 8.316 0 0 1 12.688 3.6 4.944 4.944 0 0 1 13.723.834 11.008 11.008 0 0 0 12.92.8zm9.226 4.994a4.915 4.915 0 0 1-1.918 2.246 8.36 8.36 0 0 1-.273 8.303 4.89 4.89 0 0 1 1.632 2.54 11.156 11.156 0 0 0 .559-13.089zM3.41 7.932A3.41 3.41 0 0 0 0 11.342a3.41 3.41 0 0 0 3.41 3.409 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zm2.027 7.866a4.908 4.908 0 0 1-2.915.358 11.1 11.1 0 0 0 7.991 6.698 11.234 11.234 0 0 0 2.422.249 4.879 4.879 0 0 1-.999-2.85 8.484 8.484 0 0 1-.836-.136 8.304 8.304 0 0 1-5.663-4.32zm11.405.928a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41z"/>
           </svg>
           <div style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px' }}>

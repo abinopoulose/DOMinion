@@ -299,15 +299,15 @@ export function Browser({ windowId }: BrowserProps) {
                 New Window
               </div>
               <div className="browser-settings-divider" />
-              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Bookmarks</div>
-              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>History</div>
-              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Downloads</div>
-              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Passwords</div>
+              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Bookmarks</div>
+              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>History</div>
+              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Downloads</div>
+              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Passwords</div>
               <div className="browser-settings-divider" />
-              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Add-ons and themes</div>
-              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Settings</div>
+              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Add-ons and themes</div>
+              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Settings</div>
               <div className="browser-settings-divider" />
-              <div className="browser-settings-item" onClick={() => setShowSettingsMenu(false)}>Help</div>
+              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Help</div>
             </div>
           </>
         )}

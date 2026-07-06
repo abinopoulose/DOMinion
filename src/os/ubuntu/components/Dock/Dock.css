@@ -86,7 +86,7 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #E95420; /* Yaru orange dot */
+  background: var(--color-accent, #E95420); /* Yaru orange dot */
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
