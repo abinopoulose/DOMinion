@@ -32,7 +32,7 @@ export const uname: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, _
   const { flags } = parseArgs(args);
 
   const kernel = 'Linux';
-  const hostname = 'ubuntu-web';
+  const hostname = localStorage.getItem('ubuntu-hostname') || 'ubuntu-web';
   const release = '6.8.0-31-generic';
   const full = `${kernel} ${hostname} ${release} #31-Ubuntu SMP x86_64 GNU/Linux`;
 

@@ -12,7 +12,7 @@
 
 .ubuntu-settings-sidebar {
   width: 280px;
-  background-color: transparent;
+  background-color: var(--bg-titlebar);
   display: flex;
   flex-direction: column;
   border-right: 1px solid rgba(0, 0, 0, 0.08);
@@ -102,7 +102,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: transparent;
+  background-color: var(--bg-window);
   overflow-y: auto;
   align-items: center;
   padding: 36px;
@@ -131,6 +131,11 @@
 @keyframes fadeInPanel {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .settings-panel h1 {
@@ -220,4 +225,9 @@
 
 .ubuntu-settings-toggle.checked .ubuntu-settings-toggle-knob {
   transform: translateX(20px) !important;
+}
+
+/* Split Window Header Background for Settings */
+.window[data-app-id="settings"] .titlebar {
+  background: linear-gradient(to right, var(--bg-titlebar) 280px, var(--bg-window) 280px) !important;
 }

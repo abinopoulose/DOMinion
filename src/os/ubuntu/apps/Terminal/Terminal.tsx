@@ -70,7 +70,8 @@ export function Terminal({ windowId }: TerminalProps) {
     }
     
     const promptChar = effectiveUser === 'root' ? '#' : '$';
-    return `${effectiveUser}@ubuntu:${displayPath}${promptChar} `;
+    const hostname = localStorage.getItem('ubuntu-hostname') || 'ubuntu';
+    return `${effectiveUser}@${hostname}:${displayPath}${promptChar} `;
   };
 
   const executeCommand = (cmdStr: string, asRoot: boolean) => {

@@ -21,6 +21,7 @@ interface FileGridProps {
   editValue: string;
   setEditingId: (id: string | null) => void;
   setEditValue: (val: string) => void;
+  onDeleteRequest: (ids: string[]) => void;
 }
 
 export function FileGrid({
@@ -36,6 +37,7 @@ export function FileGrid({
   editValue,
   setEditingId,
   setEditValue,
+  onDeleteRequest,
 }: FileGridProps) {
   const selectedIdsSet = new Set(selectedIds);
   const inputRef  = useRef<HTMLInputElement>(null);

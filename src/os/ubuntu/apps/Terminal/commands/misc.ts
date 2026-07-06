@@ -86,7 +86,8 @@ export const hostname: CommandHandler = (_args, _cwdId, _updateCwd, _clearHistor
   if (node && node.type === 'file') {
     [node.content.trim()].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
-  ['ubuntu-web'].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  const fallback = localStorage.getItem('ubuntu-hostname') || 'ubuntu-web';
+  [fallback].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
 export const poweroff: CommandHandler = (_args, _cwdId, _updateCwd, _clearHistory, _appState, process) => {

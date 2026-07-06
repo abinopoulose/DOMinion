@@ -20,6 +20,7 @@ interface FileListProps {
   editValue: string;
   setEditingId: (id: string | null) => void;
   setEditValue: (val: string) => void;
+  onDeleteRequest: (ids: string[]) => void;
 }
 
 export function FileList({
@@ -35,6 +36,7 @@ export function FileList({
   editValue,
   setEditingId,
   setEditValue,
+  onDeleteRequest,
 }: FileListProps) {
   const selectedIdsSet = new Set(selectedIds);
   const inputRef = useRef<HTMLInputElement>(null);

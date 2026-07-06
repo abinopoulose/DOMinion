@@ -1,8 +1,7 @@
-import React from 'react';
 import { useCalculator } from './useCalculator';
 import './Calculator.css';
 
-export function Calculator({ windowId }: { windowId: string }) {
+export function Calculator({ windowId: _windowId }: { windowId: string }) {
   const {
     display,
     equation,

@@ -1,4 +1,4 @@
-export type AppId = 'terminal' | 'file-manager' | 'browser' | 'text-editor' | 'settings';
+export type AppId = 'terminal' | 'file-manager' | 'browser' | 'text-editor' | 'settings' | 'calculator';
 
 export interface WindowState {
   id: string;

@@ -38,6 +38,7 @@ export type SystemSubPage =
 interface SettingsState {
   activePanel: SettingsPanel;
   systemSubPage: SystemSubPage;
+  keyboardSubPage: 'root' | 'shortcuts';
   theme: 'light' | 'dark';
   accentColor: string;
   nightLight: boolean;
@@ -69,6 +70,7 @@ interface SettingsState {
   // Actions
   setActivePanel: (panel: SettingsPanel) => void;
   setSystemSubPage: (page: SystemSubPage) => void;
+  setKeyboardSubPage: (page: 'root' | 'shortcuts') => void;
   goBackFromSubPage: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setAccentColor: (color: string) => void;
@@ -104,6 +106,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       activePanel: 'wifi',
       systemSubPage: 'root',
+      keyboardSubPage: 'root',
       theme: 'light',
       accentColor: '#E95420',
       nightLight: false,
@@ -132,9 +135,10 @@ export const useSettingsStore = create<SettingsState>()(
       desktopIconPositions: {},
       pinnedApps: ['file-manager', 'terminal', 'browser', 'settings'],
       
-      setActivePanel: (panel) => set({ activePanel: panel, systemSubPage: 'root' }),
+      setActivePanel: (panel) => set({ activePanel: panel, systemSubPage: 'root', keyboardSubPage: 'root' }),
       setSystemSubPage: (page) => set({ systemSubPage: page }),
-      goBackFromSubPage: () => set({ systemSubPage: 'root' }),
+      setKeyboardSubPage: (page) => set({ keyboardSubPage: page }),
+      goBackFromSubPage: () => set({ systemSubPage: 'root', keyboardSubPage: 'root' }),
       setTheme: (theme) => set({ theme }),
       setAccentColor: (accentColor) => set({ accentColor }),
       setNightLight: (nightLight) => set({ nightLight }),

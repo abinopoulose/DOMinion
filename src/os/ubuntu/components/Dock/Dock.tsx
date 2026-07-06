@@ -103,6 +103,60 @@ export function Dock() {
   const [previewPos, setPreviewPos] = useState({ top: -9999, left: -9999 });
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const [isOverlapped, setIsOverlapped] = useState(false);
+
+  useEffect(() => {
+    if (!dockAutoHide) {
+      setIsOverlapped(false);
+      return;
+    }
+
+    const checkOverlap = () => {
+      const dockWidth = dockPosition === 'left' || dockPosition === 'right' ? dockIconSize : window.innerWidth;
+      const dockHeight = dockPosition === 'bottom' ? dockIconSize : window.innerHeight - 28; // 28 is topbar height
+      
+      let dockRect;
+      if (dockPosition === 'left') {
+        dockRect = { left: 0, top: 28, right: dockWidth, bottom: window.innerHeight };
+      } else if (dockPosition === 'right') {
+        dockRect = { left: window.innerWidth - dockWidth, top: 28, right: window.innerWidth, bottom: window.innerHeight };
+      } else { // bottom
+        dockRect = { left: 0, top: window.innerHeight - dockHeight, right: window.innerWidth, bottom: window.innerHeight };
+      }
+
+      let overlap = false;
+      for (const win of currentWorkspaceWindows) {
+        if (win.isMinimized) continue;
+        
+        let winLeft = win.position.x;
+        let winTop = win.position.y;
+        let winRight = winLeft + win.size.width;
+        let winBottom = winTop + win.size.height;
+        
+        if (win.isMaximized) {
+           winLeft = 0;
+           winTop = 28;
+           winRight = window.innerWidth;
+           winBottom = window.innerHeight;
+        }
+
+        if (
+          winLeft < dockRect.right &&
+          winRight > dockRect.left &&
+          winTop < dockRect.bottom &&
+          winBottom > dockRect.top
+        ) {
+          overlap = true;
+          break;
+        }
+      }
+      setIsOverlapped(overlap);
+    };
+
+    checkOverlap();
+    window.addEventListener('resize', checkOverlap);
+    return () => window.removeEventListener('resize', checkOverlap);
+  }, [dockAutoHide, dockPosition, dockIconSize, currentWorkspaceWindows]);
 
   const handleMouseEnterIcon = (_e: React.MouseEvent, appId: string) => {
     const appWindows = currentWorkspaceWindows.filter(w => w.appId === appId);
@@ -257,7 +311,7 @@ export function Dock() {
 
   return (
     <nav 
-      className={`dock ${dockPosition} ${dockAutoHide ? 'auto-hide' : ''}`}
+      className={`dock ${dockPosition} ${dockAutoHide ? 'auto-hide' : ''} ${isOverlapped ? 'overlapped' : ''}`}
       id="dock"
       style={{
         width: dockPosition === 'left' || dockPosition === 'right' ? `${dockIconSize}px` : 'auto',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useWindowStore } from '../../store';
 import { BrowserTab } from './BrowserTab';
@@ -196,19 +196,7 @@ export function Browser({ windowId }: BrowserProps) {
     updateState({ tabs: newTabs, activeTabId: newTabId });
   };
 
-  const handleCloseTab = (tabId: string) => {
-    const newTabs = tabs.filter(t => t.id !== tabId);
-    if (newTabs.length === 0) {
-      // Create a fresh tab if last one closed
-      const newTabId = uuidv4();
-      updateState({ tabs: [{ id: newTabId, url: '', title: 'New Tab', history: [''], historyIndex: 0 }], activeTabId: newTabId });
-    } else if (activeTabId === tabId) {
-      // Make the last tab active
-      updateState({ tabs: newTabs, activeTabId: newTabs[newTabs.length - 1].id });
-    } else {
-      updateState({ tabs: newTabs });
-    }
-  };
+
 
   const navigateTo = (url: string) => {
     let finalUrl = url;

@@ -231,6 +231,7 @@ export function Window({
       className={classNames}
       style={style}
       data-window-id={id}
+      data-app-id={win.appId}
       onMouseDown={handleFocus}
     >
       <TitleBar

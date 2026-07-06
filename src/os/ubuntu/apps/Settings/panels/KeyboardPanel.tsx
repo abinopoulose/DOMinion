@@ -3,21 +3,12 @@ import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export function KeyboardPanel() {
-  const [showShortcuts, setShowShortcuts] = useState(false);
-  const { switchDesktopShortcut, switchAppShortcut, setSwitchDesktopShortcut, setSwitchAppShortcut } = useSettingsStore();
+  const { keyboardSubPage, switchDesktopShortcut, switchAppShortcut, setSwitchDesktopShortcut, setSwitchAppShortcut, setKeyboardSubPage } = useSettingsStore();
+  const showShortcuts = keyboardSubPage === 'shortcuts';
 
   if (showShortcuts) {
-    const backButton = (
-      <button className="ubuntu-settings-back-button" onClick={() => setShowShortcuts(false)}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="15 18 9 12 15 6" />
-        </svg>
-        Back
-      </button>
-    );
-
     return (
-      <SettingsPanelWrapper title="Keyboard Shortcuts" leftHeaderContent={backButton}>
+      <SettingsPanelWrapper>
         <div className="ubuntu-settings-list-group">
           <div className="ubuntu-settings-list-item">
             <span>Open Terminal</span>
@@ -61,7 +52,7 @@ export function KeyboardPanel() {
   }
 
   return (
-    <SettingsPanelWrapper title="Keyboard">
+    <SettingsPanelWrapper>
       <div className="ubuntu-settings-section-title" style={{ padding: '0 8px 8px', fontSize: '12px', fontWeight: 'bold', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>
         Input Sources
       </div>
@@ -82,7 +73,7 @@ export function KeyboardPanel() {
       </div>
 
       <div className="ubuntu-settings-list-group">
-        <div className="ubuntu-settings-list-item clickable" onClick={() => setShowShortcuts(true)}>
+        <div className="ubuntu-settings-list-item clickable" onClick={() => setKeyboardSubPage('shortcuts')}>
           <span>View and Customize Shortcuts</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
             <polyline points="9 18 15 12 9 6" />

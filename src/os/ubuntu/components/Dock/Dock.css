@@ -254,3 +254,46 @@
   color: #ffffff;
 }
 
+/* --- Auto-hide Intellihide Behavior --- */
+.dock.auto-hide {
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0.1, 1), width 0.2s ease, height 0.2s ease;
+}
+
+.dock.left.auto-hide.overlapped {
+  transform: translateX(calc(-100% - 1px));
+}
+
+.dock.right.auto-hide.overlapped {
+  transform: translateX(calc(100% + 1px));
+}
+
+.dock.bottom.auto-hide.overlapped {
+  transform: translateY(calc(100% + 1px));
+}
+
+/* Invisible hit area to reveal the dock */
+.dock.auto-hide::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -1;
+}
+
+.dock.left.auto-hide::after {
+  right: -8px;
+}
+
+.dock.right.auto-hide::after {
+  left: -8px;
+}
+
+.dock.bottom.auto-hide::after {
+  top: -8px;
+}
+
+/* Reveal on hover */
+.dock.auto-hide.overlapped:hover {
+  transform: translate(0, 0);
+  z-index: 10000;
+}
+
