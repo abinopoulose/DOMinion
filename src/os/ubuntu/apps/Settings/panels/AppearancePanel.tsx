@@ -23,10 +23,10 @@ export function AppearancePanel() {
     document.documentElement.style.setProperty('--color-accent', accentColor);
   }, [accentColor]);
 
-  const availableWallpapers = useMemo(() => {
-    const modules = import.meta.glob('/public/ubuntu/wallpapers/*.(jpg|jpeg|png|webp)', { eager: true });
-    return Object.keys(modules).map(path => path.replace('/public', ''));
-  }, []);
+  const availableWallpapers = useMemo(() => [
+    '/ubuntu/wallpapers/mount_wallpaper.jpg',
+    '/ubuntu/wallpapers/ubuntu_wallpaper.jpg'
+  ], []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

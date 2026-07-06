@@ -1,7 +1,6 @@
-import React, { useState, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useSettingsStore } from './store/useSettingsStore';
 import { SettingsSidebar } from './components/SettingsSidebar';
-import { PANELS } from './config/panels';
 export { SettingsHeaderControls } from './components/SettingsHeaderControls';
 
 const WifiPanel = lazy(() => import('./panels/WifiPanel').then(m => ({ default: m.WifiPanel })));

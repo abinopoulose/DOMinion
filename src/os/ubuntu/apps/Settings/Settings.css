@@ -231,3 +231,36 @@
 .window[data-app-id="settings"] .titlebar {
   background: linear-gradient(to right, var(--bg-titlebar) 280px, var(--bg-window) 280px) !important;
 }
+
+/* GNOME 46 Select / Dropdown Style */
+.ubuntu-settings-select {
+  appearance: none;
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  padding: 6px 32px 6px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-primary, #1e1e1e);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23333333' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+}
+
+.ubuntu-settings-select:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.ubuntu-settings-select:focus {
+  border-color: var(--color-accent, #E95420);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, #E95420) 20%, transparent);
+}
+
+.ubuntu-settings-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

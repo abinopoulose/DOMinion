@@ -2,3 +2,10 @@
   flex: 1;
   accent-color: var(--color-accent);
 }
+
+.sound-balance-slider {
+  flex: 1;
+  width: 100%;
+  accent-color: rgba(0, 0, 0, 0.2);
+}
+

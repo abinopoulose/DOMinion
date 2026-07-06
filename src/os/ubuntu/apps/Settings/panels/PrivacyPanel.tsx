@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
+import { SettingsDropdown } from '../components/SettingsDropdown';
 
 type PrivacySubPage = 'root' | 'location' | 'camera' | 'microphone' | 'screen-lock';
 
@@ -63,13 +64,17 @@ export function PrivacyPanel() {
       title = 'Screen Lock';
       content = (
         <div className="ubuntu-settings-list-group">
-          <div className="ubuntu-settings-list-item">
+          <div className="ubuntu-settings-list-item" style={{ overflow: 'visible' }}>
             <span>Blank Screen Delay</span>
-            <select className="ubuntu-settings-select" defaultValue="5">
-              <option value="1">1 minute</option>
-              <option value="5">5 minutes</option>
-              <option value="never">Never</option>
-            </select>
+            <SettingsDropdown
+              value="5"
+              onChange={() => {}}
+              options={[
+                { value: '1', label: '1 minute' },
+                { value: '5', label: '5 minutes' },
+                { value: 'never', label: 'Never' }
+              ]}
+            />
           </div>
           <div className="ubuntu-settings-list-item clickable" onClick={() => setAutoLock(!autoLock)}>
             <span>Automatic Screen Lock</span>

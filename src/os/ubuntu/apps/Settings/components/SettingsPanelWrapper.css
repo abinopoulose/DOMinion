@@ -45,12 +45,10 @@
   width: 100%;
 }
 
-/* Common GNOME-style card lists inside settings */
 .ubuntu-settings-list-group {
   background-color: #ffffff;
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.1);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
@@ -64,7 +62,14 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+.ubuntu-settings-list-item:first-child {
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+
 .ubuntu-settings-list-item:last-child {
+  border-bottom-left-radius: 11px;
+  border-bottom-right-radius: 11px;
   border-bottom: none;
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
+import { SettingsDropdown } from '../components/SettingsDropdown';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export function KeyboardPanel() {
@@ -18,29 +19,29 @@ export function KeyboardPanel() {
             <span>Close Window</span>
             <span style={{ color: 'var(--color-text-secondary)' }}>Alt + F4</span>
           </div>
-          <div className="ubuntu-settings-list-item">
+          <div className="ubuntu-settings-list-item" style={{ overflow: 'visible' }}>
             <span>Switch Applications</span>
-            <select
+            <SettingsDropdown
               value={switchAppShortcut}
-              onChange={(e) => setSwitchAppShortcut(e.target.value)}
-              style={{ background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '4px' }}
-            >
-              <option value="alt+tab">Alt + Tab</option>
-              <option value="super+tab">Super + Tab</option>
-              <option value="ctrl+tab">Ctrl + Tab</option>
-            </select>
+              onChange={(val) => setSwitchAppShortcut(val)}
+              options={[
+                { value: 'alt+tab', label: 'Alt + Tab' },
+                { value: 'super+tab', label: 'Super + Tab' },
+                { value: 'ctrl+tab', label: 'Ctrl + Tab' },
+              ]}
+            />
           </div>
-          <div className="ubuntu-settings-list-item">
+          <div className="ubuntu-settings-list-item" style={{ overflow: 'visible' }}>
             <span>Switch Desktop</span>
-            <select
+            <SettingsDropdown
               value={switchDesktopShortcut}
-              onChange={(e) => setSwitchDesktopShortcut(e.target.value)}
-              style={{ background: 'var(--color-bg-input)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '4px' }}
-            >
-              <option value="ctrl+alt+arrow">Ctrl + Alt + Arrow</option>
-              <option value="super+arrow">Super + Arrow</option>
-              <option value="alt+arrow">Alt + Arrow</option>
-            </select>
+              onChange={(val) => setSwitchDesktopShortcut(val)}
+              options={[
+                { value: 'ctrl+alt+arrow', label: 'Ctrl + Alt + Arrow' },
+                { value: 'super+arrow', label: 'Super + Arrow' },
+                { value: 'alt+arrow', label: 'Alt + Arrow' },
+              ]}
+            />
           </div>
           <div className="ubuntu-settings-list-item">
             <span>Lock Screen</span>

@@ -8,7 +8,7 @@ interface SettingsPanelWrapperProps {
   children: React.ReactNode;
 }
 
-export function SettingsPanelWrapper({ title, leftHeaderContent, rightHeaderContent, children }: SettingsPanelWrapperProps) {
+export function SettingsPanelWrapper({ title: _title, leftHeaderContent, rightHeaderContent, children }: SettingsPanelWrapperProps) {
   const hasHeader = leftHeaderContent || rightHeaderContent;
 
   return (

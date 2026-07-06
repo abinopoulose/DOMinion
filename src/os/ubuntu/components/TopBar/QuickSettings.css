@@ -169,12 +169,12 @@
 }
 
 .qs-pill-group.active {
-  background: #e95420;
+  background: var(--color-accent, #e95420);
   color: #ffffff;
 }
 
 .qs-pill-group.active:hover {
-  background: #da4c1a;
+  filter: brightness(0.9);
 }
 
 .qs-pill-group.disabled {
@@ -325,7 +325,7 @@
 }
 
 .qs-spinner circle {
-  stroke: #e95420;
+  stroke: var(--color-accent, #e95420);
   stroke-linecap: round;
   animation: dash 1.5s ease-in-out infinite;
 }

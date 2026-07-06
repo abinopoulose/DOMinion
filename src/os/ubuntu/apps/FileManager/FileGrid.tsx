@@ -37,7 +37,7 @@ export function FileGrid({
   editValue,
   setEditingId,
   setEditValue,
-  onDeleteRequest,
+  onDeleteRequest: _onDeleteRequest,
 }: FileGridProps) {
   const selectedIdsSet = new Set(selectedIds);
   const inputRef  = useRef<HTMLInputElement>(null);

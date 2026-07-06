@@ -1,4 +1,4 @@
-import React from 'react';
+
 import type { SettingsPanel } from '../store/useSettingsStore';
 
 export interface PanelConfig {

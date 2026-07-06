@@ -1,9 +1,9 @@
-import React from 'react';
+
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useNetworkStore } from '../../../store/useNetworkStore';
 import { PANELS } from '../config/panels';
 
-export function SettingsHeaderControls({ windowId }: { windowId: string }) {
+export function SettingsHeaderControls({ windowId: _windowId }: { windowId: string }) {
   const { activePanel, systemSubPage, keyboardSubPage, goBackFromSubPage } = useSettingsStore();
   const panel = PANELS.find(p => p.id === activePanel);
   const { bluetoothEnabled, toggleBluetooth, airplaneMode, wifiEnabled } = useNetworkStore();
@@ -70,7 +70,7 @@ export function SettingsHeaderControls({ windowId }: { windowId: string }) {
               opacity: 0.7,
               WebkitAppRegion: 'no-drag',
               padding: '4px'
-            }}
+            } as any}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
@@ -101,7 +101,7 @@ export function SettingsHeaderControls({ windowId }: { windowId: string }) {
                 backgroundColor: bluetoothEnabled ? 'var(--color-accent)' : undefined,
                 WebkitAppRegion: 'no-drag',
                 pointerEvents: 'auto'
-              }}
+              } as any}
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {

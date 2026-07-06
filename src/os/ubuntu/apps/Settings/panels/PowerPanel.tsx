@@ -1,9 +1,9 @@
-
 import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
+import { SettingsDropdown } from '../components/SettingsDropdown';
 import { useSettingsStore } from '../store/useSettingsStore';
 import './PowerPanel.css';
 
-import { useBattery } from '../../hooks/useBattery';
+import { useBattery } from '../../../hooks/useBattery';
 
 export function PowerPanel() {
   const { powerMode, setPowerMode, screenBlank, setScreenBlank } = useSettingsStore();
@@ -95,22 +95,22 @@ export function PowerPanel() {
         Power Saving
       </div>
       <div className="ubuntu-settings-list-group">
-        <div className="ubuntu-settings-list-item">
+        <div className="ubuntu-settings-list-item" style={{ overflow: 'visible' }}>
           <span>Screen Blank</span>
-          <select 
-            className="ubuntu-settings-select" 
+          <SettingsDropdown 
             value={screenBlank}
-            onChange={(e) => setScreenBlank(e.target.value)}
-          >
-            <option value="1">1 minute</option>
-            <option value="2">2 minutes</option>
-            <option value="3">3 minutes</option>
-            <option value="4">4 minutes</option>
-            <option value="5">5 minutes</option>
-            <option value="10">10 minutes</option>
-            <option value="15">15 minutes</option>
-            <option value="never">Never</option>
-          </select>
+            onChange={(val) => setScreenBlank(val)}
+            options={[
+              { value: '1', label: '1 minute' },
+              { value: '2', label: '2 minutes' },
+              { value: '3', label: '3 minutes' },
+              { value: '4', label: '4 minutes' },
+              { value: '5', label: '5 minutes' },
+              { value: '10', label: '10 minutes' },
+              { value: '15', label: '15 minutes' },
+              { value: 'never', label: 'Never' },
+            ]}
+          />
         </div>
       </div>
     </SettingsPanelWrapper>

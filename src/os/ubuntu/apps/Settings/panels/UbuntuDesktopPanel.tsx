@@ -1,4 +1,5 @@
 import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
+import { SettingsDropdown } from '../components/SettingsDropdown';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export function UbuntuDesktopPanel() {
@@ -29,12 +30,13 @@ export function UbuntuDesktopPanel() {
       </div>
       <div className="ubuntu-settings-list-group" style={{ marginBottom: '32px' }}>
         <div className="ubuntu-settings-list-item interactive">
-          <span>Size</span>
+          <span>Show on</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>Normal</span>
+            <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>Primary Display (1)</span>
             {chevronDown}
           </div>
         </div>
+
         <div className="ubuntu-settings-list-item interactive">
           <span>Position of New Icons</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -90,29 +92,17 @@ export function UbuntuDesktopPanel() {
           </div>
         </div>
 
-        <div className="ubuntu-settings-list-item interactive">
-          <span>Show on</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>Primary Display (1)</span>
-            {chevronDown}
-          </div>
-        </div>
-
-        <div className="ubuntu-settings-list-item interactive" style={{ position: 'relative' }}>
+        <div className="ubuntu-settings-list-item interactive" style={{ overflow: 'visible' }}>
           <span>Position on Screen</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
-            <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px', textTransform: 'capitalize' }}>{dockPosition}</span>
-            {chevronDown}
-          </div>
-          <select 
-            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+          <SettingsDropdown 
             value={dockPosition}
-            onChange={(e) => setDockPosition(e.target.value as any)}
-          >
-            <option value="left">Left</option>
-            <option value="bottom">Bottom</option>
-            <option value="right">Right</option>
-          </select>
+            onChange={(value) => setDockPosition(value as any)}
+            options={[
+              { value: 'left', label: 'Left' },
+              { value: 'bottom', label: 'Bottom' },
+              { value: 'right', label: 'Right' }
+            ]}
+          />
         </div>
 
         <div className="ubuntu-settings-list-item interactive">
