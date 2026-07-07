@@ -30,19 +30,21 @@
 .fm-sidebar-item {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
+  padding: 10px 14px;
+  margin: 0 12px 2px 12px;
+  border-radius: 8px;
   cursor: pointer;
-  border-radius: 6px;
-  margin: 0 8px;
   gap: 12px;
+  transition: background-color 0.1s;
+  font-size: 14px;
 }
 
 .fm-sidebar-item:hover {
-  background: var(--color-bg-hover);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .fm-sidebar-item.active {
-  background: var(--color-bg-hover);
+  background: rgba(0, 0, 0, 0.08);
   color: var(--color-text-primary);
   font-weight: 500;
 }
@@ -151,6 +153,31 @@
 .fm-view-btn.active {
   background: var(--color-bg-hover);
   color: var(--color-text-primary);
+}
+
+.fm-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.fm-menu-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.fm-menu-item.active {
+  background: rgba(233, 84, 32, 0.1);
+  color: var(--color-accent);
 }
 
 .fm-content-area {
@@ -272,6 +299,10 @@
   width: 100%;
   text-align: center;
   outline: none;
+}
+
+.window[data-app-id="file-manager"] .titlebar {
+  background: linear-gradient(to right, var(--bg-titlebar) 200px, var(--bg-window) 200px) !important;
 }
 
 .fm-item-list .fm-inline-rename {

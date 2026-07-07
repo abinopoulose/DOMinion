@@ -19,9 +19,12 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
   const isSearching = appState.isSearching || false;
   const searchQuery = appState.searchQuery || '';
   const elevatedDirs = appState.elevatedDirs || [];
+  const sortBy = appState.sortBy || 'name';
+  const sortOrder = appState.sortOrder || 'asc';
 
   const [isEditingPath, setIsEditingPath] = useState(false);
   const [pathInput, setPathInput] = useState('');
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   const canGoBack = historyIndex > 0;
   const canGoForward = historyIndex < historyStack.length - 1;
@@ -31,8 +34,9 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
   };
 
   const navigateTo = (id: string, name: string = 'directory') => {
-    if (id === cwdId) return;
-    const canExecute = hasPermission(vfsStore.map, id, 'execute', username);
+    if (id === cwdId) return; // already there
+    
+    const canExecute = (id === 'starred' || id === 'other-locations') ? true : hasPermission(vfsStore.map, id, 'execute', username);
     if (!canExecute) {
       useSystemDialogStore.getState().openPolkitDialog({
         message: `Authentication is needed to access '${name}'.`,
@@ -66,6 +70,12 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
   };
 
   const getSegments = (id: string) => {
+    if (id === 'starred') {
+      return [{ id: 'starred', name: 'Starred', type: 'directory' as any, parentId: null, children: [], content: '', createdAt: 0, modifiedAt: 0, owner: '', group: '', permissions: '' }];
+    }
+    if (id === 'other-locations') {
+      return [{ id: 'other-locations', name: '+ Other Locations', type: 'directory' as any, parentId: null, children: [], content: '', createdAt: 0, modifiedAt: 0, owner: '', group: '', permissions: '' }];
+    }
     const segments = [];
     let current = vfsStore.getNode(id);
     while (current) {
@@ -105,23 +115,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
         borderRight: '1px solid var(--color-border)',
         flexShrink: 0 
       }}>
-        <div 
-          onClick={() => updateState({ isSearching: !isSearching })}
-          style={{ 
-            cursor: 'pointer', 
-            opacity: isSearching ? 1 : 0.7,
-            padding: '4px',
-            borderRadius: '4px',
-            background: isSearching ? 'var(--color-bg-hover)' : 'transparent',
-            WebkitAppRegion: 'no-drag' 
-          } as any}
-          onPointerDown={(e) => e.stopPropagation()}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-        </div>
+        <div style={{ width: 16 }} /> {/* spacer */}
         <span style={{ fontWeight: 600, fontSize: 14 }}>Files</span>
         <div style={{ cursor: 'pointer', opacity: 0.7, WebkitAppRegion: 'no-drag' } as any}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -187,6 +181,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                 WebkitAppRegion: 'no-drag'
               } as any}
               onPointerDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
             />
           </div>
         ) : isEditingPath ? (
@@ -212,12 +207,14 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                 WebkitAppRegion: 'no-drag'
               } as any}
               onPointerDown={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
             />
           </div>
         ) : (
           <div 
             className="fm-breadcrumbs-pill" 
-            onClick={() => {
+            onDoubleClick={(e) => {
+              e.stopPropagation();
               setPathInput(currentPathStr);
               setIsEditingPath(true);
             }}
@@ -254,14 +251,33 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                     onDoubleClick={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); navigateTo(seg.id); }}
                   >
-                    {idx === 0 && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M22 12H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
-                        <line x1="6" y1="16" x2="6.01" y2="16"></line>
-                        <line x1="10" y1="16" x2="14" y2="16"></line>
-                      </svg>
+                    {seg.id === 'starred' ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                        Starred
+                      </>
+                    ) : seg.id === 'other-locations' ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="5" x2="12" y2="19"></line>
+                          <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Other Locations
+                      </>
+                    ) : (
+                      <>
+                        {idx === 0 && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 12H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path>
+                            <line x1="6" y1="16" x2="6.01" y2="16"></line>
+                            <line x1="10" y1="16" x2="14" y2="16"></line>
+                          </svg>
+                        )}
+                        {idx === 0 ? 'Ubuntu' : seg.name}
+                      </>
                     )}
-                    {idx === 0 ? 'Ubuntu' : seg.name}
                   </button>
                   {idx < segments.length - 1 && <span style={{ opacity: 0.4, fontSize: '14px' }}>/</span>}
                 </React.Fragment>
@@ -280,35 +296,133 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', WebkitAppRegion: 'no-drag' } as any}>
-          {/* Folder Search / Add Icon */}
-          <button style={{ background: 'transparent', border: 'none', cursor: 'pointer', opacity: 0.7, padding: '4px' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-              <circle cx="12" cy="13" r="3"></circle>
-              <line x1="14.15" y1="15.15" x2="16" y2="17"></line>
-            </svg>
-          </button>
+
           
           {/* View Toggle */}
-          <div className="fm-view-toggles" style={{ padding: 0, display: 'flex' }}>
+          <div className="fm-view-toggles" style={{ padding: 0, display: 'flex', position: 'relative', border: 'none' }}>
             <button
-              className={`fm-view-btn ${viewMode === 'list' ? 'active' : ''}`}
+              className={`fm-view-btn ${showSortMenu ? 'active' : ''}`}
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => updateState({ viewMode: 'list' })}
-              style={{ display: 'flex', alignItems: 'center', gap: '2px', background: 'transparent' }}
+              onClick={() => setShowSortMenu(!showSortMenu)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: showSortMenu ? 'var(--color-bg-active)' : 'transparent', width: 'auto', padding: '0 8px' }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6"></line>
-                <line x1="8" y1="12" x2="21" y2="12"></line>
-                <line x1="8" y1="18" x2="21" y2="18"></line>
-                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                <line x1="3" y1="18" x2="3.01" y2="18"></line>
-              </svg>
+              {viewMode === 'list' ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6"></line>
+                  <line x1="8" y1="12" x2="21" y2="12"></line>
+                  <line x1="8" y1="18" x2="21" y2="18"></line>
+                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+              )}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
                 <polyline points="6 9 12 15 18 9"></polyline>
               </svg>
             </button>
+
+            {showSortMenu && (
+              <>
+                {/* Backdrop to close menu */}
+                <div 
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+                  onPointerDown={(e) => { e.stopPropagation(); setShowSortMenu(false); }}
+                />
+                
+                <div 
+                  style={{ 
+                    position: 'absolute', 
+                    top: '100%', 
+                    right: 0, 
+                    marginTop: '8px', 
+                    background: 'var(--color-bg-window)', 
+                    border: '1px solid var(--color-border)', 
+                    borderRadius: '8px', 
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    padding: '8px',
+                    zIndex: 1000,
+                    width: '160px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>View</div>
+                  <button 
+                    className={`fm-menu-item ${viewMode === 'list' ? 'active' : ''}`}
+                    onClick={() => { updateState({ viewMode: 'list' }); setShowSortMenu(false); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="8" y1="6" x2="21" y2="6"></line>
+                      <line x1="8" y1="12" x2="21" y2="12"></line>
+                      <line x1="8" y1="18" x2="21" y2="18"></line>
+                      <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                      <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                      <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                    List
+                  </button>
+                  <button 
+                    className={`fm-menu-item ${viewMode === 'grid' ? 'active' : ''}`}
+                    onClick={() => { updateState({ viewMode: 'grid' }); setShowSortMenu(false); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="7" height="7"></rect>
+                      <rect x="14" y="3" width="7" height="7"></rect>
+                      <rect x="14" y="14" width="7" height="7"></rect>
+                      <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Grid
+                  </button>
+                  <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
+                  <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sort By</div>
+                  <button 
+                    className={`fm-menu-item ${sortBy === 'name' ? 'active' : ''}`}
+                    onClick={() => {
+                      if (sortBy === 'name') {
+                        updateState({ sortOrder: sortOrder === 'asc' ? 'desc' : 'asc' });
+                      } else {
+                        updateState({ sortBy: 'name', sortOrder: 'asc' });
+                      }
+                      setShowSortMenu(false);
+                    }}
+                  >
+                    <span style={{ flex: 1 }}>Name</span>
+                    {sortBy === 'name' && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        {sortOrder === 'asc' ? <polyline points="18 15 12 9 6 15"></polyline> : <polyline points="6 9 12 15 18 9"></polyline>}
+                      </svg>
+                    )}
+                  </button>
+                  <button 
+                    className={`fm-menu-item ${sortBy === 'size' ? 'active' : ''}`}
+                    onClick={() => {
+                      if (sortBy === 'size') {
+                        updateState({ sortOrder: sortOrder === 'asc' ? 'desc' : 'asc' });
+                      } else {
+                        updateState({ sortBy: 'size', sortOrder: 'asc' });
+                      }
+                      setShowSortMenu(false);
+                    }}
+                  >
+                    <span style={{ flex: 1 }}>Size</span>
+                    {sortBy === 'size' && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        {sortOrder === 'asc' ? <polyline points="18 15 12 9 6 15"></polyline> : <polyline points="6 9 12 15 18 9"></polyline>}
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

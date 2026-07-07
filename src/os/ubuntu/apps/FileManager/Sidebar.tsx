@@ -43,7 +43,6 @@ export function Sidebar({ currentCwdId, onNavigate }: SidebarProps) {
   };
 
   const topItems = [
-    { id: 'recent', label: 'Recent', icon: getIcon('recent') },
     { id: 'starred', label: 'Starred', icon: getIcon('starred') },
     { id: HOME_ID, label: 'Home', icon: getIcon('home') },
     ...(docsId ? [{ id: docsId, label: 'Documents', icon: getIcon('documents') }] : []),
@@ -62,7 +61,7 @@ export function Sidebar({ currentCwdId, onNavigate }: SidebarProps) {
             key={fav.id}
             className={`fm-sidebar-item ${currentCwdId === fav.id ? 'active' : ''}`}
             onClick={() => {
-              if (fav.id !== 'recent' && fav.id !== 'starred') onNavigate(fav.id);
+              onNavigate(fav.id);
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16 }}>
@@ -72,7 +71,10 @@ export function Sidebar({ currentCwdId, onNavigate }: SidebarProps) {
           </div>
         ))}
         <div style={{ height: '1px', background: 'var(--color-border)', margin: '8px 16px', opacity: 0.5 }}></div>
-        <div className="fm-sidebar-item" onClick={() => {}}>
+        <div 
+          className={`fm-sidebar-item ${currentCwdId === 'other-locations' ? 'active' : ''}`} 
+          onClick={() => onNavigate('other-locations')}
+        >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16 }}>
             {getIcon('plus')}
           </div>
