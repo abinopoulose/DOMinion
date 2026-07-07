@@ -55,8 +55,18 @@ interface SettingsState {
   hotCorner: boolean;
   activeScreenEdges: boolean;
   workspaceType: 'dynamic' | 'fixed';
+  numberOfWorkspaces: number;
+  multiMonitorWorkspaces: 'primary' | 'all';
+  appSwitchingWorkspaces: 'all' | 'current';
+  appSwitchingMonitors: 'all' | 'current';
   primaryButton: 'left' | 'right';
   mouseSpeed: number;
+  mouseAcceleration: boolean;
+  touchpadEnabled: boolean;
+  disableTouchpadWhileTyping: boolean;
+  touchpadPointerSpeed: number;
+  secondaryClickMethod: 'two-finger' | 'corner';
+  scrollMethod: 'two-finger' | 'edge';
   tapToClick: boolean;
   naturalScrolling: boolean;
   highContrast: boolean;
@@ -99,8 +109,18 @@ interface SettingsState {
   setHotCorner: (v: boolean) => void;
   setActiveScreenEdges: (v: boolean) => void;
   setWorkspaceType: (v: 'dynamic' | 'fixed') => void;
+  setNumberOfWorkspaces: (v: number) => void;
+  setMultiMonitorWorkspaces: (v: 'primary' | 'all') => void;
+  setAppSwitchingWorkspaces: (v: 'all' | 'current') => void;
+  setAppSwitchingMonitors: (v: 'all' | 'current') => void;
   setPrimaryButton: (v: 'left' | 'right') => void;
   setMouseSpeed: (v: number) => void;
+  setMouseAcceleration: (v: boolean) => void;
+  setTouchpadEnabled: (v: boolean) => void;
+  setDisableTouchpadWhileTyping: (v: boolean) => void;
+  setTouchpadPointerSpeed: (v: number) => void;
+  setSecondaryClickMethod: (v: 'two-finger' | 'corner') => void;
+  setScrollMethod: (v: 'two-finger' | 'edge') => void;
   setTapToClick: (v: boolean) => void;
   setNaturalScrolling: (v: boolean) => void;
   setHighContrast: (v: boolean) => void;
@@ -139,8 +159,18 @@ export const useSettingsStore = create<SettingsState>()(
       hotCorner: true,
       activeScreenEdges: true,
       workspaceType: 'dynamic',
+      numberOfWorkspaces: 4,
+      multiMonitorWorkspaces: 'primary',
+      appSwitchingWorkspaces: 'all',
+      appSwitchingMonitors: 'all',
       primaryButton: 'left',
       mouseSpeed: 50,
+      mouseAcceleration: true,
+      touchpadEnabled: true,
+      disableTouchpadWhileTyping: true,
+      touchpadPointerSpeed: 50,
+      secondaryClickMethod: 'two-finger',
+      scrollMethod: 'two-finger',
       tapToClick: true,
       naturalScrolling: true,
       highContrast: false,
@@ -180,8 +210,18 @@ export const useSettingsStore = create<SettingsState>()(
       setHotCorner: (hotCorner) => set({ hotCorner }),
       setActiveScreenEdges: (activeScreenEdges) => set({ activeScreenEdges }),
       setWorkspaceType: (workspaceType) => set({ workspaceType }),
+      setNumberOfWorkspaces: (numberOfWorkspaces) => set({ numberOfWorkspaces }),
+      setMultiMonitorWorkspaces: (multiMonitorWorkspaces) => set({ multiMonitorWorkspaces }),
+      setAppSwitchingWorkspaces: (appSwitchingWorkspaces) => set({ appSwitchingWorkspaces }),
+      setAppSwitchingMonitors: (appSwitchingMonitors) => set({ appSwitchingMonitors }),
       setPrimaryButton: (primaryButton) => set({ primaryButton }),
       setMouseSpeed: (mouseSpeed) => set({ mouseSpeed }),
+      setMouseAcceleration: (mouseAcceleration) => set({ mouseAcceleration }),
+      setTouchpadEnabled: (touchpadEnabled) => set({ touchpadEnabled }),
+      setDisableTouchpadWhileTyping: (disableTouchpadWhileTyping) => set({ disableTouchpadWhileTyping }),
+      setTouchpadPointerSpeed: (touchpadPointerSpeed) => set({ touchpadPointerSpeed }),
+      setSecondaryClickMethod: (secondaryClickMethod) => set({ secondaryClickMethod }),
+      setScrollMethod: (scrollMethod) => set({ scrollMethod }),
       setTapToClick: (tapToClick) => set({ tapToClick }),
       setNaturalScrolling: (naturalScrolling) => set({ naturalScrolling }),
       setHighContrast: (highContrast) => set({ highContrast }),
@@ -217,8 +257,18 @@ export const useSettingsStore = create<SettingsState>()(
         hotCorner: state.hotCorner,
         activeScreenEdges: state.activeScreenEdges,
         workspaceType: state.workspaceType,
+        numberOfWorkspaces: state.numberOfWorkspaces,
+        multiMonitorWorkspaces: state.multiMonitorWorkspaces,
+        appSwitchingWorkspaces: state.appSwitchingWorkspaces,
+        appSwitchingMonitors: state.appSwitchingMonitors,
         primaryButton: state.primaryButton,
         mouseSpeed: state.mouseSpeed,
+        mouseAcceleration: state.mouseAcceleration,
+        touchpadEnabled: state.touchpadEnabled,
+        disableTouchpadWhileTyping: state.disableTouchpadWhileTyping,
+        touchpadPointerSpeed: state.touchpadPointerSpeed,
+        secondaryClickMethod: state.secondaryClickMethod,
+        scrollMethod: state.scrollMethod,
         tapToClick: state.tapToClick,
         naturalScrolling: state.naturalScrolling,
         highContrast: state.highContrast,

@@ -39,22 +39,28 @@ export function useWindowDrag({
 
   // Track the initial clientY when starting a drag on a maximized window
   const maxDragStartY = useRef<number | null>(null);
+  // Track initial pointer down to distinguish clicks from drags
+  const dragStart = useRef<{ x: number, y: number, pointerId: number, target: HTMLElement } | null>(null);
+  const hasStartedDragging = useRef(false);
   // How many pixels downward the user must drag before we restore the window
   const RESTORE_THRESHOLD = 40;
+  const DRAG_THRESHOLD = 3;
 
   const handlePointerDown = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {
-      // Don't drag if clicking a button inside the title bar
       if ((e.target as HTMLElement).closest('.titlebar__controls')) return;
-
+      
       onFocus();
-      e.currentTarget.setPointerCapture(e.pointerId);
-
-      const windowEl = e.currentTarget.closest('.window');
-      if (windowEl) windowEl.classList.add('window--dragging');
-
+      
+      dragStart.current = {
+        x: e.clientX,
+        y: e.clientY,
+        pointerId: e.pointerId,
+        target: e.currentTarget,
+      };
+      hasStartedDragging.current = false;
+      
       if (isMaximized) {
-        // Record drag-start Y so we can measure downward movement
         maxDragStartY.current = e.clientY;
         dragRef.current = {
           offsetX: e.clientX,
@@ -75,7 +81,20 @@ export function useWindowDrag({
 
   const handlePointerMove = useCallback(
     (e: ReactPointerEvent<HTMLElement>) => {
-      if (!dragRef.current) return;
+      if (!dragRef.current || !dragStart.current) return;
+
+      if (!hasStartedDragging.current) {
+        const dx = e.clientX - dragStart.current.x;
+        const dy = e.clientY - dragStart.current.y;
+        if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+          hasStartedDragging.current = true;
+          dragStart.current.target.setPointerCapture(dragStart.current.pointerId);
+          const windowEl = dragStart.current.target.closest('.window');
+          if (windowEl) windowEl.classList.add('window--dragging');
+        } else {
+          return;
+        }
+      }
 
       if (dragRef.current.isTearingOff) {
         const deltaY =
@@ -114,37 +133,37 @@ export function useWindowDrag({
     (e: ReactPointerEvent<HTMLElement>) => {
       if (!dragRef.current) return;
 
-      // If the user released before crossing the threshold, just cancel the drag
-      if (dragRef.current.isTearingOff) {
-        dragRef.current = null;
-        maxDragStartY.current = null;
+      if (hasStartedDragging.current) {
         e.currentTarget.releasePointerCapture(e.pointerId);
         const windowEl = e.currentTarget.closest('.window');
         if (windowEl) {
           windowEl.classList.remove('window--dragging');
           windowEl.classList.remove('window--unmaximizing');
         }
+      }
+
+      if (dragRef.current.isTearingOff && hasStartedDragging.current) {
+        dragRef.current = null;
+        maxDragStartY.current = null;
+        dragStart.current = null;
+        hasStartedDragging.current = false;
         return;
       }
 
-      // Snap to maximize if dropped at the very top edge (over the TopBar)
-      if (e.clientY <= 30 && onMaximize) {
-        onMaximize();
-      } else if (e.clientX <= 20 && onTile) {
-        onTile('left');
-      } else if (e.clientX >= window.innerWidth - 20 && onTile) {
-        onTile('right');
+      if (hasStartedDragging.current) {
+        if (e.clientY <= 30 && onMaximize) {
+          onMaximize();
+        } else if (e.clientX <= 20 && onTile) {
+          onTile('left');
+        } else if (e.clientX >= window.innerWidth - 20 && onTile) {
+          onTile('right');
+        }
       }
 
       dragRef.current = null;
       maxDragStartY.current = null;
-      e.currentTarget.releasePointerCapture(e.pointerId);
-
-      const windowEl = e.currentTarget.closest('.window');
-      if (windowEl) {
-        windowEl.classList.remove('window--dragging');
-        windowEl.classList.remove('window--unmaximizing');
-      }
+      dragStart.current = null;
+      hasStartedDragging.current = false;
     },
     [onMaximize, onTile]
   );

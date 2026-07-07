@@ -15,6 +15,7 @@ import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { withElevation } from '../../services/sudoService';
 import { TrashConfirmDialog } from '../../components/TrashConfirmDialog/TrashConfirmDialog';
 import './FileManager.css';
+export { FileManagerHeaderControls } from './FileManagerHeaderControls';
 
 /**
  * Attempt a VFS operation. If it fails with "Permission denied",
@@ -99,10 +100,16 @@ export function FileManager({ windowId }: FileManagerProps) {
   const historyStack = appState.historyStack || [cwdId];
   const historyIndex = appState.historyIndex ?? 0;
   const elevatedDirs: string[] = appState.elevatedDirs || [];
+  const isSearching = appState.isSearching || false;
+  const searchQuery = appState.searchQuery || '';
 
   const isElevated = elevatedDirs.includes(cwdId);
   const effectiveUser = isElevated ? 'root' : username;
-  const files = vfsStore.getChildren(cwdId, effectiveUser);
+  let files = vfsStore.getChildren(cwdId, effectiveUser);
+  
+  if (isSearching && searchQuery) {
+    files = files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }
 
   const updateState = (updates: Partial<FileManagerState>) => {
     updateAppState(windowId, { ...appState, ...updates });
@@ -481,21 +488,6 @@ export function FileManager({ windowId }: FileManagerProps) {
       <Sidebar currentCwdId={cwdId} onNavigate={navigateTo} />
       
       <div className="fm-main">
-        <BreadcrumbBar
-          currentCwdId={cwdId}
-          onNavigate={navigateTo}
-          canGoBack={historyIndex > 0}
-          canGoForward={historyIndex < historyStack.length - 1}
-          canGoUp={!!vfsStore.getNode(cwdId)?.parentId}
-          onBack={goBack}
-          onForward={goForward}
-          onUp={() => {
-            const parentId = vfsStore.getNode(cwdId)?.parentId;
-            if (parentId) navigateTo(parentId);
-          }}
-          viewMode={viewMode}
-          onViewModeChange={(mode) => updateState({ viewMode: mode })}
-        />
         
         <div
           className="fm-content-area"
@@ -545,7 +537,14 @@ export function FileManager({ windowId }: FileManagerProps) {
               >✕</button>
             </div>
           )}
-          {viewMode === 'grid' ? (
+          {files.length === 0 ? (
+            <div className="fm-empty-state">
+              <svg width="128" height="128" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 24, opacity: 0.5 }}>
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              <h2 style={{ margin: 0, fontWeight: 700 }}>Folder is Empty</h2>
+            </div>
+          ) : viewMode === 'grid' ? (
             <FileGrid
               files={files}
               onNavigate={navigateTo}
