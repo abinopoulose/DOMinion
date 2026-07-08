@@ -58,6 +58,11 @@ export function Terminal({ windowId }: TerminalProps) {
     }
   }, [windowState?.isFocused, interactiveApp]);
 
+  // Load directory whenever cwdId changes
+  useEffect(() => {
+    vfsStore.loadDirectory(cwdId);
+  }, [cwdId]);
+
   const effectiveUser = appState.effectiveUser || username;
 
   const generatePrompt = (currentCwdId: string) => {
@@ -554,6 +559,38 @@ export function Terminal({ windowId }: TerminalProps) {
     }
 
     const parsed = parseCommand(trimmed);
+    
+    // PRE-LOAD LAZY PATHS
+    if (parsed && parsed.length > 0) {
+      for (const cmd of parsed) {
+        let commandsToCheck = [cmd];
+        if (cmd.name === 'sudo' || cmd.name === 'su') {
+          // If sudo or su has a subcommand, parse it
+          const subCmdStr = cmd.args.join(' ');
+          if (subCmdStr) {
+             const subParsed = parseCommand(subCmdStr);
+             if (subParsed && subParsed.length > 0) commandsToCheck = commandsToCheck.concat(subParsed);
+          }
+        }
+        
+        for (const checkCmd of commandsToCheck) {
+          if (['cd', 'ls', 'cat', 'nano', 'vi'].includes(checkCmd.name)) {
+            const pathsToLoad = checkCmd.args.filter(a => !a.startsWith('-'));
+            if (pathsToLoad.length === 0 && (checkCmd.name === 'ls' || checkCmd.name === 'cd')) {
+              pathsToLoad.push('.');
+            }
+            for (const arg of pathsToLoad) {
+               let path = arg;
+               const store = useUbuntuVFSStore.getState();
+               const homePath = store.getAbsolutePath(HOME_ID);
+               if (path.startsWith('~/')) path = path.replace('~', homePath);
+               else if (path === '~') path = homePath;
+               await store.loadPathAsync(path, cwdId);
+            }
+          }
+        }
+      }
+    }
 
     // Handle `exit` for su sessions
     if (parsed && parsed.length > 0 && parsed[0].name === 'exit') {

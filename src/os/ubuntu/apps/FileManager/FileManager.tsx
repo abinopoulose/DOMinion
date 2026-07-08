@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useWindowStore, useVFSStore } from '../../store';
 import { getHomeId, getTrashId } from '../../fs/seed';
@@ -115,6 +115,11 @@ export function FileManager({ windowId }: FileManagerProps) {
     files = files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
   }
 
+  // Load directory whenever cwdId changes
+  useEffect(() => {
+    vfsStore.loadDirectory(cwdId);
+  }, [cwdId]);
+
   files = [...files].sort((a, b) => {
     // Keep directories first
     if (a.type === 'directory' && b.type !== 'directory') return -1;
@@ -137,9 +142,12 @@ export function FileManager({ windowId }: FileManagerProps) {
     updateAppState(windowId, { ...appState, ...updates });
   };
 
-  const navigateTo = (id: string, name: string = 'directory') => {
+  const navigateTo = async (id: string, name: string = 'directory') => {
     if (id === cwdId) return; // already there
     
+    // Load directory from IDB first
+    await vfsStore.loadDirectory(id);
+
     const canExecute = (id === 'starred' || id === 'other-locations') ? true : hasPermission(vfsStore.map, id, 'execute', username);
 
     if (!canExecute) {

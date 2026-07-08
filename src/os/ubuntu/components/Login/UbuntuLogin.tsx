@@ -3,6 +3,7 @@ import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 
 import { UBUNTU_ACCOUNTS } from '../../../../config/accounts';
 import { TopBar } from '../TopBar/TopBar';
+import { SystemDialog } from '../SystemDialog/SystemDialog';
 import { verifyPassword } from '../../utils/passwordHasher';
 import { useUbuntuVFSStore } from '../../store';
 import './UbuntuLogin.css';
@@ -62,25 +63,7 @@ export function UbuntuLogin() {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const handleFirstInteraction = () => {
-      try {
-        if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(() => {});
-        }
-      } catch (err) {}
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
-    };
 
-    document.addEventListener('click', handleFirstInteraction);
-    document.addEventListener('keydown', handleFirstInteraction);
-
-    return () => {
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
-    };
-  }, []);
 
   if (isBooting) {
     return (
@@ -151,6 +134,7 @@ export function UbuntuLogin() {
           </div>
         )}
       </div>
+      <SystemDialog />
     </div>
   );
 }

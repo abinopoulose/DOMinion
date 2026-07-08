@@ -7,6 +7,7 @@ export type OperatingSystem = 'ubuntu' | 'windows' | null;
 interface HardwareStore {
   powerState: PowerState;
   activeOS: OperatingSystem;
+  isSuspended: boolean;
   
   // Actions
   turnOn: () => void;
@@ -15,6 +16,8 @@ interface HardwareStore {
   bootOS: (os: OperatingSystem) => void;
   powerOff: () => void;
   hardPowerOff: () => void;
+  suspend: () => void;
+  wake: () => void;
 }
 
 export const useHardwareStore = create<HardwareStore>()(
@@ -22,13 +25,16 @@ export const useHardwareStore = create<HardwareStore>()(
     (set) => ({
       powerState: 'off',
       activeOS: null,
+      isSuspended: false,
 
-      turnOn: () => set({ powerState: 'post', activeOS: null }),
+      turnOn: () => set({ powerState: 'post', activeOS: null, isSuspended: false }),
       enterBIOS: () => set({ powerState: 'bios' }),
       enterGRUB: () => set({ powerState: 'grub' }),
-      bootOS: (os) => set({ powerState: 'os', activeOS: os }),
-      powerOff: () => set({ powerState: 'shutting_down' }),
-      hardPowerOff: () => set({ powerState: 'off', activeOS: null }),
+      bootOS: (os) => set({ powerState: 'os', activeOS: os, isSuspended: false }),
+      powerOff: () => set({ powerState: 'shutting_down', isSuspended: false }),
+      hardPowerOff: () => set({ powerState: 'off', activeOS: null, isSuspended: false }),
+      suspend: () => set({ isSuspended: true }),
+      wake: () => set({ isSuspended: false }),
     }),
     {
       name: 'hardware-state',

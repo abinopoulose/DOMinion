@@ -62,6 +62,12 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
 }
 
 function UbuntuEnvironment() {
+  useEffect(() => {
+    import('./os/ubuntu/fs/vfsDb').then(({ seedVfsFromSnapshot }) => {
+      seedVfsFromSnapshot();
+    });
+  }, []);
+
   const currentUser = useUbuntuAuthStore((s) => s.currentUser);
   const openWindow = useWindowStore((s) => s.openWindow);
   const unfocusAll = useWindowStore((s) => s.unfocusAll);
@@ -247,7 +253,48 @@ function WindowsEnvironment() {
 }
 
 export default function App() {
-  const { powerState, activeOS, turnOn, hardPowerOff } = useHardwareStore();
+  const { powerState, activeOS, turnOn, hardPowerOff, isSuspended, wake } = useHardwareStore();
+
+  useEffect(() => {
+    if (!isSuspended) return;
+    
+    const handleWake = () => {
+      wake();
+    };
+
+    const timer = setTimeout(() => {
+      window.addEventListener('keydown', handleWake);
+      window.addEventListener('click', handleWake);
+      window.addEventListener('mousemove', handleWake);
+    }, 2000);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', handleWake);
+      window.removeEventListener('click', handleWake);
+      window.removeEventListener('mousemove', handleWake);
+    };
+  }, [isSuspended, wake]);
+
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      try {
+        if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch (err) {}
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+
+    document.addEventListener('click', handleFirstInteraction);
+    document.addEventListener('keydown', handleFirstInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleFirstInteraction);
+      document.removeEventListener('keydown', handleFirstInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     // Disable browser back button
@@ -260,16 +307,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (powerState === 'off') {
-      // Simulate physical power button press on initial load
-      const timer = setTimeout(() => turnOn(), 500);
-      return () => clearTimeout(timer);
-    }
     if (powerState === 'shutting_down') {
       const timer = setTimeout(() => hardPowerOff(), 3000);
       return () => clearTimeout(timer);
     }
-  }, [powerState, turnOn, hardPowerOff]);
+  }, [powerState, hardPowerOff]);
 
   useEffect(() => {
     if (powerState === 'off' || powerState === 'shutting_down' || powerState === 'post') {
@@ -280,7 +322,34 @@ export default function App() {
     }
   }, [powerState]);
 
-  if (powerState === 'off') return <div style={{ width: '100vw', height: '100vh', background: 'black' }} />;
+  if (powerState === 'off') {
+    return (
+      <div 
+        style={{ 
+          width: '100vw', 
+          height: '100vh', 
+          background: 'black',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          cursor: 'pointer',
+          color: '#444',
+          fontFamily: 'monospace',
+          fontSize: '14px'
+        }}
+        onClick={() => {
+          try {
+            if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+              document.documentElement.requestFullscreen().catch(() => {});
+            }
+          } catch (err) {}
+          turnOn();
+        }}
+      >
+        &gt; Click to Power On
+      </div>
+    );
+  }
   if (powerState === 'post') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><POST /></Suspense>;
   if (powerState === 'bios') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><BIOS /></Suspense>;
   if (powerState === 'grub') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><Grub /></Suspense>;
@@ -312,8 +381,14 @@ export default function App() {
   }
 
   if (powerState === 'os') {
-    if (activeOS === 'ubuntu') return <UbuntuEnvironment />;
-    if (activeOS === 'windows') return <WindowsEnvironment />;
+    return (
+      <>
+        {activeOS === 'ubuntu' ? <UbuntuEnvironment /> : activeOS === 'windows' ? <WindowsEnvironment /> : null}
+        {isSuspended && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'black', zIndex: 999999, cursor: 'none' }} />
+        )}
+      </>
+    );
   }
 
   return null;

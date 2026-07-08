@@ -47,6 +47,7 @@ import {
   generateSudoersContent,
   generateGroupContent,
 } from '../fs/authSeed';
+import { etcEntries } from '../fs/etcSeed';
 
 let tempExecutionUser: string | null = null;
 
@@ -105,6 +106,10 @@ interface VFSStore {
   getAbsolutePath: (id: string) => string;
   resolveRelativePath: (cwdId: string, path: string) => VFSNode | null;
   exists: (parentId: string, name: string) => boolean;
+
+  // Lazy Loading
+  loadDirectory: (id: string) => Promise<void>;
+  loadPathAsync: (path: string, cwdId: string) => Promise<void>;
 }
 
 export const useVFSStore = create<VFSStore>()(
@@ -135,6 +140,13 @@ export const useVFSStore = create<VFSStore>()(
             return state;
           }
           id = result.node.id;
+          
+          import('idb-keyval').then(({ set }) => {
+            set(`vfs_node_${id}`, result.node);
+            const parent = result.newMap[parentId];
+            if (parent) set(`vfs_node_${parent.id}`, parent);
+          });
+          
           return { map: result.newMap };
         });
         return { id, error };
@@ -207,11 +219,21 @@ export const useVFSStore = create<VFSStore>()(
             error = 'Permission denied';
             return state;
           }
+          const node = state.map[id];
+          const parentId = node?.parentId;
           const result = deleteNodeOp(state.map, id);
           if (result.error) {
             error = result.error;
             return state;
           }
+          
+          import('idb-keyval').then(({ set, del }) => {
+            del(`vfs_node_${id}`); // Shallow delete from IDB. Full recursive delete is complex but okay for now
+            if (parentId && result.newMap[parentId]) {
+              set(`vfs_node_${parentId}`, result.newMap[parentId]);
+            }
+          });
+          
           return { map: result.newMap };
         });
         return error;
@@ -230,6 +252,10 @@ export const useVFSStore = create<VFSStore>()(
             error = result.error;
             return state;
           }
+          import('idb-keyval').then(({ set }) => {
+            const updated = result.newMap[id];
+            if (updated) set(`vfs_node_${id}`, updated);
+          });
           return { map: result.newMap };
         });
         return error;
@@ -243,11 +269,18 @@ export const useVFSStore = create<VFSStore>()(
             error = 'Permission denied';
             return state;
           }
+          const node = state.map[id];
+          const oldParentId = node?.parentId;
           const result = moveNodeOp(state.map, id, newParentId);
           if (result.error) {
             error = result.error;
             return state;
           }
+          import('idb-keyval').then(({ set }) => {
+            if (result.newMap[id]) set(`vfs_node_${id}`, result.newMap[id]);
+            if (result.newMap[newParentId]) set(`vfs_node_${newParentId}`, result.newMap[newParentId]);
+            if (oldParentId && result.newMap[oldParentId]) set(`vfs_node_${oldParentId}`, result.newMap[oldParentId]);
+          });
           return { map: result.newMap };
         });
         return error;
@@ -286,6 +319,10 @@ export const useVFSStore = create<VFSStore>()(
             error = result.error;
             return state;
           }
+          import('idb-keyval').then(({ set }) => {
+             const updated = result.newMap[id];
+             if (updated) set(`vfs_node_${id}`, updated);
+          });
           return { map: result.newMap };
         });
         return error;
@@ -446,6 +483,68 @@ export const useVFSStore = create<VFSStore>()(
       getAbsolutePath: (id) => getAbsolutePath(get().map, id),
       resolveRelativePath: (cwdId, path) => resolveRelativePath(get().map, cwdId, path, ROOT_ID),
       exists: (parentId, name) => exists(get().map, parentId, name),
+
+      loadDirectory: async (id: string) => {
+        const { get: idbGet, getMany: idbGetMany } = await import('idb-keyval');
+        const idbNode = await idbGet(`vfs_node_${id}`);
+        const node = idbNode || get().map[id];
+        if (!node) return;
+        if (node.type !== 'directory') return;
+        
+        const children = await idbGetMany(node.children.map((cid: string) => `vfs_node_${cid}`));
+        const newMap = { ...get().map, [id]: node };
+        children.forEach((child: VFSNode) => {
+          if (child) newMap[child.id] = child;
+        });
+        
+        const { nodeMapToInodeTable } = await import('../fs/inodeCompat');
+        const result = nodeMapToInodeTable(newMap, ROOT_ID);
+        
+        set({ map: newMap, inodeTable: result.table, idToIno: result.idToIno, inoToId: result.inoToId });
+      },
+
+      loadPathAsync: async (path: string, cwdId: string) => {
+        const { get: idbGet, getMany: idbGetMany } = await import('idb-keyval');
+        let currentId = path.startsWith('/') ? ROOT_ID : cwdId;
+        const segments = path.split('/').filter(Boolean);
+        
+        const map = { ...get().map };
+        const idbCurrentNode = await idbGet(`vfs_node_${currentId}`);
+        let node = idbCurrentNode || map[currentId];
+        if (node) map[currentId] = node;
+        
+        for (const segment of segments) {
+          if (!node || node.type !== 'directory') break;
+          if (segment === '.') continue;
+          if (segment === '..') {
+            if (node.parentId) {
+              currentId = node.parentId;
+              const idbParentNode = await idbGet(`vfs_node_${currentId}`);
+              node = idbParentNode || map[currentId];
+              if (node) map[currentId] = node;
+            }
+            continue;
+          }
+          
+          const children = await idbGetMany(node.children.map((cid: string) => `vfs_node_${cid}`));
+          const child = children.find((c: VFSNode) => c && c.name === segment);
+          if (!child) return;
+          
+          map[child.id] = child;
+          currentId = child.id;
+          node = child;
+        }
+        
+        if (node && node.type === 'directory') {
+          const children = await idbGetMany(node.children.map((cid: string) => `vfs_node_${cid}`));
+          children.forEach((c: VFSNode) => { if (c) map[c.id] = c; });
+        }
+      
+        const { nodeMapToInodeTable } = await import('../fs/inodeCompat');
+        const result = nodeMapToInodeTable(map, ROOT_ID);
+        
+        set({ map, inodeTable: result.table, idToIno: result.idToIno, inoToId: result.inoToId });
+      },
     }),
     {
       name: 'ubuntu-vfs',
@@ -542,19 +641,59 @@ export const useVFSStore = create<VFSStore>()(
           (n: any) => n.name === 'etc' && n.parentId === ROOT_ID
         ) as VFSNode | undefined;
         if (etcNode) {
-          const ensureEtcFile = (name: string, content: string, permissions: string, group?: string) => {
+          migratedMap[etcNode.id].permissions = '700';
+          const ensureEtcFile = (name: string, content: string, permissions: string, group?: string, owner: string = 'root') => {
             const fileExists = etcNode.children.some((cId: string) => migratedMap[cId]?.name === name);
             if (!fileExists) {
               const id = crypto.randomUUID();
               migratedMap[id] = {
                 id, name, type: 'file', parentId: etcNode.id, children: [], content,
                 createdAt: Date.now(), modifiedAt: Date.now(),
-                owner: 'root', group: group || 'root', permissions,
+                owner, group: group || 'root', permissions,
+                meta: { extension: name.includes('.') ? name.split('.').pop() || '' : '' }
+              };
+              etcNode.children.push(id);
+            }
+          };
+
+          const ensureEtcDir = (name: string, permissions: string, owner: string = 'root', group: string = 'root') => {
+            const dirExists = etcNode.children.some((cId: string) => migratedMap[cId]?.name === name);
+            if (!dirExists) {
+              const id = crypto.randomUUID();
+              migratedMap[id] = {
+                id, name, type: 'directory', parentId: etcNode.id, children: [], content: '',
+                createdAt: Date.now(), modifiedAt: Date.now(),
+                owner, group, permissions,
                 meta: { extension: '' }
               };
               etcNode.children.push(id);
             }
           };
+
+          const ensureEtcSymlink = (name: string, target: string, permissions: string, owner: string = 'root', group: string = 'root') => {
+             const fileExists = etcNode.children.some((cId: string) => migratedMap[cId]?.name === name);
+             if (!fileExists) {
+               const id = crypto.randomUUID();
+               migratedMap[id] = {
+                 id, name, type: 'symlink', parentId: etcNode.id, children: [], content: target,
+                 createdAt: Date.now(), modifiedAt: Date.now(),
+                 owner, group, permissions,
+                 meta: { extension: '' }
+               };
+               etcNode.children.push(id);
+             }
+          };
+
+          for (const entry of etcEntries) {
+            if (['passwd', 'shadow', 'sudoers', 'group', 'group-', 'passwd-', 'shadow-', 'gshadow', 'gshadow-'].includes(entry.name)) continue;
+            if (entry.type === 'file') {
+              ensureEtcFile(entry.name, '', entry.perms, entry.group, entry.owner);
+            } else if (entry.type === 'dir') {
+              ensureEtcDir(entry.name, entry.perms, entry.owner, entry.group);
+            } else if (entry.type === 'symlink') {
+              ensureEtcSymlink(entry.name, (entry as any).target, entry.perms, entry.owner, entry.group);
+            }
+          }
 
           ensureEtcFile('passwd', generatePasswdContent(), '644');
           ensureEtcFile('shadow', generateShadowContent(), '640', 'shadow');

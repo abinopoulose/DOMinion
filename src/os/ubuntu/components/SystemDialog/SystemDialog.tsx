@@ -79,7 +79,7 @@ export function SystemDialog() {
       message = 'Are you sure you want to suspend the system?';
       actionText = 'Suspend';
       isDestructive = false;
-      action = () => { closeDialog(); /* Implement suspend if needed, for now just close */ };
+      action = () => { closeDialog(); useHardwareStore.getState().suspend(); };
       break;
   }
 
