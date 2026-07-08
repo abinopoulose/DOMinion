@@ -3,10 +3,11 @@
    ============================================================ */
 
 .desktop {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: url('https://assets.ubuntu.com/v1/4508933b-noble-numbat_1920x1080.jpg');
+  background-image: none;
+  background-color: transparent;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

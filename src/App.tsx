@@ -20,6 +20,7 @@ import { useWorkspaceStore } from './os/ubuntu/store/useWorkspaceStore'
 import { TopBar } from './os/ubuntu/components/TopBar/TopBar'
 import { Desktop } from './os/ubuntu/components/Desktop/Desktop'
 import { Dock } from './os/ubuntu/components/Dock/Dock'
+import { WorkspaceOSD } from './os/ubuntu/components/WorkspaceOSD/WorkspaceOSD'
 import { WorkspaceOverview } from './os/ubuntu/components/WorkspaceOverview/WorkspaceOverview'
 import { Window } from './os/ubuntu/components/Window/Window'
 import terminalIcon from './os/ubuntu/assets/icons/terminal.svg'
@@ -75,6 +76,7 @@ function UbuntuEnvironment() {
   
   const allWindows = useWindowStore((s) => s.windows);
   const activeWorkspace = useWorkspaceStore((s) => s.activeWorkspace);
+  const workspaceCount = useWorkspaceStore((s) => s.workspaceCount);
   const nextWorkspace = useWorkspaceStore((s) => s.nextWorkspace);
   const prevWorkspace = useWorkspaceStore((s) => s.prevWorkspace);
   const toggleOverview = useWorkspaceStore((s) => s.toggleOverview);
@@ -207,30 +209,61 @@ function UbuntuEnvironment() {
   return (
     <div className="shell" style={{ filter: filterString, transition: 'filter 0.1s ease-out' }}>
       <TopBar />
-      <Desktop onUnfocusAll={unfocusAll} />
-
-      {windowList.map((win) => (
-        <Window
-          key={win.id}
-          id={win.id}
-          icon={<img src={APP_META[win.appId]?.icon} alt="" style={{ width: 16, height: 16 }} />}
-          headerControls={
-            win.appId === 'terminal' ? <Suspense fallback={null}><TerminalHeaderControls windowId={win.id} /></Suspense> :
-            win.appId === 'browser' ? <Suspense fallback={null}><BrowserHeaderControls windowId={win.id} /></Suspense> : 
-            win.appId === 'settings' ? <Suspense fallback={null}><SettingsHeaderControls windowId={win.id} /></Suspense> :
-            win.appId === 'file-manager' ? <Suspense fallback={null}><FileManagerHeaderControls windowId={win.id} /></Suspense> : undefined
-          }
-          fullHeaderControls={win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager'}
-        >
-          <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid var(--color-accent, #E95420)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
-            <MockAppContent appId={win.appId} windowId={win.id} />
-          </Suspense>
-        </Window>
-      ))}
+      <div 
+        className="workspaces-slider-track"
+        style={{
+          display: 'flex',
+          width: `${workspaceCount * 100}vw`,
+          height: '100vh',
+          transform: `translateX(-${activeWorkspace * 100}vw)`,
+          transition: 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          zIndex: 0
+        }}
+      >
+        {Array.from({ length: workspaceCount }).map((_, i) => (
+          <div 
+            key={i} 
+            className="workspace-slide"
+            style={{
+              width: '100vw',
+              height: '100vh',
+              position: 'relative',
+              backgroundImage: `url(${activeWallpaper})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat'
+            }}
+          >
+            {i === 0 && <Desktop onUnfocusAll={unfocusAll} />}
+            {allWindows.filter((win) => win.workspaceId === i).map((win) => (
+              <Window
+                key={win.id}
+                id={win.id}
+                icon={<img src={APP_META[win.appId]?.icon} alt="" style={{ width: 16, height: 16 }} />}
+                headerControls={
+                  win.appId === 'terminal' ? <Suspense fallback={null}><TerminalHeaderControls windowId={win.id} /></Suspense> :
+                  win.appId === 'browser' ? <Suspense fallback={null}><BrowserHeaderControls windowId={win.id} /></Suspense> : 
+                  win.appId === 'settings' ? <Suspense fallback={null}><SettingsHeaderControls windowId={win.id} /></Suspense> :
+                  win.appId === 'file-manager' ? <Suspense fallback={null}><FileManagerHeaderControls windowId={win.id} /></Suspense> : undefined
+                }
+                fullHeaderControls={win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager'}
+              >
+                <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid var(--color-accent, #E95420)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
+                  <MockAppContent appId={win.appId} windowId={win.id} />
+                </Suspense>
+              </Window>
+            ))}
+          </div>
+        ))}
+      </div>
 
       <WorkspaceOverview wallpaper={activeWallpaper} onLaunchApp={toggleWindowFromDock} />
 
       <Dock />
+      <WorkspaceOSD />
       <SystemDialog />
     </div>
   );

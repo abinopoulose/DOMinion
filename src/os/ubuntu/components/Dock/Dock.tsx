@@ -13,6 +13,7 @@ import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { useMemo, useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useDockScroll } from '../../hooks/useDockScroll';
 import './Dock.css';
 
 function WindowSnapshot({ windowId }: { windowId: string }) {
@@ -79,6 +80,7 @@ const APP_META: Record<string, { label: string; icon: string }> = {
 };
 
 export function Dock() {
+  const dockScrollRef = useDockScroll();
   const openWindow = useWindowStore(s => s.openWindow);
   const windows = useWindowStore(s => s.windows) || [];
   const activeWorkspace = useWorkspaceStore(s => s.activeWorkspace);
@@ -314,6 +316,7 @@ export function Dock() {
 
   return (
     <nav 
+      ref={dockScrollRef as any}
       className={`dock ${dockPosition} ${dockAutoHide ? 'auto-hide' : ''} ${isOverlapped ? 'overlapped' : ''}`}
       id="dock"
       style={{
