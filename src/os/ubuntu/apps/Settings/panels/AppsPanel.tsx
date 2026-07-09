@@ -1,10 +1,10 @@
 import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
 import './AppsPanel.css';
-import terminalIcon from '../../../assets/icons/terminal.svg';
-import fileManagerIcon from '../../../assets/icons/file-manager.svg';
-import browserIcon from '../../../assets/icons/browser.svg';
-import textIcon from '../../../assets/icons/text.svg';
-import settingsIcon from '../../../assets/icons/settings.svg';
+const terminalIcon = '/ubuntu/icons/terminal.svg';
+const fileManagerIcon = '/ubuntu/icons/file-manager.svg';
+const browserIcon = '/ubuntu/icons/browser.svg';
+const textIcon = '/ubuntu/icons/text.svg';
+const settingsIcon = '/ubuntu/icons/settings.svg';
 import { useState } from 'react';
 
 const MOCK_APPS = [

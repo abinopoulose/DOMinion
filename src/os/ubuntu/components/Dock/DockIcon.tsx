@@ -13,12 +13,14 @@ interface DockIconProps {
   draggable?: boolean;
   onDragStart?: (e: React.DragEvent) => void;
   onDragOver?: (e: React.DragEvent) => void;
+  onDragEnter?: (e: React.DragEvent) => void;
   onDrop?: (e: React.DragEvent) => void;
+  onDragEnd?: (e: React.DragEvent) => void;
 }
 
 export function DockIcon({ 
   label, icon, isActive = false, isFocused = false, size = 48, 
-  onClick, onAuxClick, onContextMenu, draggable, onDragStart, onDragOver, onDrop 
+  onClick, onAuxClick, onContextMenu, draggable, onDragStart, onDragOver, onDragEnter, onDrop, onDragEnd 
 }: DockIconProps) {
   return (
     <div 
@@ -30,7 +32,9 @@ export function DockIcon({
       draggable={draggable}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
+      onDragEnter={onDragEnter}
       onDrop={onDrop}
+      onDragEnd={onDragEnd}
     >
       <span className="dock-icon__tooltip">{label}</span>
       <img className="dock-icon__img" src={icon} alt={label} draggable={false} style={{ width: size - 12, height: size - 12 }} />

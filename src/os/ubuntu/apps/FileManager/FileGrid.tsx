@@ -43,6 +43,7 @@ export function FileGrid({
   const inputRef  = useRef<HTMLInputElement>(null);
   const gridRef   = useRef<HTMLDivElement>(null);
   const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
+  const accentColor  = useSettingsStore((s: any) => s.accentColor);
   const username     = useUbuntuAuthStore((s) => s.currentUser) || 'user';
   const vfsStoreMap  = useVFSStore((s) => s.map);
 
@@ -159,7 +160,7 @@ export function FileGrid({
         >
           <div className="file-icon-container" style={{ position: 'relative', width: dockIconSize, height: dockIconSize }}>
             <img
-              src={getIconForFile(file.name, file.type === 'directory')}
+              src={getIconForFile(file.name, file.type === 'directory', accentColor)}
               alt={file.name}
               className={`fm-item-icon ${!hasPermission(vfsStoreMap, file.id, 'write', username) ? 'file-item-protected' : ''}`}
               draggable={false}

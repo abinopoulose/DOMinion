@@ -6,7 +6,8 @@ export function UbuntuDesktopPanel() {
   const { 
     dockAutoHide, setDockAutoHide,
     dockIconSize, setDockIconSize,
-    dockPosition, setDockPosition
+    dockPosition, setDockPosition,
+    showTrashInDock, setShowTrashInDock
   } = useSettingsStore();
 
   const chevronDown = (
@@ -74,6 +75,13 @@ export function UbuntuDesktopPanel() {
           </div>
           <div className="ubuntu-settings-toggle checked" style={{ backgroundColor: 'var(--color-accent)' }}>
             <div className="ubuntu-settings-toggle-knob" style={{ transform: 'translateX(20px)' }} />
+          </div>
+        </div>
+
+        <div className="ubuntu-settings-list-item interactive" onClick={() => setShowTrashInDock(!showTrashInDock)}>
+          <span>Show Trash in Dock</span>
+          <div className={`ubuntu-settings-toggle ${showTrashInDock ? 'checked' : ''}`} style={{ backgroundColor: showTrashInDock ? 'var(--color-accent)' : 'rgba(0,0,0,0.15)' }}>
+            <div className="ubuntu-settings-toggle-knob" style={{ transform: showTrashInDock ? 'translateX(20px)' : 'translateX(0)' }} />
           </div>
         </div>
 

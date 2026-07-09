@@ -5,7 +5,7 @@ import { useUbuntuVFSStore } from '../../../store/useUbuntuVFSStore';
 export function SharingPanel() {
   const vfsStore = useUbuntuVFSStore();
   const [hostname, setHostname] = useState(() => {
-    return localStorage.getItem('ubuntu-hostname') || 'ubuntu-web';
+    return localStorage.getItem('ubuntu-hostname') || 'envyy';
   });
 
   const handleHostnameChange = (e: React.ChangeEvent<HTMLInputElement>) => {

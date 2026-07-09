@@ -198,6 +198,7 @@ export function Window({
     animState === 'minimizing' && 'window--minimizing',
     animState === 'restoring' && 'window--restoring',
     animState === 'opening' && 'window--opening',
+    win.appId === 'terminal' && 'window--terminal-dark',
   ].filter(Boolean).join(' ');
 
   const style: React.CSSProperties = isMaximized

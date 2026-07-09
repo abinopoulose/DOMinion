@@ -74,11 +74,13 @@ export function PowerPanel() {
       <div className="ubuntu-settings-list-group" style={{ marginBottom: '24px' }}>
         <div className="ubuntu-settings-list-item" style={{ cursor: 'default' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-text-secondary)' }}>
-              <rect x="2" y="7" width="16" height="10" rx="2" ry="2" />
-              <line x1="22" y1="11" x2="22" y2="13" />
-              <rect x="4" y="9" width={(batteryLevel ?? 85) / 10} height="6" fill="currentColor" stroke="none" />
-              {isCharging && <polygon points="11 6 7 12 13 12 9 18" fill="currentColor" stroke="none" />}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: 'var(--color-text-secondary)' }}>
+              <path d="M15.5 5h-7C7.67 5 7 5.67 7 6.5v13c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-13C17 5.67 16.33 5 15.5 5z" fill="currentColor" opacity="0.3" stroke="none" />
+              <path d="M10 3h4v2h-4V3z" fill="currentColor" opacity="0.3" stroke="none" />
+              <rect x="8.5" y={19.5 - 13 * ((batteryLevel ?? 100) / 100)} width="7" height={13 * ((batteryLevel ?? 100) / 100)} fill="currentColor" stroke="none" />
+              {isCharging && (
+                <polygon points="13 7 9 13 11.5 13 11 18 15 11.5 12.5 11.5" fill="var(--color-accent)" stroke="none" />
+              )}
             </svg>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontWeight: '500' }}>Main Battery</span>

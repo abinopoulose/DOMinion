@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 export function BluetoothPanel() {
   const { bluetoothEnabled, airplaneMode } = useNetworkStore();
   const [isScanning, setIsScanning] = useState(false);
-  const deviceName = localStorage.getItem('ubuntu-hostname') || 'ubuntu-web';
+  const deviceName = localStorage.getItem('ubuntu-hostname') || 'envyy';
 
   useEffect(() => {
     if (bluetoothEnabled) {

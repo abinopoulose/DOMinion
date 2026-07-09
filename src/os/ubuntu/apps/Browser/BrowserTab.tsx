@@ -1,5 +1,5 @@
 
-import browserIcon from '../../assets/icons/browser.svg';
+const browserIcon = '/ubuntu/icons/browser.svg';
 
 interface BrowserTabProps {
   id: string;

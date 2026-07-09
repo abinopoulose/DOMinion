@@ -86,7 +86,7 @@ export const hostname: CommandHandler = (_args, _cwdId, _updateCwd, _clearHistor
   if (node && node.type === 'file') {
     [node.content.trim()].forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
-  const fallback = localStorage.getItem('ubuntu-hostname') || 'ubuntu-web';
+  const fallback = localStorage.getItem('ubuntu-hostname') || 'envyy';
   [fallback].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 

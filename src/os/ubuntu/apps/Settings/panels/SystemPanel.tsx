@@ -149,7 +149,7 @@ function DateTimeSubPage() {
 function AboutSubPage() {
   const vfsStore = useUbuntuVFSStore();
   const [deviceName, setDeviceName] = useState(() => {
-    return localStorage.getItem('ubuntu-hostname') || 'ubuntu-web';
+    return localStorage.getItem('ubuntu-hostname') || 'envyy';
   });
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {

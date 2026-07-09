@@ -1,7 +1,7 @@
 .windows-desktop-container {
   width: 100vw;
   height: 100vh;
-  background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop') no-repeat center center fixed;
+  background: url('../../assets/wallpapers/win-wallpaper-1.jpg') no-repeat center center fixed;
   background-size: cover;
   display: flex;
   flex-direction: column;

@@ -243,16 +243,15 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  background-color: var(--bg-window);
+  background-color: #ffffff;
   color: var(--color-text-primary);
+  position: relative;
 }
 
 .browser-new-tab-logo {
-  font-size: 48px;
-  font-weight: 300;
-  margin-bottom: 32px;
-  color: var(--color-text-primary);
-  letter-spacing: -1px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 48px;
 }
 
 .browser-new-tab-search {
@@ -260,60 +259,43 @@
   max-width: 600px;
   display: flex;
   align-items: center;
-  background-color: var(--color-bg-input);
-  border: 1px solid var(--color-border);
-  border-radius: 24px;
+  background-color: #ffffff;
+  border-radius: 8px;
   padding: 0 16px;
   height: 48px;
   margin-bottom: 48px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .browser-new-tab-search-input {
   flex: 1;
   background: transparent;
   border: none;
-  color: var(--color-text-primary);
-  font-size: 16px;
+  color: #202124;
+  font-size: 15px;
   outline: none;
 }
 
-.browser-quick-links {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 24px;
-}
-
-.browser-quick-link {
+.browser-new-tab-settings-btn {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: none;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  width: 80px;
-  height: 80px;
-  border-radius: 12px;
   justify-content: center;
+  color: #5f6368;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
-  color: var(--color-text-primary);
-  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  transition: background-color 0.2s, box-shadow 0.2s;
 }
 
-.browser-quick-link:hover {
-  background: var(--color-surface-hover);
-  transform: translateY(-2px);
+.browser-new-tab-settings-btn:hover {
+  background-color: #f8f9fa;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
-.browser-quick-link-icon {
-  font-size: 24px;
-  margin-bottom: 8px;
-}
-
-.browser-quick-link-title {
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 90%;
-}

@@ -23,12 +23,12 @@ import { Dock } from './os/ubuntu/components/Dock/Dock'
 import { WorkspaceOSD } from './os/ubuntu/components/WorkspaceOSD/WorkspaceOSD'
 import { WorkspaceOverview } from './os/ubuntu/components/WorkspaceOverview/WorkspaceOverview'
 import { Window } from './os/ubuntu/components/Window/Window'
-import terminalIcon from './os/ubuntu/assets/icons/terminal.svg'
-import fileManagerIcon from './os/ubuntu/assets/icons/file-manager.svg'
-import browserIcon from './os/ubuntu/assets/icons/browser.svg'
-import textIcon from './os/ubuntu/assets/icons/text.svg'
-import settingsIcon from './os/ubuntu/assets/icons/settings.svg'
-import calculatorIcon from './os/ubuntu/assets/icons/calculator.svg'
+const terminalIcon = '/ubuntu/icons/terminal.svg';
+const fileManagerIcon = '/ubuntu/icons/file-manager.svg';
+const browserIcon = '/ubuntu/icons/browser.svg';
+const textIcon = '/ubuntu/icons/text.svg';
+const settingsIcon = '/ubuntu/icons/settings.svg';
+const calculatorIcon = '/ubuntu/icons/calculator.svg';
 // Lazy load Apps
 const Terminal = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.Terminal })))
 const TerminalHeaderControls = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.TerminalHeaderControls })))
@@ -46,7 +46,7 @@ import './App.css'
 const APP_META: Record<string, { title: string; icon: string; defaultSize: { width: number; height: number } }> = {
   terminal: { title: 'Terminal', icon: terminalIcon, defaultSize: { width: 680, height: 440 } },
   'file-manager': { title: 'Files', icon: fileManagerIcon, defaultSize: { width: 750, height: 500 } },
-  browser: { title: 'Browser', icon: browserIcon, defaultSize: { width: 900, height: 600 } },
+  browser: { title: 'Firefox', icon: browserIcon, defaultSize: { width: 900, height: 600 } },
   'text-editor': { title: 'Text Editor', icon: textIcon, defaultSize: { width: 600, height: 500 } },
   calculator: { title: 'Calculator', icon: calculatorIcon, defaultSize: { width: 320, height: 480 } },
   settings: { title: 'Settings', icon: settingsIcon, defaultSize: { width: 900, height: 600 } },
@@ -289,6 +289,14 @@ export default function App() {
   const { powerState, activeOS, turnOn, hardPowerOff, isSuspended, wake } = useHardwareStore();
 
   useEffect(() => {
+    if (activeOS === 'windows') {
+      document.body.style.background = '#000';
+    } else {
+      document.body.style.background = '';
+    }
+  }, [activeOS]);
+
+  useEffect(() => {
     if (!isSuspended) return;
     
     const handleWake = () => {
@@ -347,7 +355,7 @@ export default function App() {
   }, [powerState, hardPowerOff]);
 
   useEffect(() => {
-    if (powerState === 'off' || powerState === 'shutting_down' || powerState === 'post') {
+    if (powerState !== 'os') {
       useWindowStore.getState().clearAllWindows();
       useWorkspaceStore.getState().resetWorkspaces();
       useUbuntuAuthStore.getState().logout();

@@ -3,12 +3,12 @@ import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useWindowStore } from '../../store/useUbuntuWindowStore';
 import type { WindowState } from '../../types';
 
-import terminalIcon from '../../assets/icons/terminal.svg';
-import fileManagerIcon from '../../assets/icons/file-manager.svg';
-import browserIcon from '../../assets/icons/browser.svg';
-import textIcon from '../../assets/icons/text.svg';
-import settingsIcon from '../../assets/icons/settings.svg';
-import calculatorIcon from '../../assets/icons/calculator.svg';
+const terminalIcon = '/ubuntu/icons/terminal.svg';
+const fileManagerIcon = '/ubuntu/icons/file-manager.svg';
+const browserIcon = '/ubuntu/icons/browser.svg';
+const textIcon = '/ubuntu/icons/text.svg';
+const settingsIcon = '/ubuntu/icons/settings.svg';
+const calculatorIcon = '/ubuntu/icons/calculator.svg';
 
 import './WorkspaceOverview.css';
 

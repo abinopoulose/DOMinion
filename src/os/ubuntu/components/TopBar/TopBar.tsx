@@ -90,11 +90,11 @@ export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
           {/* Battery icon */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <svg className="topbar__tray-icon" viewBox="0 0 24 24" style={{ width: '18px', height: '18px' }}>
-              <path d="M16.5 6.5h-13C2.67 6.5 2 7.17 2 8v8c0 .83.67 1.5 1.5 1.5h13c.83 0 1.5-.67 1.5-1.5V8c0-.83-.67-1.5-1.5-1.5z" fill="currentColor" opacity="0.3" />
-              <path d="M19 10h2v4h-2v-4z" fill="currentColor" opacity="0.3" />
-              <rect x="3.5" y="8" width={11.5 * ((batteryLevel ?? 100) / 100)} height="8" fill="currentColor" />
+              <path d="M15.5 5h-7C7.67 5 7 5.67 7 6.5v13c0 .83.67 1.5 1.5 1.5h7c.83 0 1.5-.67 1.5-1.5v-13C17 5.67 16.33 5 15.5 5z" fill="currentColor" opacity="0.3" />
+              <path d="M10 3h4v2h-4V3z" fill="currentColor" opacity="0.3" />
+              <rect x="8.5" y={19.5 - 13 * ((batteryLevel ?? 100) / 100)} width="7" height={13 * ((batteryLevel ?? 100) / 100)} fill="currentColor" />
               {isCharging && (
-                <polygon points="10 7.5 7 12.5 9.5 12.5 9 16.5 12 11.5 9.5 11.5" fill="var(--color-accent)" stroke="none" />
+                <polygon points="13 7 9 13 11.5 13 11 18 15 11.5 12.5 11.5" fill="var(--color-accent)" stroke="none" />
               )}
             </svg>
           </div>

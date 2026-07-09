@@ -41,6 +41,7 @@ export function FileList({
   const selectedIdsSet = new Set(selectedIds);
   const inputRef = useRef<HTMLInputElement>(null);
   const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
+  const accentColor = useSettingsStore((s: any) => s.accentColor);
   const listIconSize = Math.max(16, Math.floor(dockIconSize / 2));
   const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
   const vfsStoreMap = useVFSStore((s) => s.map);
@@ -154,7 +155,7 @@ export function FileList({
           style={{ display: 'grid', gridTemplateColumns: '40px 2fr 1fr 1fr 1fr 1fr 1fr', alignItems: 'center', padding: '4px 8px', gap: '8px' }}
         >
           <div className="file-icon-container" style={{ position: 'relative', width: listIconSize, height: listIconSize }}>
-            <img src={getIconForFile(file.name, file.type === 'directory')} alt={file.name} className={`fm-item-icon ${!hasPermission(vfsStoreMap, file.id, 'write', username) ? 'file-item-protected' : ''}`} draggable={false} style={{ width: '100%', height: '100%' }} />
+            <img src={getIconForFile(file.name, file.type === 'directory', accentColor)} alt={file.name} className={`fm-item-icon ${!hasPermission(vfsStoreMap, file.id, 'write', username) ? 'file-item-protected' : ''}`} draggable={false} style={{ width: '100%', height: '100%' }} />
             {!hasPermission(vfsStoreMap, file.id, 'write', username) && (
               <div className="file-lock-badge" title="This item is read-only">
                 <svg viewBox="0 0 24 24" width="10" height="10" fill="#e95420">

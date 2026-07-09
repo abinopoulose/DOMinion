@@ -1,10 +1,10 @@
 import { DockIcon } from './DockIcon';
-import terminalIcon from '../../assets/icons/terminal.svg';
-import fileManagerIcon from '../../assets/icons/file-manager.svg';
-import browserIcon from '../../assets/icons/browser.svg';
-import settingsIcon from '../../assets/icons/settings.svg';
-import textIcon from '../../assets/icons/text.svg';
-import trashIcon from '../../assets/icons/trash.svg';
+const terminalIcon = '/ubuntu/icons/terminal.svg';
+const fileManagerIcon = '/ubuntu/icons/file-manager.svg';
+const browserIcon = '/ubuntu/icons/browser.svg';
+const settingsIcon = '/ubuntu/icons/settings.svg';
+const textIcon = '/ubuntu/icons/text.svg';
+const trashIcon = '/ubuntu/icons/trash.svg';
 import { getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { useWindowStore } from '../../store/useUbuntuWindowStore';
@@ -14,6 +14,7 @@ import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { useMemo, useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useDockScroll } from '../../hooks/useDockScroll';
+import { getFolderIconUrl } from '../../utils/iconResolver';
 import './Dock.css';
 
 function WindowSnapshot({ windowId }: { windowId: string }) {
@@ -88,7 +89,7 @@ export function Dock() {
   // Only show indicators for windows on the current workspace
   const currentWorkspaceWindows = windows.filter(w => w.workspaceId === activeWorkspace);
   const focusedAppId = currentWorkspaceWindows.find(w => w.isFocused)?.appId;
-  const { dockPosition, dockIconSize, dockAutoHide, pinnedApps, setPinnedApps } = useSettingsStore();
+  const { dockPosition, dockIconSize, dockAutoHide, pinnedApps, setPinnedApps, accentColor, showTrashInDock } = useSettingsStore();
 
   const activeAppIds = new Set(windows.map((w: any) => w.appId));
 
@@ -109,6 +110,8 @@ export function Dock() {
   const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const [isOverlapped, setIsOverlapped] = useState(false);
+  const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
+  const [dragOverAppId, setDragOverAppId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!dockAutoHide) {
@@ -290,28 +293,54 @@ export function Dock() {
 
   const handleDragStart = (e: React.DragEvent, appId: string) => {
     e.dataTransfer.setData('application/x-dock-app', appId);
+    setDraggedAppId(appId);
+    setDragOverAppId(null);
+    // Needed for Firefox to allow drag
+    e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
 
+  const handleDragEnter = (e: React.DragEvent, targetAppId: string) => {
+    e.preventDefault();
+    if (draggedAppId && draggedAppId !== targetAppId) {
+      setDragOverAppId(targetAppId);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent, targetAppId: string) => {
-    const droppedAppId = e.dataTransfer.getData('application/x-dock-app');
-    if (droppedAppId && droppedAppId !== targetAppId) {
-      e.preventDefault();
+    e.preventDefault();
+    const droppedAppId = e.dataTransfer.getData('application/x-dock-app') || draggedAppId;
+    
+    if (droppedAppId && targetAppId && droppedAppId !== targetAppId) {
       let newPinned = [...pinnedApps];
       if (!newPinned.includes(droppedAppId)) newPinned.push(droppedAppId);
       if (!newPinned.includes(targetAppId)) newPinned.push(targetAppId);
       
       const draggedIdx = newPinned.indexOf(droppedAppId);
       const targetIdx = newPinned.indexOf(targetAppId);
+      
       if (draggedIdx > -1 && targetIdx > -1) {
         newPinned.splice(draggedIdx, 1);
-        newPinned.splice(targetIdx, 0, droppedAppId);
+        const newTargetIdx = newPinned.indexOf(targetAppId);
+        
+        const origDraggedIdx = dockAppIds.indexOf(droppedAppId);
+        const origTargetIdx = dockAppIds.indexOf(targetAppId);
+        
+        const insertIdx = origTargetIdx > origDraggedIdx ? newTargetIdx + 1 : newTargetIdx;
+        newPinned.splice(insertIdx, 0, droppedAppId);
         setPinnedApps(newPinned);
       }
     }
+    setDraggedAppId(null);
+    setDragOverAppId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedAppId(null);
+    setDragOverAppId(null);
   };
 
   return (
@@ -328,31 +357,56 @@ export function Dock() {
       }}
     >
       <div className="dock__apps" style={{ display: 'flex', flexDirection: dockPosition === 'bottom' ? 'row' : 'column', gap: '8px', alignItems: 'center' }}>
-        {dockAppIds.map((appId) => {
+        {dockAppIds.map((appId, index) => {
           const meta = APP_META[appId];
           if (!meta) return null;
+          
+          const isDragOver = dragOverAppId === appId;
+          const origDraggedIdx = dockAppIds.indexOf(draggedAppId || '');
+          const isDraggingDown = origDraggedIdx > -1 && index > origDraggedIdx;
+          
+          let dynamicStyle: React.CSSProperties = { position: 'relative', transition: 'padding 0.2s cubic-bezier(0.2, 0, 0.1, 1)' };
+          
+          if (draggedAppId && isDragOver) {
+            const gapSize = dockIconSize + 8;
+            if (dockPosition === 'bottom') {
+                if (isDraggingDown) dynamicStyle.paddingRight = `${gapSize}px`;
+                else dynamicStyle.paddingLeft = `${gapSize}px`;
+            } else {
+                if (isDraggingDown) dynamicStyle.paddingBottom = `${gapSize}px`;
+                else dynamicStyle.paddingTop = `${gapSize}px`;
+            }
+          }
+
+          // Optionally reduce opacity of the original item while dragging
+          if (appId === draggedAppId) {
+              dynamicStyle.opacity = 0.5;
+          }
+
           return (
             <div 
               key={appId} 
-              style={{ position: 'relative' }}
+              style={dynamicStyle}
               onMouseEnter={(e) => handleMouseEnterIcon(e, appId)}
               onMouseLeave={handleMouseLeaveIcon}
               id={`dock-icon-wrapper-${appId}`}
+              draggable
+              onDragStart={(e) => handleDragStart(e, appId)}
+              onDragOver={handleDragOver}
+              onDragEnter={(e) => handleDragEnter(e, appId)}
+              onDrop={(e) => handleDrop(e, appId)}
+              onDragEnd={handleDragEnd}
             >
               <DockIcon
                 id={appId}
                 label={meta.label}
-                icon={meta.icon}
+                icon={appId === 'file-manager' ? getFolderIconUrl(accentColor) : meta.icon}
                 isActive={activeAppIds.has(appId)}
                 isFocused={focusedAppId === appId}
                 size={dockIconSize}
                 onClick={() => handleAppClick(appId)}
                 onAuxClick={(e) => handleAuxClick(e, appId)}
                 onContextMenu={(e) => handleContextMenu(e, appId)}
-                draggable
-                onDragStart={(e) => handleDragStart(e, appId)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, appId)}
               />
               {previewAppId === appId && (
                 <div 
@@ -411,38 +465,42 @@ export function Dock() {
           );
         })}
         {/* Trash Icon at the bottom of docked apps */}
-        <div style={{ 
-          width: dockPosition === 'bottom' ? '1px' : '32px', 
-          height: dockPosition === 'bottom' ? '32px' : '1px', 
-          background: 'rgba(255,255,255,0.12)', 
-          margin: dockPosition === 'bottom' ? '0 4px' : '4px 0',
-          flexShrink: 0
-        }} />
-        <DockIcon
-          id="trash"
-          label="Trash"
-          icon={trashIcon}
-          isActive={windows.some(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant'))}
-          isFocused={focusedAppId === 'file-manager' && (windows.find(w => w.isFocused)?.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')}
-          size={dockIconSize}
-          onClick={() => {
-            const trashId = getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant');
-            const trashWindows = windows.filter(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === trashId);
-            if (trashWindows.length > 0) {
-              const win = trashWindows[0];
-              if (win.isMinimized) {
-                useWindowStore.getState().restoreWindow(win.id);
-                useWindowStore.getState().focusWindow(win.id);
-              } else if (win.isFocused) {
-                useWindowStore.getState().minimizeWindow(win.id);
-              } else {
-                useWindowStore.getState().focusWindow(win.id);
-              }
-            } else {
-              openWindow('file-manager', { cwdId: trashId });
-            }
-          }}
-        />
+        {showTrashInDock && (
+          <>
+            <div style={{ 
+              width: dockPosition === 'bottom' ? '1px' : '32px', 
+              height: dockPosition === 'bottom' ? '32px' : '1px', 
+              background: 'rgba(255,255,255,0.12)', 
+              margin: dockPosition === 'bottom' ? '0 4px' : '4px 0',
+              flexShrink: 0
+            }} />
+            <DockIcon
+              id="trash"
+              label="Trash"
+              icon={trashIcon}
+              isActive={windows.some(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant'))}
+              isFocused={focusedAppId === 'file-manager' && (windows.find(w => w.isFocused)?.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')}
+              size={dockIconSize}
+              onClick={() => {
+                const trashId = getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant');
+                const trashWindows = windows.filter(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === trashId);
+                if (trashWindows.length > 0) {
+                  const win = trashWindows[0];
+                  if (win.isMinimized) {
+                    useWindowStore.getState().restoreWindow(win.id);
+                    useWindowStore.getState().focusWindow(win.id);
+                  } else if (win.isFocused) {
+                    useWindowStore.getState().minimizeWindow(win.id);
+                  } else {
+                    useWindowStore.getState().focusWindow(win.id);
+                  }
+                } else {
+                  openWindow('file-manager', { cwdId: trashId });
+                }
+              }}
+            />
+          </>
+        )}
       </div>
       <div 
         className="dock__show-apps" 

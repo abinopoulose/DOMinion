@@ -1,15 +1,15 @@
 import { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 const wallpaper = '/ubuntu_wallpaper.jpg';
-import homeIcon from '../../assets/icons/home.svg';
-import trashIcon from '../../assets/icons/trash.svg';
+const homeIcon = '/ubuntu/icons/home.svg';
+const trashIcon = '/ubuntu/icons/trash.svg';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useWindowStore, useVFSStore } from '../../store';
 import { getDesktopId, getHomeId, getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
-import { getIconForFile } from '../../utils/iconResolver';
+import { getIconForFile, getHomeIconUrl } from '../../utils/iconResolver';
 import type { VFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
 import { useSelectionBox } from '../../hooks/useSelectionBox';
@@ -17,13 +17,7 @@ import { TrashConfirmDialog } from '../TrashConfirmDialog/TrashConfirmDialog';
 import { initDynamicDrag, updateDynamicDrag, cleanupDynamicDrag } from '../../utils/dragGhost';
 import './Desktop.css';
 
-interface DesktopIconItem {
-  id: string;
-  label: string;
-  icon: string;
-}
-
-const DESKTOP_ICONS: DesktopIconItem[] = [
+const DESKTOP_ICONS = [
   { id: 'home', label: 'Home', icon: homeIcon },
   { id: 'trash', label: 'Trash', icon: trashIcon },
 ];
@@ -69,10 +63,17 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
   const dockAutoHide = useSettingsStore((s: any) => s.dockAutoHide);
 
+  const accentColor = useSettingsStore((s: any) => s.accentColor);
+
   const combinedIcons = useMemo(() => {
     const arr: any[] = [];
     if (showDesktopIcons) {
-      arr.push(...DESKTOP_ICONS.map(i => ({ ...i, isStatic: true, type: 'static' })));
+      arr.push(...DESKTOP_ICONS.map(i => ({ 
+        ...i, 
+        icon: i.id === 'home' ? getHomeIconUrl(accentColor) : i.icon,
+        isStatic: true, 
+        type: 'static' 
+      })));
     }
     arr.push(...desktopFiles.map(f => ({ 
       ...f, 

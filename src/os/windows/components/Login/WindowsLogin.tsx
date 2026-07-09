@@ -4,10 +4,12 @@ import { useHardwareStore } from '../../../../hardware/store/useHardwareStore';
 import { WINDOWS_ACCOUNTS } from '../../../../config/accounts';
 import './WindowsLogin.css';
 
+type LoginState = 'default' | 'authenticating' | 'error' | 'success';
+
 export function WindowsLogin() {
   const [isBooting, setIsBooting] = useState(true);
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loginState, setLoginState] = useState<LoginState>('default');
   
   const login = useWindowsAuthStore((s) => s.login);
   const enterGRUB = useHardwareStore((s) => s.enterGRUB);
@@ -16,15 +18,25 @@ export function WindowsLogin() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (account.password === password) {
-      login(account.username);
-    } else {
-      setError('The password you entered is incorrect. Please try again.');
-    }
+    if (loginState === 'authenticating' || loginState === 'success') return;
+    
+    setLoginState('authenticating');
+    
+    // Simulate authentication delay for the UI to show spinner
+    setTimeout(() => {
+      if (account.password === password) {
+        setLoginState('success');
+        setTimeout(() => {
+          login(account.username);
+        }, 800); // Wait for fade out
+      } else {
+        setLoginState('error');
+      }
+    }, 1500); // Show spinner for 1.5s
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsBooting(false), 4000);
+    const timer = setTimeout(() => setIsBooting(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -37,70 +49,68 @@ export function WindowsLogin() {
           <div style={{ backgroundColor: '#00A4EF' }}></div>
           <div style={{ backgroundColor: '#00A4EF' }}></div>
         </div>
-        <div style={{ width: '30px', height: '30px', border: '4px dotted white', borderRadius: '50%', animation: 'spin 2s linear infinite' }}></div>
-        <style>{`
-          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        `}</style>
+        <div className="win11-spinner">
+          <div className="win-dot"></div>
+          <div className="win-dot"></div>
+          <div className="win-dot"></div>
+          <div className="win-dot"></div>
+          <div className="win-dot"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="windows-login-container">
+    <div className={`windows-login-container ${loginState === 'success' ? 'fade-out' : ''}`}>
+      <div className="windows-login-overlay"></div>
+      
       <div className="windows-login-box">
         <div className="windows-login-avatar">
-          <svg viewBox="0 0 100 100" className="windows-avatar-svg">
-            <circle cx="50" cy="38" r="18" stroke="#777" strokeWidth="5" fill="none" />
-            <path d="M 18 90 Q 50 50 82 90" stroke="#777" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
           </svg>
         </div>
         <h2 className="windows-login-name">{account.displayName}</h2>
+        <div className="windows-login-email">{account.username}</div>
         
-        <form onSubmit={handleLogin} className="windows-login-form">
-          <input
-            type="password"
-            className="windows-login-input"
-            placeholder="PIN"
-            value={password}
-            onChange={(e) => { setPassword(e.target.value); setError(''); }}
-            autoFocus
-          />
-          <button type="submit" className="windows-login-submit">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        </form>
-        {error && <div className="windows-login-error">{error}</div>}
-        
-        <div className="windows-login-links">
-          <div className="windows-login-link">I forgot my PIN</div>
-          <div className="windows-login-link">Sign-in options</div>
-        </div>
-      </div>
-      
-      <div className="windows-login-users">
-        {WINDOWS_ACCOUNTS.map((acc, index) => (
-          <div className={`windows-user-item ${index === 0 ? 'active' : ''}`} key={acc.username}>
-            <div className="windows-user-item-avatar">
-              <svg viewBox="0 0 100 100" className="windows-avatar-svg-small">
-                <circle cx="50" cy="38" r="18" stroke="#555" strokeWidth="6" fill="none" />
-                <path d="M 18 90 Q 50 50 82 90" stroke="#555" strokeWidth="6" fill="none" strokeLinecap="round" />
-              </svg>
+        {loginState === 'authenticating' || loginState === 'success' ? (
+          <div className="windows-login-loading">
+            <div className="win11-spinner">
+              <div className="win-dot"></div>
+              <div className="win-dot"></div>
+              <div className="win-dot"></div>
+              <div className="win-dot"></div>
+              <div className="win-dot"></div>
             </div>
-            <div className="windows-user-item-name">{acc.displayName}</div>
+            <div className="windows-welcome-text">Welcome</div>
           </div>
-        ))}
-        {WINDOWS_ACCOUNTS.length === 1 && (
-          <div className="windows-user-item">
-            <div className="windows-user-item-avatar">
-              <svg viewBox="0 0 100 100" className="windows-avatar-svg-small">
-                <circle cx="50" cy="38" r="18" stroke="#555" strokeWidth="6" fill="none" />
-                <path d="M 18 90 Q 50 50 82 90" stroke="#555" strokeWidth="6" fill="none" strokeLinecap="round" />
-              </svg>
+        ) : (
+          <>
+            <form onSubmit={handleLogin} className={`windows-login-form ${loginState === 'error' ? 'shake' : ''}`}>
+              <input
+                type="password"
+                className="windows-login-input"
+                placeholder="PIN"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); setLoginState('default'); }}
+                autoFocus
+              />
+              {password.length > 0 && (
+                <button type="submit" className="windows-login-submit">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              )}
+            </form>
+            {loginState === 'error' && (
+              <div className="windows-login-error">The password is incorrect. Try again.</div>
+            )}
+            
+            <div className="windows-login-links">
+              <div className="windows-login-link">Sign-in options</div>
             </div>
-            <div className="windows-user-item-name">Other user</div>
-          </div>
+          </>
         )}
       </div>
 
@@ -127,3 +137,4 @@ export function WindowsLogin() {
     </div>
   );
 }
+

@@ -1,22 +1,28 @@
 .windows-login-container {
   width: 100vw;
   height: 100vh;
-  /* Use a vibrant blue background to match the picture */
-  background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop') no-repeat center center fixed;
+  /* Use the windows wallpaper as background */
+  background: url('../../assets/wallpapers/win-wallpaper-1.jpg') no-repeat center center fixed;
   background-size: cover;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: 'Segoe UI Variable', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI Variable', 'Segoe UI', -apple-system, sans-serif;
   position: relative;
+  overflow: hidden;
+  transition: opacity 0.8s ease-in-out;
 }
 
-.windows-login-container::before {
-  content: '';
+.windows-login-container.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.windows-login-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  backdrop-filter: blur(60px) saturate(200%);
-  background: rgba(0, 102, 204, 0.4); /* Strong blue tint */
+  backdrop-filter: blur(25px) saturate(150%);
+  background: rgba(0, 0, 0, 0.4); /* Faint semi-transparent dark background */
   z-index: 0;
 }
 
@@ -25,90 +31,112 @@
   flex-direction: column;
   align-items: center;
   z-index: 1;
-  transform: translateY(-50px);
+  transform: translateY(-40px);
 }
 
 .windows-login-avatar {
-  width: 190px;
-  height: 190px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  background-color: #f3f3f3;
+  background-color: #333333; /* Dark gray background */
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 25px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  margin-bottom: 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  color: #d0d0d0;
 }
 
-.windows-avatar-svg {
-  width: 130px;
-  height: 130px;
+.windows-login-avatar svg {
+  width: 70px;
+  height: 70px;
 }
 
 .windows-login-name {
   color: white;
-  font-size: 34px;
-  margin: 0 0 25px 0;
-  font-weight: 500;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  font-size: 24px;
+  font-weight: 600; /* Bold */
+  margin: 0;
+  line-height: 1.2;
+}
+
+.windows-login-email {
+  color: rgba(255, 255, 255, 0.7); /* Muted */
+  font-size: 14px;
+  margin-top: 4px;
+  margin-bottom: 28px;
 }
 
 .windows-login-form {
   display: flex;
   position: relative;
-  width: 310px;
+  width: 300px;
+}
+
+.windows-login-form.shake {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
+  40%, 60% { transform: translate3d(8px, 0, 0); }
 }
 
 .windows-login-input {
   flex: 1;
-  padding: 10px 40px 10px 12px;
-  background: rgba(0, 0, 0, 0.3); /* Dark translucent background */
-  border: none;
-  border-bottom: 2px solid white; /* Solid white bottom border */
-  font-size: 16px;
+  width: 100%;
+  padding: 10px 42px 10px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid transparent;
+  border-bottom: 2px solid #0067b8;
+  font-size: 15px;
   color: white;
   outline: none;
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .windows-login-input::placeholder {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .windows-login-input:focus {
-  background: rgba(0, 0, 0, 0.4);
-  border-bottom: 2px solid #60CDFF; /* Light blue on focus, standard Win11 */
+  background: rgba(0, 0, 0, 0.6);
+  border-bottom-color: #60CDFF; /* Bright blue highlight */
 }
 
 .windows-login-submit {
   position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  background: transparent;
+  right: 2px;
+  top: 2px;
+  bottom: 2px;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  width: 40px;
+  width: 36px;
   display: flex;
   justify-content: center;
   align-items: center;
   color: white;
   cursor: pointer;
   transition: all 0.2s;
+  border-radius: 2px;
 }
 
 .windows-login-submit:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .windows-login-error {
-  color: #ff9999;
-  margin-top: 15px;
+  color: #ff5b5b; /* Red error */
+  margin-top: 12px;
   font-size: 14px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  text-align: center;
 }
 
 .windows-login-links {
-  margin-top: 30px;
+  margin-top: 25px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -126,54 +154,62 @@
   text-decoration: underline;
 }
 
-/* Bottom Left Users */
-.windows-login-users {
-  position: absolute;
-  bottom: 40px;
-  left: 40px;
-  z-index: 1;
+/* Loading Spinner - Windows 11 Style */
+.windows-login-loading {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-}
-
-.windows-user-item {
-  display: flex;
   align-items: center;
-  gap: 15px;
-  cursor: pointer;
-  opacity: 0.7;
-  padding: 8px 16px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  margin-left: -16px;
-}
-
-.windows-user-item:hover, .windows-user-item.active {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.windows-user-item-avatar {
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  background-color: #e0e0e0;
-  display: flex;
+  gap: 12px;
+  height: 70px;
   justify-content: center;
-  align-items: center;
 }
 
-.windows-avatar-svg-small {
-  width: 30px;
-  height: 30px;
-}
-
-.windows-user-item-name {
+.windows-welcome-text {
   color: white;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
   text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.win11-spinner {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  margin: 0 auto;
+}
+
+.win-dot {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  animation: win-orbit 2.5s infinite linear;
+}
+
+.win-dot::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: white; /* Solid white dots */
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+}
+
+.win-dot:nth-child(1) { animation-delay: -0.0s; }
+.win-dot:nth-child(2) { animation-delay: -0.15s; }
+.win-dot:nth-child(3) { animation-delay: -0.3s; }
+.win-dot:nth-child(4) { animation-delay: -0.45s; }
+.win-dot:nth-child(5) { animation-delay: -0.6s; }
+.win-dot:nth-child(6) { animation-delay: -0.75s; } /* Just in case 6 dots are used */
+
+@keyframes win-orbit {
+  0% { transform: rotate(0deg); animation-timing-function: cubic-bezier(0.1, 0.6, 0.3, 1); }
+  25% { transform: rotate(270deg); animation-timing-function: linear; }
+  50% { transform: rotate(360deg); animation-timing-function: cubic-bezier(0.7, 0, 0.9, 0.4); }
+  75% { transform: rotate(630deg); animation-timing-function: linear; }
+  100% { transform: rotate(720deg); }
 }
 
 /* Bottom Right Icons */

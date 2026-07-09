@@ -45,6 +45,7 @@ interface SettingsState {
   dockPosition: 'left' | 'bottom' | 'right';
   dockIconSize: number;
   dockAutoHide: boolean;
+  showTrashInDock: boolean;
   showDesktopIcons: boolean;
   wallpaper: string;
   powerMode: 'performance' | 'balanced' | 'power-saver';
@@ -99,6 +100,7 @@ interface SettingsState {
   setDockPosition: (position: 'left' | 'bottom' | 'right') => void;
   setDockIconSize: (size: number) => void;
   setDockAutoHide: (autoHide: boolean) => void;
+  setShowTrashInDock: (show: boolean) => void;
   setShowDesktopIcons: (show: boolean) => void;
   setWallpaper: (wallpaper: string) => void;
   setPowerMode: (mode: 'performance' | 'balanced' | 'power-saver') => void;
@@ -149,6 +151,7 @@ export const useSettingsStore = create<SettingsState>()(
       dockPosition: 'left',
       dockIconSize: 48,
       dockAutoHide: false,
+      showTrashInDock: false,
       showDesktopIcons: true,
       wallpaper: '',
       powerMode: 'balanced',
@@ -200,6 +203,7 @@ export const useSettingsStore = create<SettingsState>()(
       setDockPosition: (dockPosition) => set({ dockPosition }),
       setDockIconSize: (dockIconSize) => set({ dockIconSize }),
       setDockAutoHide: (dockAutoHide) => set({ dockAutoHide }),
+      setShowTrashInDock: (showTrashInDock) => set({ showTrashInDock }),
       setShowDesktopIcons: (showDesktopIcons) => set({ showDesktopIcons }),
       setWallpaper: (wallpaper) => set({ wallpaper }),
       setPowerMode: (powerMode) => set({ powerMode }),
@@ -247,6 +251,7 @@ export const useSettingsStore = create<SettingsState>()(
         dockPosition: state.dockPosition,
         dockIconSize: state.dockIconSize,
         dockAutoHide: state.dockAutoHide,
+        showTrashInDock: state.showTrashInDock,
         showDesktopIcons: state.showDesktopIcons,
         wallpaper: state.wallpaper,
         powerMode: state.powerMode,
