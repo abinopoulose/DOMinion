@@ -1,21 +1,22 @@
 .windows-login-container {
   width: 100vw;
   height: 100vh;
+  /* Use a vibrant blue background to match the picture */
   background: url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop') no-repeat center center fixed;
   background-size: cover;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI Variable', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   position: relative;
-  backdrop-filter: blur(20px);
 }
 
 .windows-login-container::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(60px) saturate(200%);
+  background: rgba(0, 102, 204, 0.4); /* Strong blue tint */
   z-index: 0;
 }
 
@@ -24,99 +25,168 @@
   flex-direction: column;
   align-items: center;
   z-index: 1;
+  transform: translateY(-50px);
 }
 
 .windows-login-avatar {
-  width: 150px;
-  height: 150px;
+  width: 190px;
+  height: 190px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background-color: #f3f3f3;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
-  backdrop-filter: blur(10px);
+  margin-bottom: 25px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
-.windows-avatar-icon {
-  width: 80px;
-  height: 80px;
-  background-color: #fff;
-  border-radius: 50%;
+.windows-avatar-svg {
+  width: 130px;
+  height: 130px;
 }
 
 .windows-login-name {
   color: white;
-  font-size: 32px;
-  margin: 0 0 5px 0;
-  font-weight: 400;
-}
-
-.windows-login-email {
-  color: #ddd;
-  font-size: 14px;
-  margin-bottom: 30px;
+  font-size: 34px;
+  margin: 0 0 25px 0;
+  font-weight: 500;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .windows-login-form {
   display: flex;
   position: relative;
-  width: 300px;
+  width: 310px;
 }
 
 .windows-login-input {
   flex: 1;
-  padding: 10px 40px 10px 15px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 2px solid transparent;
-  border-radius: 4px;
+  padding: 10px 40px 10px 12px;
+  background: rgba(0, 0, 0, 0.3); /* Dark translucent background */
+  border: none;
+  border-bottom: 2px solid white; /* Solid white bottom border */
   font-size: 16px;
+  color: white;
   outline: none;
   transition: all 0.2s;
 }
 
+.windows-login-input::placeholder {
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .windows-login-input:focus {
-  background: white;
-  border-bottom: 2px solid #0078D7;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid #60CDFF; /* Light blue on focus, standard Win11 */
 }
 
 .windows-login-submit {
   position: absolute;
-  right: 5px;
-  top: 50%;
-  transform: translateY(-50%);
+  right: 0;
+  top: 0;
+  bottom: 0;
   background: transparent;
   border: none;
-  font-size: 20px;
-  color: #333;
+  width: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: white;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.windows-login-submit:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .windows-login-error {
-  color: #ff8888;
+  color: #ff9999;
   margin-top: 15px;
   font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-.windows-login-options {
+.windows-login-links {
   margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.windows-login-link {
   color: white;
   font-size: 14px;
   cursor: pointer;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
-.windows-login-options:hover {
+.windows-login-link:hover {
   text-decoration: underline;
 }
 
-.windows-login-bottom {
+/* Bottom Left Users */
+.windows-login-users {
   position: absolute;
-  bottom: 30px;
-  right: 30px;
+  bottom: 40px;
+  left: 40px;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
-.windows-power-btn {
+.windows-user-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
+  opacity: 0.7;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  margin-left: -16px;
+}
+
+.windows-user-item:hover, .windows-user-item.active {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.windows-user-item-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.windows-avatar-svg-small {
+  width: 30px;
+  height: 30px;
+}
+
+.windows-user-item-name {
+  color: white;
+  font-size: 14px;
+  font-weight: 400;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* Bottom Right Icons */
+.windows-login-bottom {
+  position: absolute;
+  bottom: 35px;
+  right: 35px;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+}
+
+.windows-bottom-btn {
   width: 40px;
   height: 40px;
   border-radius: 4px;
@@ -124,11 +194,10 @@
   justify-content: center;
   align-items: center;
   color: white;
-  font-size: 20px;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.windows-power-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+.windows-bottom-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
