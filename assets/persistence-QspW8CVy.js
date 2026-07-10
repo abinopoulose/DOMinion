@@ -1,0 +1,1 @@
+import{a as e,i as t,n,t as r}from"./dist-QqjHNI13.js";var i=r(`ubuntu-db`,`ubuntu-store`),a={},o={getItem:async e=>await t(e,i)??null,setItem:(t,n)=>new Promise(r=>{a[t]&&clearTimeout(a[t]),a[t]=setTimeout(()=>{e(t,n,i).then(r)},300)}),removeItem:async e=>await n(e,i)};export{o as t};
