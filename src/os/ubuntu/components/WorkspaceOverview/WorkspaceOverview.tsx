@@ -3,12 +3,13 @@ import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useWindowStore } from '../../store/useUbuntuWindowStore';
 import type { WindowState } from '../../types';
 
-const terminalIcon = '/ubuntu/icons/terminal.svg';
-const fileManagerIcon = '/ubuntu/icons/file-manager.svg';
+const terminalIcon = '/ubuntu_icons/terminal-app.png';
+const fileManagerIcon = '/ubuntu_icons/folder.png';
 const browserIcon = '/ubuntu/icons/browser.svg';
-const textIcon = '/ubuntu/icons/text.svg';
-const settingsIcon = '/ubuntu/icons/settings.svg';
-const calculatorIcon = '/ubuntu/icons/calculator.svg';
+const textIcon = '/ubuntu_icons/text-x-generic.png';
+const settingsIcon = '/ubuntu_icons/system-settings.png';
+const calculatorIcon = '/ubuntu_icons/calculator-app.png';
+const clockIcon = '/ubuntu_icons/clock-app.png';
 
 import './WorkspaceOverview.css';
 
@@ -19,6 +20,7 @@ const APP_ICONS: Record<string, string> = {
   'text-editor': textIcon,
   calculator: calculatorIcon,
   settings: settingsIcon,
+  clock: clockIcon,
 };
 
 interface WorkspaceOverviewProps {

@@ -35,6 +35,7 @@ const DEFAULT_SIZES: Record<AppId, { width: number; height: number }> = {
   'text-editor': { width: 600, height: 500 },
   calculator: { width: 320, height: 480 },
   settings: { width: 900, height: 600 },
+  clock: { width: 800, height: 600 },
 };
 
 const APP_TITLES: Record<AppId, string> = {
@@ -44,6 +45,7 @@ const APP_TITLES: Record<AppId, string> = {
   'text-editor': 'Text Editor',
   calculator: 'Calculator',
   settings: 'Settings',
+  clock: 'Clocks',
 };
 
 export const useWindowStore = create<WindowStore>()(

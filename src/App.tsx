@@ -29,6 +29,7 @@ const browserIcon = '/ubuntu/icons/browser.svg';
 const textIcon = '/ubuntu/icons/text.svg';
 const settingsIcon = '/ubuntu/icons/settings.svg';
 const calculatorIcon = '/ubuntu/icons/calculator.svg';
+const clockIcon = '/ubuntu/icons/clock.svg';
 // Lazy load Apps
 const Terminal = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.Terminal })))
 const TerminalHeaderControls = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.TerminalHeaderControls })))
@@ -40,6 +41,8 @@ const TextEditor = lazy(() => import('./os/ubuntu/apps/TextEditor/TextEditor').t
 const Settings = lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.Settings })))
 const SettingsHeaderControls = lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.SettingsHeaderControls })))
 const Calculator = lazy(() => import('./os/ubuntu/apps/Calculator/Calculator').then(m => ({ default: m.Calculator })))
+const ClockApp = lazy(() => import('./os/ubuntu/apps/Clock/ClockApp').then(m => ({ default: m.ClockApp })))
+const ClockHeaderControls = lazy(() => import('./os/ubuntu/apps/Clock/ClockApp').then(m => ({ default: m.ClockHeaderControls })))
 import { SystemDialog } from './os/ubuntu/components/SystemDialog/SystemDialog'
 import './App.css'
 
@@ -50,6 +53,7 @@ const APP_META: Record<string, { title: string; icon: string; defaultSize: { wid
   'text-editor': { title: 'Text Editor', icon: textIcon, defaultSize: { width: 600, height: 500 } },
   calculator: { title: 'Calculator', icon: calculatorIcon, defaultSize: { width: 320, height: 480 } },
   settings: { title: 'Settings', icon: settingsIcon, defaultSize: { width: 900, height: 600 } },
+  clock: { title: 'Clocks', icon: clockIcon, defaultSize: { width: 800, height: 600 } },
 }
 
 function MockAppContent({ appId, windowId }: { appId: string, windowId: string }) {
@@ -59,6 +63,7 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
   if (appId === 'text-editor') return <TextEditor windowId={windowId} />;
   if (appId === 'calculator') return <Calculator windowId={windowId} />;
   if (appId === 'settings') return <Settings />;
+  if (appId === 'clock') return <ClockApp windowId={windowId} />;
   return null;
 }
 
@@ -85,7 +90,7 @@ function UbuntuEnvironment() {
   const windowList = allWindows.filter((w) => w.workspaceId === activeWorkspace);
 
   const toggleWindowFromDock = useCallback((appId: string) => {
-    const typedAppId = appId as 'terminal' | 'file-manager' | 'browser' | 'text-editor' | 'calculator' | 'settings'
+    const typedAppId = appId as 'terminal' | 'file-manager' | 'browser' | 'text-editor' | 'calculator' | 'settings' | 'clock'
     const appWindows = allWindows.filter((w) => w.appId === typedAppId && w.workspaceId === activeWorkspace)
 
     if (appWindows.length === 0) {
@@ -247,9 +252,10 @@ function UbuntuEnvironment() {
                   win.appId === 'terminal' ? <Suspense fallback={null}><TerminalHeaderControls windowId={win.id} /></Suspense> :
                   win.appId === 'browser' ? <Suspense fallback={null}><BrowserHeaderControls windowId={win.id} /></Suspense> : 
                   win.appId === 'settings' ? <Suspense fallback={null}><SettingsHeaderControls windowId={win.id} /></Suspense> :
-                  win.appId === 'file-manager' ? <Suspense fallback={null}><FileManagerHeaderControls windowId={win.id} /></Suspense> : undefined
+                  win.appId === 'file-manager' ? <Suspense fallback={null}><FileManagerHeaderControls windowId={win.id} /></Suspense> :
+                  win.appId === 'clock' ? <Suspense fallback={null}><ClockHeaderControls windowId={win.id} /></Suspense> : undefined
                 }
-                fullHeaderControls={win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager'}
+                fullHeaderControls={win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager' || win.appId === 'clock'}
               >
                 <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid var(--color-accent, #E95420)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
                   <MockAppContent appId={win.appId} windowId={win.id} />

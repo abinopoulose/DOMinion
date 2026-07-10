@@ -3,7 +3,7 @@ import type { VFSNode } from './types';
 
 // Browser-side parser that seeds IDB
 export async function seedVfsFromSnapshot() {
-  const isSeeded = await get('vfs_seeded_v2');
+  const isSeeded = await get('vfs_seeded_v3');
   if (isSeeded) return;
 
   try {
@@ -17,7 +17,7 @@ export async function seedVfsFromSnapshot() {
       await setMany(chunk.map(n => [`vfs_node_${n.id}`, n]));
     }
     
-    await setMany([['vfs_seeded_v2', true]]);
+    await setMany([['vfs_seeded_v3', true]]);
   } catch (err) {
     console.error('Failed to seed VFS:', err);
   }

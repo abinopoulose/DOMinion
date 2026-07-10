@@ -1,15 +1,15 @@
 import { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 const wallpaper = '/ubuntu_wallpaper.jpg';
-const homeIcon = '/ubuntu/icons/home.svg';
-const trashIcon = '/ubuntu/icons/trash.svg';
+const homeIcon = '/ubuntu_icons/user-home.png';
+const trashIcon = '/ubuntu_icons/user-trash.png';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useWindowStore, useVFSStore } from '../../store';
 import { getDesktopId, getHomeId, getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
-import { getIconForFile, getHomeIconUrl } from '../../utils/iconResolver';
+import { getIconForFile, getSpecialFolderIconUrl } from '../../utils/iconResolver';
 import type { VFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
 import { useSelectionBox } from '../../hooks/useSelectionBox';
@@ -65,12 +65,15 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
   const accentColor = useSettingsStore((s: any) => s.accentColor);
 
+  const isTrashFull = vfsStore.getChildren(TRASH_ID).length > 0;
+  const currentTrashIcon = isTrashFull ? '/ubuntu_icons/user-trash-full.png' : '/ubuntu_icons/user-trash.png';
+
   const combinedIcons = useMemo(() => {
     const arr: any[] = [];
     if (showDesktopIcons) {
       arr.push(...DESKTOP_ICONS.map(i => ({ 
         ...i, 
-        icon: i.id === 'home' ? getHomeIconUrl(accentColor) : i.icon,
+        icon: i.id === 'home' ? getSpecialFolderIconUrl('home') : (i.id === 'trash' ? currentTrashIcon : i.icon),
         isStatic: true, 
         type: 'static' 
       })));
@@ -93,7 +96,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
       });
     }
     return arr;
-  }, [desktopFiles, desktopIconOrder, showDesktopIcons]);
+  }, [desktopFiles, desktopIconOrder, showDesktopIcons, currentTrashIcon]);
 
   const layoutPositions = useMemo(() => {
     const positions: Record<string, {x: number, y: number}> = {};

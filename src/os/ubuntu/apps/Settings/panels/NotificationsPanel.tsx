@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { SettingsPanelWrapper } from '../components/SettingsPanelWrapper';
-const terminalIcon = '/ubuntu/icons/terminal.svg';
-const fileManagerIcon = '/ubuntu/icons/file-manager.svg';
+const terminalIcon = '/ubuntu_icons/terminal-app.png';
+const fileManagerIcon = '/ubuntu_icons/folder.png';
 const browserIcon = '/ubuntu/icons/browser.svg';
-const textIcon = '/ubuntu/icons/text.svg';
-const settingsIcon = '/ubuntu/icons/settings.svg';
+const textIcon = '/ubuntu_icons/text-x-generic.png';
+const settingsIcon = '/ubuntu_icons/system-settings.png';
 
 const APPS = [
   { id: 'browser', name: 'Browser', icon: browserIcon },

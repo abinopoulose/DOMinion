@@ -160,7 +160,7 @@ export function FileGrid({
         >
           <div className="file-icon-container" style={{ position: 'relative', width: dockIconSize, height: dockIconSize }}>
             <img
-              src={getIconForFile(file.name, file.type === 'directory', accentColor)}
+              src={getIconForFile(file.name, file.type === 'directory')}
               alt={file.name}
               className={`fm-item-icon ${!hasPermission(vfsStoreMap, file.id, 'write', username) ? 'file-item-protected' : ''}`}
               draggable={false}

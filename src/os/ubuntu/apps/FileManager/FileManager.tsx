@@ -4,7 +4,6 @@ import { useWindowStore, useVFSStore } from '../../store';
 import { getHomeId, getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { Sidebar } from './Sidebar';
-import { BreadcrumbBar } from './BreadcrumbBar';
 import { FileGrid } from './FileGrid';
 import { FileList } from './FileList';
 import { useContextMenu } from '../../hooks/useContextMenu';
@@ -62,6 +61,10 @@ interface FileManagerState {
   historyStack: string[];
   historyIndex: number;
   elevatedDirs: string[];  // directories accessed via Polkit elevation
+  isSearching?: boolean;
+  searchQuery?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export function FileManager({ windowId }: FileManagerProps) {
@@ -180,24 +183,6 @@ export function FileManager({ windowId }: FileManagerProps) {
     });
   };
 
-  const goBack = () => {
-    if (historyIndex > 0) {
-      updateState({
-        cwdId: historyStack[historyIndex - 1],
-        historyIndex: historyIndex - 1,
-      });
-    }
-  };
-
-  const goForward = () => {
-    if (historyIndex < historyStack.length - 1) {
-      updateState({
-        cwdId: historyStack[historyIndex + 1],
-        historyIndex: historyIndex + 1,
-      });
-    }
-  };
-
   const handleOpenFile = (id: string) => {
     openWindow('text-editor', { fileId: id }); 
   };
@@ -208,17 +193,6 @@ export function FileManager({ windowId }: FileManagerProps) {
       `Authentication is needed to rename this item.`,
       'org.freedesktop.filemanager.rename'
     );
-  };
-
-  // Mass operations
-  const handleMassCopy = () => {
-    if (selectedIds.length === 0) return;
-    vfsStore.setClipboard('copy', selectedIds);
-  };
-
-  const handleMassCut = () => {
-    if (selectedIds.length === 0) return;
-    vfsStore.setClipboard('cut', selectedIds);
   };
 
   const handleDeleteRequest = (ids: string[]) => {

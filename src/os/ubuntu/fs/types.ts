@@ -17,6 +17,7 @@ export interface VFSNode {
     mimeType?: string;     // e.g. "text/plain"
     extension?: string;    // e.g. "txt", "js"
     originalParentId?: string; // stored when moved to trash
+    isStarred?: boolean;   // used for starred files
   };
 }
 
