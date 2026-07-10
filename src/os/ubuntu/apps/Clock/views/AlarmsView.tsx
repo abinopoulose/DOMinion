@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAlarmStore } from '../store/useAlarmStore';
 import { AlarmItem } from '../components/AlarmItem';
 

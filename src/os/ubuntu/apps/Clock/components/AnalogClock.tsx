@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export function AnalogClock({ timezone }: { timezone?: string }) {
   const [time, setTime] = useState(new Date());

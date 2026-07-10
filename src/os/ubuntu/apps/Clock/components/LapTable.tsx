@@ -1,4 +1,4 @@
-import React from 'react';
+
 import type { Lap } from '../store/useStopwatchStore';
 
 export function LapTable({ laps }: { laps: Lap[] }) {

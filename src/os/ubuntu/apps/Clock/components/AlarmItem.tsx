@@ -1,4 +1,4 @@
-import React from 'react';
+
 import type { Alarm } from '../store/useAlarmStore';
 
 interface AlarmItemProps {

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useStopwatchStore } from '../store/useStopwatchStore';
 import { useStopwatch } from '../hooks/useStopwatch';
 import { LapTable } from '../components/LapTable';
