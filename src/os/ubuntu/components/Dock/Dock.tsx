@@ -92,7 +92,7 @@ export function Dock() {
   // Only show indicators for windows on the current workspace
   const currentWorkspaceWindows = windows.filter(w => w.workspaceId === activeWorkspace);
   const focusedAppId = currentWorkspaceWindows.find(w => w.isFocused)?.appId;
-  const { dockPosition, dockIconSize, dockAutoHide, pinnedApps, setPinnedApps, accentColor, showTrashInDock } = useSettingsStore();
+  const { dockPosition, dockIconSize, dockAutoHide, pinnedApps, setPinnedApps, showTrashInDock } = useSettingsStore();
 
   const activeAppIds = new Set(windows.map((w: any) => w.appId));
 

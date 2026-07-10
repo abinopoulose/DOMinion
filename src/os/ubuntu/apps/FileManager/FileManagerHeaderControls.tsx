@@ -3,7 +3,7 @@ import { useWindowStore, useVFSStore } from '../../store';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { hasPermission } from '../../fs/permissions';
 import { useSystemDialogStore } from '../../store/useSystemDialogStore';
-import { getHomeId } from '../../fs/seed';
+
 
 export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
   const windowState = useWindowStore(useCallback((s) => s.windows.find((w) => w.id === windowId), [windowId]));
@@ -90,8 +90,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
   };
 
   const segments = getSegments(cwdId);
-  const homeId = getHomeId(username);
-  const homeIndex = segments.findIndex(s => s.id === homeId);
+
   
   const currentPathStr = '/' + segments.map(s => s.name).filter(Boolean).join('/');
 
