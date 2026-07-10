@@ -230,7 +230,7 @@ export function FileManager({ windowId }: FileManagerProps) {
       const isMulti = selectedIds.includes(contextNode.id) && selectedIds.length > 1;
 
       if (cwdId === TRASH_ID) {
-        const trashItems = [
+        const trashItems: any[] = [
           {
             id: 'restore',
             label: isMulti ? `Restore ${selectedIds.length} Items` : 'Restore',

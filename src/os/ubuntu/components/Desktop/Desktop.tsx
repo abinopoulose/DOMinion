@@ -63,8 +63,6 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
   const dockAutoHide = useSettingsStore((s: any) => s.dockAutoHide);
 
-  const accentColor = useSettingsStore((s: any) => s.accentColor);
-
   const isTrashFull = vfsStore.getChildren(TRASH_ID).length > 0;
   const currentTrashIcon = isTrashFull ? '/ubuntu_icons/user-trash-full.png' : '/ubuntu_icons/user-trash.png';
 

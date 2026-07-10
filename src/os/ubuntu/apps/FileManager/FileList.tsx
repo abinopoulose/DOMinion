@@ -41,7 +41,7 @@ export function FileList({
   const selectedIdsSet = new Set(selectedIds);
   const inputRef = useRef<HTMLInputElement>(null);
   const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
-  const accentColor = useSettingsStore((s: any) => s.accentColor);
+  
   const listIconSize = Math.max(16, Math.floor(dockIconSize / 2));
   const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
   const vfsStoreMap = useVFSStore((s) => s.map);

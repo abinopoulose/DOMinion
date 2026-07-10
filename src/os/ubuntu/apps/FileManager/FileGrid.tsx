@@ -43,7 +43,7 @@ export function FileGrid({
   const inputRef  = useRef<HTMLInputElement>(null);
   const gridRef   = useRef<HTMLDivElement>(null);
   const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
-  const accentColor  = useSettingsStore((s: any) => s.accentColor);
+  
   const username     = useUbuntuAuthStore((s) => s.currentUser) || 'user';
   const vfsStoreMap  = useVFSStore((s) => s.map);
 

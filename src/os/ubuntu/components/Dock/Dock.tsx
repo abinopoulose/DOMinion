@@ -4,7 +4,6 @@ const fileManagerIcon = '/ubuntu_icons/folder.png';
 const browserIcon = '/ubuntu/icons/browser.svg';
 const settingsIcon = '/ubuntu_icons/system-settings.png';
 const textIcon = '/ubuntu_icons/text-x-generic.png';
-const trashIcon = '/ubuntu_icons/user-trash.png';
 const clockIcon = '/ubuntu_icons/clock-app.png';
 import { getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
@@ -404,7 +403,7 @@ export function Dock() {
               <DockIcon
                 id={appId}
                 label={meta.label}
-                icon={appId === 'file-manager' ? getFolderIconUrl(accentColor) : meta.icon}
+                icon={appId === 'file-manager' ? getFolderIconUrl() : meta.icon}
                 isActive={activeAppIds.has(appId)}
                 isFocused={focusedAppId === appId}
                 size={dockIconSize}

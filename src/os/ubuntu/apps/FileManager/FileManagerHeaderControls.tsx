@@ -92,7 +92,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
   const segments = getSegments(cwdId);
   const homeId = getHomeId(username);
   const homeIndex = segments.findIndex(s => s.id === homeId);
-  const displaySegments = homeIndex !== -1 ? segments.slice(homeIndex) : segments;
+  
   const currentPathStr = '/' + segments.map(s => s.name).filter(Boolean).join('/');
 
   const handlePathSubmit = () => {
