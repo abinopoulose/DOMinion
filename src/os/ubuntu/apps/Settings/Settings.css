@@ -215,7 +215,7 @@
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background-color: var(--text-primary, #ffffff);
+  background-color: #ffffff;
   position: absolute;
   top: 2px;
   left: 2px;

@@ -92,19 +92,19 @@ body {
 
 /* --- Dark Theme Overrides --- */
 body.theme-dark {
-  --bg-window: #242424;
-  --bg-titlebar: #1e1e1e;
+  --bg-window: #303030;
+  --bg-titlebar: #404040;
   --text-primary: #ffffff;
-  --text-secondary: #aaaaaa;
-  --border-window: 1px solid #333333;
-  --color-bg-input: #333333;
-  --color-surface: #2b2b2b;
-  --color-surface-hover: #3b3b3b;
-  --color-surface-active: #4a4a4a;
-  --color-border: #444444;
-  --bg-context-menu: rgba(36, 36, 52, 0.96);
+  --text-secondary: #cccccc;
+  --border-window: 1px solid #1f1f1f;
+  --color-bg-input: #404040;
+  --color-surface: #3b3b3b;
+  --color-surface-hover: #4a4a4a;
+  --color-surface-active: #555555;
+  --color-border: #1a1a1a;
+  --bg-context-menu: rgba(45, 45, 45, 0.96);
   --color-context-border: rgba(255, 255, 255, 0.1);
-  --bg-properties: #333333;
+  --bg-properties: #2d2d2d;
   
   /* Re-bind aliases so they re-evaluate with the dark theme overrides */
   --color-bg-window: var(--bg-window);
