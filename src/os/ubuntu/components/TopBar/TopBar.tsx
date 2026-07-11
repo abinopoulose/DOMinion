@@ -5,11 +5,13 @@ import { useNetworkStore } from '../../store/useNetworkStore';
 import { useBattery } from '../../hooks/useBattery';
 
 import { QuickSettings } from './QuickSettings';
+import { CalendarMenu } from './CalendarMenu';
 import './TopBar.css';
 
 export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
   const clock = useClock();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   
   const toggleOverview = useWorkspaceStore((s) => s.toggleOverview);
   const isOverviewOpen = useWorkspaceStore((s) => s.isOverviewOpen);
@@ -59,14 +61,20 @@ export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
       </div>
 
       {/* Center: Clock */}
-      <div className="topbar__center">
+      <div 
+        className={`topbar__center ${calendarOpen ? 'active' : ''}`}
+        onClick={() => { setCalendarOpen(!calendarOpen); setSettingsOpen(false); }}
+        style={{ cursor: 'pointer', padding: '0 8px', borderRadius: '4px', transition: 'background 0.15s' }}
+        onMouseEnter={(e) => { if(!calendarOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = calendarOpen ? 'rgba(255,255,255,0.1)' : 'transparent'; }}
+      >
         {clock}
       </div>
 
       {/* Right: System Tray */}
       <div 
         className={`topbar__right ${settingsOpen ? 'active' : ''}`} 
-        onClick={() => setSettingsOpen(!settingsOpen)}
+        onClick={() => { setSettingsOpen(!settingsOpen); setCalendarOpen(false); }}
         style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', height: '100%', padding: '0 8px', borderRadius: '4px', transition: 'background 0.15s' }}
         onMouseEnter={(e) => { if(!settingsOpen) e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = settingsOpen ? 'rgba(255,255,255,0.1)' : 'transparent'; }}
@@ -108,6 +116,16 @@ export function TopBar({ isLoginScreen = false }: { isLoginScreen?: boolean }) {
             onClick={() => setSettingsOpen(false)}
           />
           <QuickSettings onClose={() => setSettingsOpen(false)} isLoginScreen={isLoginScreen} />
+        </>
+      )}
+
+      {calendarOpen && (
+        <>
+          <div 
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998 }} 
+            onClick={() => setCalendarOpen(false)}
+          />
+          <CalendarMenu onClose={() => setCalendarOpen(false)} />
         </>
       )}
     </header>

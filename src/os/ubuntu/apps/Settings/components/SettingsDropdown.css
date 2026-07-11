@@ -51,7 +51,7 @@
   transform: translateX(-50%) rotate(45deg);
   width: 10px;
   height: 10px;
-  background-color: #ffffff;
+  background-color: var(--color-bg-input, #ffffff);
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   border-left: 1px solid rgba(0, 0, 0, 0.08);
   z-index: 2;
@@ -59,7 +59,7 @@
 
 .settings-dropdown-menu {
   position: relative;
-  background-color: #ffffff;
+  background-color: var(--color-bg-input, #ffffff);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 12px;
   padding: 6px;

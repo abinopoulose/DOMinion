@@ -1,0 +1,295 @@
+.calendar-menu {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-context-menu, rgba(30,30,46,0.96));
+  border: 1px solid var(--color-context-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+  display: flex;
+  width: 750px;
+  max-width: 95vw;
+  height: 480px;
+  z-index: 9999;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+}
+
+.calendar-menu__left {
+  flex: 1.2;
+  border-right: 1px solid var(--color-context-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-menu__notifications {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-secondary);
+  gap: 16px;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.calendar-menu__notifications.has-notifications {
+  justify-content: flex-start;
+}
+
+.calendar-menu__notifications-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calendar-menu__notifications-icon {
+  width: 96px;
+  height: 96px;
+  opacity: 0.3;
+}
+
+.calendar-menu__notifications p {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.notification-card {
+  background: var(--color-bg-window);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.notification-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.notification-card__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.notification-card__time {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.notification-card__close {
+  background: var(--color-surface-hover);
+  border: none;
+  color: var(--color-text-secondary);
+  width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.notification-card__close:hover {
+  background: var(--color-surface-active);
+  color: var(--color-text-primary);
+}
+
+.notification-card__body h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+.notification-card__body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.calendar-menu__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-top: 1px solid var(--color-context-border);
+}
+
+.calendar-menu__dnd-btn {
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  padding: 6px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.calendar-menu__dnd-btn:hover {
+  background: var(--color-surface-active);
+}
+
+.calendar-menu__dnd-btn.active {
+  background: var(--color-accent);
+  color: white;
+  border-color: var(--color-accent);
+}
+
+.calendar-menu__clear-btn {
+  background: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  padding: 6px 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 400;
+  color: var(--color-text-primary);
+}
+
+.calendar-menu__clear-btn:hover {
+  background: var(--color-surface-active);
+}
+
+.calendar-menu__right {
+  flex: 1;
+  padding: 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calendar-menu__header {
+  margin-bottom: 8px;
+}
+
+.calendar-menu__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.calendar-menu__header h2 {
+  margin: 4px 0 0 0;
+  font-size: 1.6rem;
+  font-weight: 300;
+}
+
+/* Calendar Widget */
+.calendar-widget {
+  width: 100%;
+  background: var(--color-bg-window);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.calendar-widget__nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--color-text-primary);
+}
+
+.calendar-widget__nav button {
+  background: var(--color-surface-hover);
+  border: none;
+  color: var(--color-text-primary);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.calendar-widget__nav button:hover {
+  background: var(--color-surface-active);
+  transform: scale(1.05);
+}
+
+.calendar-widget__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px 4px;
+  text-align: center;
+}
+
+.calendar-widget__day-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+}
+
+.calendar-widget__day {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  border-radius: 50%;
+  cursor: pointer;
+  margin: 0 auto;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.calendar-widget__day:hover:not(.active) {
+  background: var(--color-surface-hover);
+  transform: scale(1.1);
+}
+
+.calendar-widget__day.active {
+  background: var(--color-accent);
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 2px 8px var(--color-accent);
+  transform: scale(1.05);
+}
+
+.calendar-widget__day.dim {
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+  font-weight: 400;
+}
+
+.calendar-menu__world-clocks {
+  margin-top: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--color-bg-window);
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.calendar-menu__world-clocks:hover {
+  background: var(--color-surface-hover);
+}

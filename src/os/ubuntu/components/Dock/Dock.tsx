@@ -1,10 +1,10 @@
 import { DockIcon } from './DockIcon';
-const terminalIcon = '/ubuntu_icons/terminal-app.png';
-const fileManagerIcon = '/ubuntu_icons/folder.png';
+const terminalIcon = '/ubuntu/icons/terminal-app.png';
+const fileManagerIcon = '/ubuntu/icons/folder.png';
 const browserIcon = '/ubuntu/icons/browser.svg';
-const settingsIcon = '/ubuntu_icons/system-settings.png';
-const textIcon = '/ubuntu_icons/text-x-generic.png';
-const clockIcon = '/ubuntu_icons/clock-app.png';
+const settingsIcon = '/ubuntu/icons/system-settings.png';
+const textIcon = '/ubuntu/icons/text-x-generic.png';
+const clockIcon = '/ubuntu/icons/clock-app.png';
 import { getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { useVFSStore, useWindowStore } from '../../store';
@@ -480,7 +480,7 @@ export function Dock() {
             <DockIcon
               id="trash"
               label="Trash"
-              icon={vfsStore.getChildren(getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')).length > 0 ? '/ubuntu_icons/user-trash-full.png' : '/ubuntu_icons/user-trash.png'}
+              icon={vfsStore.getChildren(getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')).length > 0 ? '/ubuntu/icons/user-trash-full.png' : '/ubuntu/icons/user-trash.png'}
               isActive={windows.some(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant'))}
               isFocused={focusedAppId === 'file-manager' && (windows.find(w => w.isFocused)?.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')}
               size={dockIconSize}

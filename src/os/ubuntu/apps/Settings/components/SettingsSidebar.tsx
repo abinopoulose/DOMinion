@@ -41,7 +41,7 @@ export function SettingsSidebar() {
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          backgroundColor: 'white',
+          backgroundColor: 'var(--color-bg-input, #ffffff)',
           border: `1px solid ${isFocused ? 'var(--color-accent, #e95420)' : '#cfcfcf'}`,
           borderRadius: '6px',
           padding: '6px 8px',

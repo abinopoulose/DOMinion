@@ -1,18 +1,18 @@
-import { useCallback, useEffect, lazy, Suspense } from 'react'
+import { useCallback, useEffect, Suspense } from 'react'
 import { useHardwareStore } from './hardware/store/useHardwareStore'
 import { useUbuntuAuthStore } from './os/ubuntu/store/useUbuntuAuthStore'
 import { useWindowsAuthStore } from './os/windows/store/useWindowsAuthStore'
 import { useSettingsStore } from './os/ubuntu/apps/Settings/store/useSettingsStore'
 
-// Lazy load Hardware components
-const POST = lazy(() => import('./hardware/components/post/POST').then(m => ({ default: m.POST })))
-const BIOS = lazy(() => import('./hardware/components/bios/BIOS').then(m => ({ default: m.BIOS })))
-const Grub = lazy(() => import('./hardware/components/grub/Grub').then(m => ({ default: m.Grub })))
+// Static load Hardware components
+import { POST } from './hardware/components/post/POST'
+import { BIOS } from './hardware/components/bios/BIOS'
+import { Grub } from './hardware/components/grub/Grub'
 
-// Lazy load OS components
-const UbuntuLogin = lazy(() => import('./os/ubuntu/components/Login/UbuntuLogin').then(m => ({ default: m.UbuntuLogin })))
-const WindowsLogin = lazy(() => import('./os/windows/components/Login/WindowsLogin').then(m => ({ default: m.WindowsLogin })))
-const WindowsDesktop = lazy(() => import('./os/windows/components/Desktop/WindowsDesktop').then(m => ({ default: m.WindowsDesktop })))
+// Static load OS components
+import { UbuntuLogin } from './os/ubuntu/components/Login/UbuntuLogin'
+import { WindowsLogin } from './os/windows/components/Login/WindowsLogin'
+import { WindowsDesktop } from './os/windows/components/Desktop/WindowsDesktop'
 
 // Ubuntu UI
 import { useWindowStore } from './os/ubuntu/store/useUbuntuWindowStore'
@@ -23,27 +23,25 @@ import { Dock } from './os/ubuntu/components/Dock/Dock'
 import { WorkspaceOSD } from './os/ubuntu/components/WorkspaceOSD/WorkspaceOSD'
 import { WorkspaceOverview } from './os/ubuntu/components/WorkspaceOverview/WorkspaceOverview'
 import { Window } from './os/ubuntu/components/Window/Window'
-const terminalIcon = '/ubuntu/icons/terminal.svg';
-const fileManagerIcon = '/ubuntu/icons/file-manager.svg';
+const terminalIcon = '/ubuntu/icons/terminal-app.png';
+const fileManagerIcon = '/ubuntu/icons/folder.png';
 const browserIcon = '/ubuntu/icons/browser.svg';
-const textIcon = '/ubuntu/icons/text.svg';
-const settingsIcon = '/ubuntu/icons/settings.svg';
-const calculatorIcon = '/ubuntu/icons/calculator.svg';
-const clockIcon = '/ubuntu/icons/clock.svg';
-// Lazy load Apps
-const Terminal = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.Terminal })))
-const TerminalHeaderControls = lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.TerminalHeaderControls })))
-const FileManager = lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManager })))
-const FileManagerHeaderControls = lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManagerHeaderControls })))
-const Browser = lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.Browser })))
-const BrowserHeaderControls = lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.BrowserHeaderControls })))
-const TextEditor = lazy(() => import('./os/ubuntu/apps/TextEditor/TextEditor').then(m => ({ default: m.TextEditor })))
-const Settings = lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.Settings })))
-const SettingsHeaderControls = lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.SettingsHeaderControls })))
-const Calculator = lazy(() => import('./os/ubuntu/apps/Calculator/Calculator').then(m => ({ default: m.Calculator })))
-const ClockApp = lazy(() => import('./os/ubuntu/apps/Clock/ClockApp').then(m => ({ default: m.ClockApp })))
-const ClockHeaderControls = lazy(() => import('./os/ubuntu/apps/Clock/ClockApp').then(m => ({ default: m.ClockHeaderControls })))
+const textIcon = '/ubuntu/icons/text-x-generic.png';
+const settingsIcon = '/ubuntu/icons/system-settings.png';
+const calculatorIcon = '/ubuntu/icons/calculator-app.png';
+const clockIcon = '/ubuntu/icons/clock-app.png';
+// Static load Apps
+import { Terminal, TerminalHeaderControls } from './os/ubuntu/apps/Terminal/Terminal'
+import { FileManager, FileManagerHeaderControls } from './os/ubuntu/apps/FileManager/FileManager'
+import { Browser, BrowserHeaderControls } from './os/ubuntu/apps/Browser/Browser'
+import { TextEditor } from './os/ubuntu/apps/TextEditor/TextEditor'
+import { TextEditorHeaderControls } from './os/ubuntu/apps/TextEditor/components/TextEditorHeaderControls'
+import { Settings, SettingsHeaderControls } from './os/ubuntu/apps/Settings/Settings'
+import { Calculator } from './os/ubuntu/apps/Calculator/Calculator'
+import { ClockApp, ClockHeaderControls } from './os/ubuntu/apps/Clock/ClockApp'
+import { useClockDaemon } from './os/ubuntu/apps/Clock/hooks/useClockDaemon'
 import { SystemDialog } from './os/ubuntu/components/SystemDialog/SystemDialog'
+import { NotificationPopup } from './os/ubuntu/components/Notifications/NotificationPopup'
 import './App.css'
 
 const APP_META: Record<string, { title: string; icon: string; defaultSize: { width: number; height: number } }> = {
@@ -68,6 +66,8 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
 }
 
 function UbuntuEnvironment() {
+  useClockDaemon();
+
   useEffect(() => {
     import('./os/ubuntu/fs/vfsDb').then(({ seedVfsFromSnapshot }) => {
       seedVfsFromSnapshot();
@@ -111,7 +111,7 @@ function UbuntuEnvironment() {
   const theme = useSettingsStore((s) => s.theme);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const settingsWallpaper = useSettingsStore((s: any) => s.wallpaper);
-  const activeWallpaper = settingsWallpaper || '/ubuntu_wallpaper.jpg';
+  const activeWallpaper = settingsWallpaper || '/ubuntu/wallpapers/ubuntu_wallpaper.jpg';
 
   useEffect(() => {
     document.body.classList.remove('theme-light', 'theme-dark');
@@ -253,9 +253,10 @@ function UbuntuEnvironment() {
                   win.appId === 'browser' ? <Suspense fallback={null}><BrowserHeaderControls windowId={win.id} /></Suspense> : 
                   win.appId === 'settings' ? <Suspense fallback={null}><SettingsHeaderControls windowId={win.id} /></Suspense> :
                   win.appId === 'file-manager' ? <Suspense fallback={null}><FileManagerHeaderControls windowId={win.id} /></Suspense> :
+                  win.appId === 'text-editor' ? <Suspense fallback={null}><TextEditorHeaderControls windowId={win.id} /></Suspense> :
                   win.appId === 'clock' ? <Suspense fallback={null}><ClockHeaderControls windowId={win.id} /></Suspense> : undefined
                 }
-                fullHeaderControls={win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager' || win.appId === 'clock'}
+                fullHeaderControls={win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager' || win.appId === 'clock' || win.appId === 'text-editor'}
               >
                 <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid var(--color-accent, #E95420)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
                   <MockAppContent appId={win.appId} windowId={win.id} />
@@ -270,6 +271,7 @@ function UbuntuEnvironment() {
 
       <Dock />
       <WorkspaceOSD />
+      <NotificationPopup />
       <SystemDialog />
     </div>
   );

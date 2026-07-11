@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useWindowStore } from '../../store';
-import { BrowserTab } from './BrowserTab';
-import { BrowserContent } from './BrowserContent';
+import { BrowserTab } from './components/BrowserTab';
+import { BrowserContent } from './components/BrowserContent';
 import './Browser.css';
 
 interface BrowserProps {

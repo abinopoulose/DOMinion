@@ -35,10 +35,13 @@ export type SystemSubPage =
   | 'secure-shell'
   | 'about';
 
+export type PrivacySubPage = 'root' | 'connectivity' | 'screen-lock' | 'location' | 'file-history' | 'diagnostics' | 'device-security';
+
 interface SettingsState {
   activePanel: SettingsPanel;
   systemSubPage: SystemSubPage;
   keyboardSubPage: 'root' | 'shortcuts';
+  privacySubPage: PrivacySubPage;
   theme: 'light' | 'dark';
   accentColor: string;
   nightLight: boolean;
@@ -91,6 +94,7 @@ interface SettingsState {
   setActivePanel: (panel: SettingsPanel) => void;
   setSystemSubPage: (page: SystemSubPage) => void;
   setKeyboardSubPage: (page: 'root' | 'shortcuts') => void;
+  setPrivacySubPage: (page: 'root' | 'connectivity' | 'screen-lock' | 'location' | 'file-history' | 'diagnostics' | 'device-security') => void;
   goBackFromSubPage: () => void;
   setIsSearchActive: (v: boolean) => void;
   setSearchQuery: (v: string) => void;
@@ -145,6 +149,7 @@ export const useSettingsStore = create<SettingsState>()(
       activePanel: 'wifi',
       systemSubPage: 'root',
       keyboardSubPage: 'root',
+      privacySubPage: 'root',
       theme: 'light',
       accentColor: '#E95420',
       nightLight: false,
@@ -191,10 +196,11 @@ export const useSettingsStore = create<SettingsState>()(
       clockShowSeconds: false,
       clockShowWeekNumbers: false,
       
-      setActivePanel: (panel) => set({ activePanel: panel, systemSubPage: 'root', keyboardSubPage: 'root' }),
+      setActivePanel: (panel) => set({ activePanel: panel, systemSubPage: 'root', keyboardSubPage: 'root', privacySubPage: 'root' }),
       setSystemSubPage: (page) => set({ systemSubPage: page }),
       setKeyboardSubPage: (page) => set({ keyboardSubPage: page }),
-      goBackFromSubPage: () => set({ systemSubPage: 'root', keyboardSubPage: 'root' }),
+      setPrivacySubPage: (page) => set({ privacySubPage: page }),
+      goBackFromSubPage: () => set({ systemSubPage: 'root', keyboardSubPage: 'root', privacySubPage: 'root' }),
       setIsSearchActive: (isSearchActive) => set({ isSearchActive }),
       setSearchQuery: (searchQuery) => set({ searchQuery }),
       setTheme: (theme) => set({ theme }),

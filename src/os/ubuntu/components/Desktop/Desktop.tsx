@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-const wallpaper = '/ubuntu_wallpaper.jpg';
-const homeIcon = '/ubuntu_icons/user-home.png';
-const trashIcon = '/ubuntu_icons/user-trash.png';
+const wallpaper = '/ubuntu/wallpapers/ubuntu_wallpaper.jpg';
+const homeIcon = '/ubuntu/icons/user-home.png';
+const trashIcon = '/ubuntu/icons/user-trash.png';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
@@ -64,7 +64,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const dockAutoHide = useSettingsStore((s: any) => s.dockAutoHide);
 
   const isTrashFull = vfsStore.getChildren(TRASH_ID).length > 0;
-  const currentTrashIcon = isTrashFull ? '/ubuntu_icons/user-trash-full.png' : '/ubuntu_icons/user-trash.png';
+  const currentTrashIcon = isTrashFull ? '/ubuntu/icons/user-trash-full.png' : '/ubuntu/icons/user-trash.png';
 
   const combinedIcons = useMemo(() => {
     const arr: any[] = [];

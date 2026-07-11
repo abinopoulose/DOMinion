@@ -4,7 +4,7 @@ import { useNetworkStore } from '../../../store/useNetworkStore';
 import { PANELS } from '../config/panels';
 
 export function SettingsHeaderControls({ windowId: _windowId }: { windowId: string }) {
-  const { activePanel, systemSubPage, keyboardSubPage, goBackFromSubPage, isSearchActive, setIsSearchActive } = useSettingsStore();
+  const { activePanel, systemSubPage, keyboardSubPage, privacySubPage, goBackFromSubPage, isSearchActive, setIsSearchActive } = useSettingsStore();
   const panel = PANELS.find(p => p.id === activePanel);
   const { bluetoothEnabled, toggleBluetooth, airplaneMode, wifiEnabled } = useNetworkStore();
 
@@ -24,6 +24,17 @@ export function SettingsHeaderControls({ windowId: _windowId }: { windowId: stri
     onBack = goBackFromSubPage;
   } else if (activePanel === 'keyboard' && keyboardSubPage === 'shortcuts') {
     headerTitle = 'Keyboard Shortcuts';
+    onBack = goBackFromSubPage;
+  } else if (activePanel === 'privacy' && privacySubPage !== 'root') {
+    const privacySubpageTitles: Record<string, string> = {
+      'connectivity': 'Connectivity',
+      'screen-lock': 'Screen Lock',
+      'location': 'Location',
+      'file-history': 'File History & Trash',
+      'diagnostics': 'Diagnostics',
+      'device-security': 'Device Security'
+    };
+    headerTitle = privacySubpageTitles[privacySubPage] || headerTitle;
     onBack = goBackFromSubPage;
   }
 

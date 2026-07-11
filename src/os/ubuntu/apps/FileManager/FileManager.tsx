@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom';
 import { useWindowStore, useVFSStore } from '../../store';
 import { getHomeId, getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
-import { Sidebar } from './Sidebar';
-import { FileGrid } from './FileGrid';
-import { FileList } from './FileList';
+import { Sidebar } from './components/Sidebar';
+import { FileGrid } from './components/FileGrid';
+import { FileList } from './components/FileList';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../../components/ContextMenu/ContextMenu';
 import type { VFSNode } from '../../fs/types';
@@ -14,7 +14,7 @@ import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { withElevation } from '../../services/sudoService';
 import { TrashConfirmDialog } from '../../components/TrashConfirmDialog/TrashConfirmDialog';
 import './FileManager.css';
-export { FileManagerHeaderControls } from './FileManagerHeaderControls';
+export { FileManagerHeaderControls } from './components/FileManagerHeaderControls';
 
 /**
  * Attempt a VFS operation. If it fails with "Permission denied",

@@ -46,7 +46,7 @@
 }
 
 .ubuntu-settings-list-group {
-  background-color: #ffffff;
+  background-color: var(--color-bg-input, #ffffff);
   border-radius: 12px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;

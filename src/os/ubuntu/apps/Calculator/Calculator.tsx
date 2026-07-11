@@ -1,4 +1,4 @@
-import { useCalculator } from './useCalculator';
+import { useCalculator } from './hooks/useCalculator';
 import './Calculator.css';
 
 export function Calculator({ windowId: _windowId }: { windowId: string }) {

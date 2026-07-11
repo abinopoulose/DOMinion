@@ -27,9 +27,9 @@ body {
 /* --- Design Tokens (Yaru Light Theme) --- */
 :root {
   /* Requested Strict Tokens */
-  --bg-desktop: url('/ubuntu_wallpaper.jpg') center/cover no-repeat;
+  --bg-desktop: url('/ubuntu/wallpapers/ubuntu_wallpaper.jpg') center/cover no-repeat;
   --bg-topbar: rgba(0, 0, 0, 1);
-  --bg-dock: rgba(0, 0, 0, 0.85);
+  --bg-dock: rgba(0, 0, 0, 0.4);
   --bg-dock-hover: rgba(255, 255, 255, 0.1);
   --bg-window: #fafafa;
   --bg-titlebar: #ebebeb;
@@ -105,4 +105,10 @@ body.theme-dark {
   --bg-context-menu: rgba(36, 36, 52, 0.96);
   --color-context-border: rgba(255, 255, 255, 0.1);
   --bg-properties: #333333;
+  
+  /* Re-bind aliases so they re-evaluate with the dark theme overrides */
+  --color-bg-window: var(--bg-window);
+  --color-bg-titlebar: var(--bg-titlebar);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
 }
