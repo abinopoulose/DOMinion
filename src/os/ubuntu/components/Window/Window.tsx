@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useLayoutEffect, type ReactNode } from 'react';
 import { TitleBar } from './TitleBar';
+import { UbuntuErrorBoundary } from '../ErrorBoundary/UbuntuErrorBoundary';
 import { useWindowDrag } from '../../hooks/useWindowDrag';
 import { useWindowResize } from '../../hooks/useWindowResize';
 import { useWindowStore } from '../../store';
@@ -199,6 +200,7 @@ export function Window({
     animState === 'restoring' && 'window--restoring',
     animState === 'opening' && 'window--opening',
     win.appId === 'terminal' && 'window--terminal-dark',
+    win.appId === 'welcome' && 'window--welcome',
   ].filter(Boolean).join(' ');
 
   const style: React.CSSProperties = isMaximized
@@ -235,21 +237,25 @@ export function Window({
       data-app-id={win.appId}
       onMouseDown={handleFocus}
     >
-      <TitleBar
-        title={title}
-        icon={icon}
-        isFocused={isFocused}
-        isMaximized={isEffectivelyMaximized}
-        onMinimize={handleMinimize}
-        onMaximize={tileState ? handleUntile : handleMaximize}
-        onClose={handleClose}
-        onDoubleClick={tileState ? handleUntile : handleMaximize}
-        dragHandlers={dragHandlers}
-        headerControls={headerControls}
-        fullHeaderControls={fullHeaderControls}
-      />
+      {win.appId !== 'welcome' && (
+        <TitleBar
+          title={title}
+          icon={icon}
+          isFocused={isFocused}
+          isMaximized={isEffectivelyMaximized}
+          onMinimize={handleMinimize}
+          onMaximize={tileState ? handleUntile : handleMaximize}
+          onClose={handleClose}
+          onDoubleClick={tileState ? handleUntile : handleMaximize}
+          dragHandlers={dragHandlers}
+          headerControls={headerControls}
+          fullHeaderControls={fullHeaderControls}
+        />
+      )}
       <div className="window__content">
-        {children}
+        <UbuntuErrorBoundary>
+          {children}
+        </UbuntuErrorBoundary>
       </div>
       {resizeHandles}
     </div>

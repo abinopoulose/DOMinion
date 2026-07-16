@@ -49,13 +49,14 @@ export const cd: CommandHandler = (args, cwdId, updateCwd, _clearHistory, _appSt
   [].forEach((line: string) => process.stdout.writeLine(line)); return {};
 };
 
-export const ls: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
-  const store = useVFSStore.getState();
+export const ls: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { readdir } = await import('../../../fs/operations');
+
   let showHidden = false;
   let longFormat = false;
   let targetPath = '.';
 
-  // Parse args (very basic)
   for (const arg of args) {
     if (arg.startsWith('-')) {
       if (arg.includes('a')) showHidden = true;
@@ -65,46 +66,42 @@ export const ls: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
     }
   }
 
-  let targetId = cwdId;
+  const cwdPath = await getAbsolutePathAsync(cwdId);
+  const targetNode = await resolveRelativePathAsync(cwdPath, targetPath);
   
-  if (targetPath !== '.') {
-    const node = store.resolveRelativePath(cwdId, targetPath);
-    if (!node) {
-      [`ls: cannot access '${targetPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-    }
-    targetId = node.id;
+  if (!targetNode) {
+    process.stderr.writeLine(`ls: cannot access '${targetPath}': No such file or directory`); 
+    return {};
   }
   
-  const username = _appState?.effectiveUser || getAuthContext().username;
-  if (!hasPermission(store.map, targetId, 'read', username)) {
-    [`ls: cannot open directory '${targetPath}': Permission denied`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  let children: any[] = [];
+  if (targetNode.type === 'directory') {
+    const targetAbsPath = await getAbsolutePathAsync(targetNode.id);
+    children = await readdir(targetAbsPath);
+  } else {
+    children = [targetNode];
   }
-
-  let children = store.getChildren(targetId, username);
   
-  if (!showHidden) {
+  if (!showHidden && targetNode.type === 'directory') {
     children = children.filter(c => !c.name.startsWith('.'));
   }
 
   if (longFormat) {
     const outputLines = children.map(c => {
-      // Convert octal string like "755" to rwx string
       const typeChar = c.type === 'directory' ? 'd' : '-';
-      const perms = c.permissions || (c.type === 'directory' ? '755' : '644');
-      const rwx = perms.split('').map(digit => {
+      let perms = c.permissions ? c.permissions.toString(8) : (c.type === 'directory' ? '755' : '644');
+      if (perms.length < 3) perms = perms.padStart(3, '0');
+      
+      const rwx = perms.split('').slice(-3).map(digit => {
         const val = parseInt(digit, 8);
         return (val & 4 ? 'r' : '-') + (val & 2 ? 'w' : '-') + (val & 1 ? 'x' : '-');
       }).join('');
       
       const permString = `${typeChar}${rwx}`;
-      const links = c.type === 'directory' ? c.children.length + 2 : 1;
-      const owner = c.owner || 'user';
-      const group = c.group || 'user';
-      let size = 0;
-      if (c.type === 'directory') size = 4096;
-      else if (c.type !== 'proc_file' && c.type !== 'character_device') {
-        size = new Blob([c.content]).size;
-      }
+      const links = 1;
+      const owner = c.ownerId || 'user';
+      const group = c.groupId || 'user';
+      const size = c.sizeBytes || 0;
       
       const dateObj = new Date(c.modifiedAt);
       const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) + ' ' + 
@@ -115,25 +112,19 @@ export const ls: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
       return `${permString} ${links} ${owner} ${group} ${size.toString().padStart(5, ' ')} ${dateStr} ${nameStr}`;
     });
     
-    // In terminal output, we can join with \n to make them separate lines, 
-    // or just return the array and TerminalOutput will render each line.
     outputLines.forEach((line: string) => process.stdout.writeLine(line)); return {};
   }
 
   const items = children.map(c => {
-    if (c.type === 'directory') {
-      return `\x1b[1;34m${c.name}/\x1b[0m`;
-    }
+    if (c.type === 'directory') return `\x1b[1;34m${c.name}/\x1b[0m`;
     return c.name;
   });
 
   if (items.length > 0) {
     const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
-    
-    // Sort items case-insensitive
     items.sort((a, b) => stripAnsi(a).toLowerCase().localeCompare(stripAnsi(b).toLowerCase()));
 
-    const terminalWidth = 100; // Reasonable default for our terminal
+    const terminalWidth = 100;
     const maxLen = Math.max(...items.map(s => stripAnsi(s).length));
     const colWidth = maxLen + 2; 
     const cols = Math.max(1, Math.floor(terminalWidth / colWidth));

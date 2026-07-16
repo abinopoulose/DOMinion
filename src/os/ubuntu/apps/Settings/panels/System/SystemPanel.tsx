@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SettingsPanelWrapper } from '../../components/SettingsPanelWrapper';
 import { useSettingsStore, type SystemSubPage } from '../../store/useSettingsStore';
+import { downloadRemainingFiles } from '../../../../utils/downloadRemainingFiles';
 import './SystemPanel.css';
 
 // Import subpages
@@ -19,27 +20,63 @@ const SYSTEM_PAGES: { id: SystemSubPage; label: string; subtitle: string; icon: 
 ];
 
 async function performFactoryReset() {
+  console.log('[Factory Reset] Starting...');
+
+  // 0. Close any active VFS database connections first
+  try {
+    const { closeDB } = await import('../../../../fs/db');
+    await closeDB();
+    console.log('[Factory Reset] Closed active VFS DB connection.');
+  } catch (e) {
+    console.warn('[Factory Reset] Failed to close VFS DB:', e);
+  }
+
   // 1. Clear all IndexedDB databases
-  if (window.indexedDB && indexedDB.databases) {
+  const deleteIDB = (name: string) => {
+    return new Promise<void>((resolve) => {
+      console.log(`[Factory Reset] Deleting IndexedDB: ${name}`);
+      const req = indexedDB.deleteDatabase(name);
+      req.onsuccess = () => { console.log(`[Factory Reset] Deleted: ${name}`); resolve(); };
+      req.onerror = () => { console.warn(`[Factory Reset] Error deleting: ${name}`); resolve(); };
+      req.onblocked = () => { console.warn(`[Factory Reset] Blocked deleting: ${name}, forcing resolve.`); resolve(); };
+    });
+  };
+
+  if (window.indexedDB) {
     try {
-      const dbs = await indexedDB.databases();
-      for (const db of dbs) {
-        if (db.name) {
-          indexedDB.deleteDatabase(db.name);
+      if (indexedDB.databases) {
+        const dbs = await indexedDB.databases();
+        for (const db of dbs) {
+          if (db.name) {
+            await deleteIDB(db.name);
+          }
         }
+      } else {
+        throw new Error('databases() not supported');
       }
     } catch (_) {
-      // Fallback: delete known database names
-      const knownDbs = ['ubuntu-idb-storage', 'keyval-store'];
-      knownDbs.forEach(name => indexedDB.deleteDatabase(name));
+      const knownDbs = ['ubuntu-idb-storage', 'keyval-store', 'ubuntu-vfs'];
+      for (const name of knownDbs) {
+        await deleteIDB(name);
+      }
     }
   }
 
   // 2. Clear localStorage
   localStorage.clear();
+  console.log('[Factory Reset] localStorage cleared.');
 
   // 3. Clear sessionStorage
   sessionStorage.clear();
+
+  // Clear all cookies
+  try {
+    document.cookie.split(";").forEach((c) => {
+      document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+  } catch (e) {
+    console.warn('Failed to clear cookies', e);
+  }
 
   // 4. Unregister all service workers
   try {
@@ -65,315 +102,26 @@ async function performFactoryReset() {
     console.warn('Failed to clear caches:', e);
   }
 
-  // 6. Reload the page to start fresh
-  window.location.reload();
+  console.log('[Factory Reset] Complete. Reloading...');
+  // 6. Reload the page to start fresh, bypassing cache with a query param
+  window.location.href = window.location.pathname + '?reset=' + Date.now();
 }
 
 export function SystemPanel() {
   const { systemSubPage, setSystemSubPage } = useSettingsStore();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(-1);
+  const [shouldCrash, setShouldCrash] = useState(false);
+
+  if (shouldCrash) {
+    throw new Error("This is a deliberate crash initiated by the user to test the Ubuntu Error Boundary.");
+  }
 
   const handleDownloadRemainingFiles = async () => {
     if (downloadProgress >= 0) return;
     setDownloadProgress(0);
-
-    const assets = [
-      '/favicon.svg',
-      '/windows/icons/downloads.ico',
-      '/windows/icons/Recyle Bin full.ico',
-      '/windows/icons/pictures.ico',
-      '/windows/icons/documents.ico',
-      '/windows/icons/3D.ico',
-      '/windows/icons/hard disk.ico',
-      '/windows/icons/This PC.ico',
-      '/windows/icons/desktop.ico',
-      '/windows/icons/videos.ico',
-      '/windows/icons/Recyle Bin.ico',
-      '/windows/icons/music.ico',
-      '/windows/icons/USB.ico',
-      '/windows/icons/folder.ico',
-      '/icons.svg',
-      '/ubuntu/vfs_seed.json',
-      '/ubuntu/icons/calculator-app.png',
-      '/ubuntu/icons/text-x-generic.png',
-      '/ubuntu/icons/user-home.png',
-      '/ubuntu/icons/browser.svg',
-      '/ubuntu/icons/text-x-generic.png',
-      '/ubuntu/icons/folder.png',
-      '/ubuntu/icons/terminal-app.png',
-      '/ubuntu/icons/text-x-generic.png',
-      '/ubuntu/icons/user-trash.png',
-      '/ubuntu/icons/system-settings.png',
-      '/ubuntu/icons/clock-app.png',
-      '/ubuntu/wallpapers/ubuntu-24-wallpaper.png',
-      '/ubuntu/wallpapers/mount_wallpaper.jpg',
-      '/ubuntu/wallpapers/ubuntu_wallpaper.jpg',
-      '/ubuntu/settings/workspaces_on_all_display.png',
-      '/ubuntu/settings/active_screen_edges.png',
-      '/ubuntu/settings/workspaces_on_primary_display_only.png',
-      '/ubuntu/settings/hot_corner.png',
-      '/ubuntu/icons/folder-remote.png',
-      '/ubuntu/icons/video-x-generic.png',
-      '/ubuntu/icons/folder-new.png',
-      '/ubuntu/icons/application-epub+zip.png',
-      '/ubuntu/icons/x-office-document.png',
-      '/ubuntu/icons/root-terminal-app.png',
-      '/ubuntu/icons/system-settings.png',
-      '/ubuntu/icons/folder-pictures.png',
-      '/ubuntu/icons/application-x-gzip.png',
-      '/ubuntu/icons/folder-templates.png',
-      '/ubuntu/icons/terminal-app.png',
-      '/ubuntu/icons/folder-music.png',
-      '/ubuntu/icons/folder-download.png',
-      '/ubuntu/icons/folder-documents.png',
-      '/ubuntu/icons/user-home.png',
-      '/ubuntu/icons/x-office-presentation.png',
-      '/ubuntu/icons/application-x-zip.png',
-      '/ubuntu/icons/audio-x-generic.png',
-      '/ubuntu/icons/folder-open.png',
-      '/ubuntu/icons/folder-publicshare.png',
-      '/ubuntu/icons/user-trash-full.png',
-      '/ubuntu/icons/folder-videos.png',
-      '/ubuntu/icons/application-pdf.png',
-      '/ubuntu/icons/text-x-generic.png',
-      '/ubuntu/icons/folder-dropbox.png',
-      '/ubuntu/icons/image-x-generic.png',
-      '/ubuntu/icons/clock-app.png',
-      '/ubuntu/icons/preferences-system-time.png',
-      '/ubuntu/icons/user-trash.png',
-      '/ubuntu/icons/user-desktop.png',
-      '/ubuntu/icons/calculator-app.png',
-      '/ubuntu/icons/folder.png',
-      '/ubuntu/icons/x-office-spreadsheet.png',
-      '/ubuntu/icons/preferences-system-brightness-lock.png',
-      '/sw.js',
-      '/src/App.tsx',
-      '/src/hardware/hardwareConfig.ts',
-      '/src/hardware/components/post/POST.tsx',
-      '/src/hardware/components/post/POST.css',
-      '/src/hardware/components/grub/Grub.css',
-      '/src/hardware/components/grub/Grub.tsx',
-      '/src/hardware/components/bios/BIOS.css',
-      '/src/hardware/components/bios/BIOS.tsx',
-      '/src/hardware/store/useHardwareStore.ts',
-      '/src/index.css',
-      '/src/App.css',
-      '/src/main.tsx',
-      '/src/config/accounts.ts',
-      '/src/config/branding.ts',
-      '/src/os/windows/fs/pathResolver.ts',
-      '/src/os/windows/fs/operations.ts',
-      '/src/os/windows/fs/types.ts',
-      '/src/os/windows/fs/windowsSeed.ts',
-      '/src/os/windows/components/Desktop/WindowsDesktop.tsx',
-      '/src/os/windows/components/Desktop/WindowsDesktop.css',
-      '/src/os/windows/components/Login/WindowsLogin.css',
-      '/src/os/windows/components/Login/WindowsLogin.tsx',
-      '/src/os/windows/assets/wallpapers/win-wallpaper-1.jpg',
-      '/src/os/windows/store/useWindowsAuthStore.ts',
-      '/src/os/windows/store/useWindowsVFSStore.ts',
-      '/src/os/windows/store/persistence.ts',
-      '/src/os/ubuntu/hooks/useWindowDrag.ts',
-      '/src/os/ubuntu/hooks/useBattery.ts',
-      '/src/os/ubuntu/hooks/useContextMenu.ts',
-      '/src/os/ubuntu/hooks/useSelectionBox.ts',
-      '/src/os/ubuntu/hooks/useDockScroll.ts',
-      '/src/os/ubuntu/hooks/useWindowResize.tsx',
-      '/src/os/ubuntu/hooks/useClock.ts',
-      '/src/os/ubuntu/types/index.ts',
-      '/src/os/ubuntu/types/window.ts',
-      '/src/os/ubuntu/fs/inode.ts',
-      '/src/os/ubuntu/fs/index.ts',
-      '/src/os/ubuntu/fs/inodeCompat.ts',
-      '/src/os/ubuntu/fs/etcSeed.ts',
-      '/src/os/ubuntu/fs/permissions.ts',
-      '/src/os/ubuntu/fs/authSeed.ts',
-      '/src/os/ubuntu/fs/pathResolver.ts',
-      '/src/os/ubuntu/fs/operations.ts',
-      '/src/os/ubuntu/fs/fd.ts',
-      '/src/os/ubuntu/fs/types.ts',
-      '/src/os/ubuntu/fs/seed.ts',
-      '/src/os/ubuntu/fs/virtualDevices.ts',
-      '/src/os/ubuntu/fs/inodeOperations.ts',
-      '/src/os/ubuntu/fs/vfsDb.ts',
-      '/src/os/ubuntu/utils/iconResolver.ts',
-      '/src/os/ubuntu/utils/dragGhost.ts',
-      '/src/os/ubuntu/utils/passwordHasher.ts',
-      '/src/os/ubuntu/components/TopBar/CalendarMenu.css',
-      '/src/os/ubuntu/components/TopBar/CalendarMenu.tsx',
-      '/src/os/ubuntu/components/TopBar/TopBar.tsx',
-      '/src/os/ubuntu/components/TopBar/QuickSettings.tsx',
-      '/src/os/ubuntu/components/TopBar/TopBar.css',
-      '/src/os/ubuntu/components/TopBar/QuickSettings.css',
-      '/src/os/ubuntu/components/Window/Window.tsx',
-      '/src/os/ubuntu/components/Window/TitleBar.tsx',
-      '/src/os/ubuntu/components/Window/Window.css',
-      '/src/os/ubuntu/components/WorkspaceOverview/WorkspaceOverview.tsx',
-      '/src/os/ubuntu/components/WorkspaceOverview/WorkspaceOverview.css',
-      '/src/os/ubuntu/components/Desktop/Desktop.css',
-      '/src/os/ubuntu/components/Desktop/Desktop.tsx',
-      '/src/os/ubuntu/components/Notifications/useNotificationStore.ts',
-      '/src/os/ubuntu/components/Notifications/NotificationPopup.css',
-      '/src/os/ubuntu/components/Notifications/NotificationPopup.tsx',
-      '/src/os/ubuntu/components/SystemDialog/SystemDialog.css',
-      '/src/os/ubuntu/components/SystemDialog/PolkitDialog.tsx',
-      '/src/os/ubuntu/components/SystemDialog/SystemDialog.tsx',
-      '/src/os/ubuntu/components/TrashConfirmDialog/TrashConfirmDialog.tsx',
-      '/src/os/ubuntu/components/ContextMenu/ContextMenu.tsx',
-      '/src/os/ubuntu/components/ContextMenu/ContextMenu.css',
-      '/src/os/ubuntu/components/WorkspaceOSD/WorkspaceOSD.css',
-      '/src/os/ubuntu/components/WorkspaceOSD/WorkspaceOSD.tsx',
-      '/src/os/ubuntu/components/Login/UbuntuLogin.css',
-      '/src/os/ubuntu/components/Login/UbuntuLogin.tsx',
-      '/src/os/ubuntu/components/Dock/DockIcon.tsx',
-      '/src/os/ubuntu/components/Dock/Dock.tsx',
-      '/src/os/ubuntu/components/Dock/Dock.css',
-      '/src/os/ubuntu/apps/Settings/Settings.css',
-      '/src/os/ubuntu/apps/Settings/panels/OnlineAccountsPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/PowerPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/WifiPanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/ColorPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/RemovableMediaPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/MultitaskingPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/PrivacyPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/SearchPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/UbuntuDesktopPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/NotificationsPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/SoundPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/AppearancePanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/DisplaysPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/PrintersPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/SystemPanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/AppsPanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/AppsPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/NetworkPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/WifiPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/SharingPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/SoundPanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/MouseTouchpadPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/AppearancePanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/KeyboardPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/SystemPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/PowerPanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/DisplaysPanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/BluetoothPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/panels/MouseTouchpadPanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/MultitaskingPanel.css',
-      '/src/os/ubuntu/apps/Settings/panels/AccessibilityPanel.tsx',
-      '/src/os/ubuntu/apps/Settings/Settings.tsx',
-      '/src/os/ubuntu/apps/Settings/components/SettingsPanelWrapper.tsx',
-      '/src/os/ubuntu/apps/Settings/components/SettingsDropdown.tsx',
-      '/src/os/ubuntu/apps/Settings/components/SettingsPanelWrapper.css',
-      '/src/os/ubuntu/apps/Settings/components/SettingsHeaderControls.tsx',
-      '/src/os/ubuntu/apps/Settings/components/SettingsDropdown.css',
-      '/src/os/ubuntu/apps/Settings/components/SettingsSidebar.tsx',
-      '/src/os/ubuntu/apps/Settings/config/panels.tsx',
-      '/src/os/ubuntu/apps/Settings/store/useSettingsStore.ts',
-      '/src/os/ubuntu/apps/Browser/BrowserTab.tsx',
-      '/src/os/ubuntu/apps/Browser/Browser.tsx',
-      '/src/os/ubuntu/apps/Browser/Browser.css',
-      '/src/os/ubuntu/apps/Browser/BrowserContent.tsx',
-      '/src/os/ubuntu/apps/Clock/views/TimerView.tsx',
-      '/src/os/ubuntu/apps/Clock/views/StopwatchView.tsx',
-      '/src/os/ubuntu/apps/Clock/views/WorldClocksView.tsx',
-      '/src/os/ubuntu/apps/Clock/views/AlarmsView.tsx',
-      '/src/os/ubuntu/apps/Clock/hooks/useTimer.ts',
-      '/src/os/ubuntu/apps/Clock/hooks/useStopwatch.ts',
-      '/src/os/ubuntu/apps/Clock/hooks/useClockDaemon.ts',
-      '/src/os/ubuntu/apps/Clock/ClockApp.css',
-      '/src/os/ubuntu/apps/Clock/components/AnalogClock.tsx',
-      '/src/os/ubuntu/apps/Clock/components/AlarmItem.tsx',
-      '/src/os/ubuntu/apps/Clock/components/HeaderTabs.tsx',
-      '/src/os/ubuntu/apps/Clock/components/LapTable.tsx',
-      '/src/os/ubuntu/apps/Clock/ClockApp.tsx',
-      '/src/os/ubuntu/apps/Clock/store/useStopwatchStore.ts',
-      '/src/os/ubuntu/apps/Clock/store/useTimerStore.ts',
-      '/src/os/ubuntu/apps/Clock/store/useAlarmStore.ts',
-      '/src/os/ubuntu/apps/Clock/store/useWorldClockStore.ts',
-      '/src/os/ubuntu/apps/TextEditor/TextEditorHeaderControls.tsx',
-      '/src/os/ubuntu/apps/TextEditor/useTextEditor.ts',
-      '/src/os/ubuntu/apps/TextEditor/TextEditor.css',
-      '/src/os/ubuntu/apps/TextEditor/TextEditor.tsx',
-      '/src/os/ubuntu/apps/Terminal/commandParser/index.ts',
-      '/src/os/ubuntu/apps/Terminal/commandParser/types.ts',
-      '/src/os/ubuntu/apps/Terminal/commandParser/parseArgs.ts',
-      '/src/os/ubuntu/apps/Terminal/commandParser/parser.ts',
-      '/src/os/ubuntu/apps/Terminal/autocomplete.ts',
-      '/src/os/ubuntu/apps/Terminal/Terminal.tsx',
-      '/src/os/ubuntu/apps/Terminal/commands/sysInfo.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/index.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/fileOps.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/navigation.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/su.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/types.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/misc.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/nano.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/sudo.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/userMgmt.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/utils/index.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/utils/walkTree.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/shellOps.ts',
-      '/src/os/ubuntu/apps/Terminal/commands/textOps.ts',
-      '/src/os/ubuntu/apps/Terminal/NanoEditor.tsx',
-      '/src/os/ubuntu/apps/Terminal/TerminalOutput.tsx',
-      '/src/os/ubuntu/apps/Terminal/Terminal.css',
-      '/src/os/ubuntu/apps/Terminal/TerminalInput.tsx',
-      '/src/os/ubuntu/apps/Calculator/Calculator.css',
-      '/src/os/ubuntu/apps/Calculator/Calculator.tsx',
-      '/src/os/ubuntu/apps/Calculator/useCalculator.ts',
-      '/src/os/ubuntu/apps/FileManager/FileManagerHeaderControls.tsx',
-      '/src/os/ubuntu/apps/FileManager/Sidebar.tsx',
-      '/src/os/ubuntu/apps/FileManager/FileManager.css',
-      '/src/os/ubuntu/apps/FileManager/FileManager.tsx',
-      '/src/os/ubuntu/apps/FileManager/FileGrid.tsx',
-      '/src/os/ubuntu/apps/FileManager/FileList.tsx',
-      '/src/os/ubuntu/apps/FileManager/BreadcrumbBar.tsx',
-      '/src/os/ubuntu/services/sudoersParser.ts',
-      '/src/os/ubuntu/services/sudoService.ts',
-      '/src/os/ubuntu/store/useUbuntuVFSStore.ts',
-      '/src/os/ubuntu/store/index.ts',
-      '/src/os/ubuntu/store/useNetworkStore.ts',
-      '/src/os/ubuntu/store/useUbuntuDesktopStore.ts',
-      '/src/os/ubuntu/store/useUbuntuAuthStore.ts',
-      '/src/os/ubuntu/store/useSystemDialogStore.ts',
-      '/src/os/ubuntu/store/useWorkspaceStore.ts',
-      '/src/os/ubuntu/store/persistence.ts',
-      '/src/os/ubuntu/store/useUbuntuWindowStore.ts',
-    ];
-
-    try {
-      if ('serviceWorker' in navigator) {
-        await navigator.serviceWorker.register('/sw.js');
-      }
-
-      if ('caches' in window) {
-        const cache = await caches.open('ubuntu-assets');
-        let loaded = 0;
-        for (const asset of assets) {
-          try {
-             await cache.add(asset);
-          } catch(e) {} 
-          loaded++;
-          setDownloadProgress(Math.round((loaded / assets.length) * 100));
-          await new Promise(r => setTimeout(r, 5)); // artificial delay for smooth progress bar
-        }
-      } else {
-        let loaded = 0;
-        for (const asset of assets) {
-          try {
-             await fetch(asset, { cache: 'force-cache' });
-          } catch(e) {}
-          loaded++;
-          setDownloadProgress(Math.round((loaded / assets.length) * 100));
-          await new Promise(r => setTimeout(r, 5));
-        }
-      }
-    } catch (e) {
-      console.error('Failed to download assets:', e);
-    } finally {
-      setTimeout(() => setDownloadProgress(-1), 2000);
-    }
+    await downloadRemainingFiles(setDownloadProgress);
+    setTimeout(() => setDownloadProgress(-1), 2000);
   };
 
   if (systemSubPage !== 'root') {
@@ -503,6 +251,21 @@ export function SystemPanel() {
               animation: 'spin 1s linear infinite' 
             }} />
           )}
+        </div>
+        
+        <div 
+          className="ubuntu-settings-list-item interactive" 
+          onClick={() => setShouldCrash(true)}
+          style={{ color: '#e5534b' }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <span style={{ fontSize: '15px' }}>Test Error Boundary</span>
+          </div>
         </div>
       </div>
 

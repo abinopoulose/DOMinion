@@ -19,6 +19,8 @@ export interface PolkitAuthRequest {
   onSuccess: () => void;
   /** Optional callback on cancellation */
   onCancel?: () => void;
+  /** If false, allows standard users to authenticate as themselves. Default is true. */
+  requireAdmin?: boolean;
 }
 
 interface SystemDialogStore {

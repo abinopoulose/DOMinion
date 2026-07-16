@@ -8,11 +8,15 @@ import { FileGrid } from './components/FileGrid';
 import { FileList } from './components/FileList';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../../components/ContextMenu/ContextMenu';
-import type { VFSNode } from '../../fs/types';
+import type { LegacyVFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
 import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { withElevation } from '../../services/sudoService';
 import { TrashConfirmDialog } from '../../components/TrashConfirmDialog/TrashConfirmDialog';
+import { DeleteConfirmDialog } from '../../components/DeleteConfirmDialog/DeleteConfirmDialog';
+import { useFileSystem } from '../../hooks/useFileSystem';
+import { handleHostDrop } from '../../utils/hostInterop';
+import { useNotificationStore } from '../../components/Notifications/useNotificationStore';
 import './FileManager.css';
 export { FileManagerHeaderControls } from './components/FileManagerHeaderControls';
 
@@ -70,18 +74,18 @@ interface FileManagerState {
 export function FileManager({ windowId }: FileManagerProps) {
   const windowState = useWindowStore(useCallback((s) => s.windows.find((w) => w.id === windowId), [windowId]));
   const updateAppState = useWindowStore((s) => s.updateAppState);
-  const openWindow = useWindowStore((s) => s.openWindow);
-  
+    
   const vfsStore = useVFSStore();
   useVFSStore((s) => s.map); // Explicitly subscribe to map changes
   const { menu, show: showMenu, hide: hideMenu } = useContextMenu();
 
   // Context menu state to know if clicked on empty space or specific file
-  const [contextNode, setContextNode] = useState<VFSNode | undefined>(undefined);
+  const [contextNode, setContextNode] = useState<LegacyVFSNode | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [trashConfirm, setTrashConfirm] = useState<string[] | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string[] | null>(null);
 
   const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
   const HOME_ID = getHomeId(username);
@@ -110,9 +114,23 @@ export function FileManager({ windowId }: FileManagerProps) {
 
   const isElevated = elevatedDirs.includes(cwdId);
   const effectiveUser = isElevated ? 'root' : username;
+  
+  const cwdPath = useMemo(() => {
+    try { return vfsStore.getAbsolutePath(cwdId); }
+    catch { return `/home/${username}`; }
+  }, [cwdId, vfsStore, username]);
+  
+  const { nodes: fsNodes } = useFileSystem(cwdPath);
+
   let files = cwdId === 'starred' 
     ? Object.values(vfsStore.map).filter(f => f.type === 'file' && f.meta?.isStarred)
-    : vfsStore.getChildren(cwdId, effectiveUser);
+    : (fsNodes as any[]) || [];
+  
+  // Also preserve fallback to vfsStore if fsNodes is empty during migration
+  if (cwdId !== 'starred' && files.length === 0) {
+    const fallback = vfsStore.getChildren(cwdId, effectiveUser);
+    if (fallback.length > 0) files = fallback;
+  }
   
   if (isSearching && searchQuery) {
     files = files.filter(f => f.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -131,8 +149,8 @@ export function FileManager({ windowId }: FileManagerProps) {
     let result = 0;
     
     if (sortBy === 'size') {
-      const sizeA = a.type === 'directory' ? 4096 : new Blob([a.content || '']).size;
-      const sizeB = b.type === 'directory' ? 4096 : new Blob([b.content || '']).size;
+      const sizeA = (a as any).sizeBytes ?? (a.type === 'directory' ? 4096 : new Blob([a.content || '']).size);
+      const sizeB = (b as any).sizeBytes ?? (b.type === 'directory' ? 4096 : new Blob([b.content || '']).size);
       if (sizeA !== sizeB) result = sizeB - sizeA; // Default size desc
     } else {
       result = a.name.localeCompare(b.name);
@@ -184,37 +202,107 @@ export function FileManager({ windowId }: FileManagerProps) {
   };
 
   const handleOpenFile = (id: string) => {
-    openWindow('text-editor', { fileId: id }); 
+    import('../../utils/openFile').then(({ openFileApp }) => openFileApp(id, false));
   };
 
-  const handleRename = (id: string, newName: string) => {
-    attemptWithPolkit(
-      () => vfsStore.renameNode(id, newName),
-      `Authentication is needed to rename this item.`,
-      'org.freedesktop.filemanager.rename'
-    );
+  const handleRename = async (id: string, newName: string) => {
+    const file = files.find(f => f.id === id);
+    if (!file) return;
+    
+    // Check permission - if owner, proceed directly
+    const isOwner = (file as any).ownerId === username;
+    const hasLegacyPerm = hasPermission(vfsStore.map, id, 'write', username);
+    
+    if (isOwner || hasLegacyPerm) {
+      try {
+        const { rename } = await import('../../fs/operations');
+        const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+        
+        const oldPath = await getAbsolutePathAsync(id);
+        const segments = oldPath.split('/');
+        segments.pop();
+        const newPath = segments.join('/') + '/' + newName;
+        
+        await rename(oldPath, newPath);
+      } catch (e) {
+        console.error('[FileManager] rename failed', e);
+      }
+    } else {
+      // Legacy polkit fallback if not owner
+      attemptWithPolkit(
+        () => vfsStore.renameNode(id, newName),
+        `Authentication is needed to rename this item.`,
+        'org.freedesktop.filemanager.rename'
+      );
+    }
   };
 
   const handleDeleteRequest = (ids: string[]) => {
     setTrashConfirm(ids);
   };
 
-  const handleTrashConfirm = () => {
+  const handleTrashConfirm = async () => {
     if (!trashConfirm) return;
-    trashConfirm.forEach(id => {
-      attemptWithPolkit(
-        () => vfsStore.moveToTrash(id),
-        `Authentication is needed to move this item to trash.`,
-        'org.freedesktop.filemanager.delete'
-      );
-    });
+    
+    console.log(`[FileManager] Deleting items: ${trashConfirm.join(', ')}`);
+    const { rename } = await import('../../fs/operations');
+    const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+    
+    for (const id of trashConfirm) {
+      const file = files.find(f => f.id === id);
+      if (file) {
+        try {
+          const dbModule = await import('../../fs/db');
+          const db = await dbModule.getDB();
+          const inode = await db.get('inodes', id);
+          if (inode) {
+            inode.meta = { ...inode.meta, originalParentId: inode.parentId };
+            await db.put('inodes', inode);
+          }
+
+          const oldPath = await getAbsolutePathAsync(id);
+          const newPath = `/home/${username}/.Trash/${file.name}`;
+          console.log(`[FileManager] Moving ${oldPath} to ${newPath}`);
+          await rename(oldPath, newPath);
+        } catch (e: any) {
+          console.error('[FileManager] Failed to move to trash:', e);
+        }
+      }
+    }
+    
     setSelectedIds([]);
     setTrashConfirm(null);
   };
 
-  const [propertiesNode, setPropertiesNode] = useState<VFSNode | null>(null);
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return;
+    
+    const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+    const { unlink, rmdir } = await import('../../fs/operations');
 
-  const handleContextMenu = (e: React.MouseEvent, node?: VFSNode) => {
+    for (const id of deleteConfirm) {
+      const file = files.find(f => f.id === id);
+      if (file) {
+        try {
+          const path = await getAbsolutePathAsync(id);
+          if (file.type === 'directory') {
+            await rmdir(path, { recursive: true });
+          } else {
+            await unlink(path);
+          }
+        } catch (e) {
+          console.error('[FileManager] Failed to permanently delete:', e);
+        }
+      }
+    }
+    
+    setSelectedIds([]);
+    setDeleteConfirm(null);
+  };
+
+  const [propertiesNode, setPropertiesNode] = useState<LegacyVFSNode | null>(null);
+
+  const handleContextMenu = (e: React.MouseEvent, node?: LegacyVFSNode) => {
     e.preventDefault();
     setContextNode(node);
     showMenu(e);
@@ -223,8 +311,12 @@ export function FileManager({ windowId }: FileManagerProps) {
   // Generate context menu items dynamically based on target
   const contextMenuItems = useMemo(() => {
     const clipboard = vfsStore.clipboard;
-    const canWriteCwd = hasPermission(vfsStore.map, cwdId, 'write', effectiveUser);
-    const canWriteNode = contextNode ? hasPermission(vfsStore.map, contextNode.id, 'write', effectiveUser) : false;
+    const canWriteCwd = hasPermission(vfsStore.map, cwdId, 'write', effectiveUser) || (cwdId !== 'starred' && cwdId !== 'other-locations'); // fallback for IDB dirs
+    
+    // For IDB nodes, check ownerId directly, otherwise fallback to legacy hasPermission
+    const canWriteNode = contextNode 
+      ? ((contextNode as any).ownerId === effectiveUser || hasPermission(vfsStore.map, contextNode.id, 'write', effectiveUser)) 
+      : false;
 
     if (contextNode) {
       const isMulti = selectedIds.includes(contextNode.id) && selectedIds.length > 1;
@@ -235,9 +327,27 @@ export function FileManager({ windowId }: FileManagerProps) {
             id: 'restore',
             label: isMulti ? `Restore ${selectedIds.length} Items` : 'Restore',
             disabled: !canWriteNode,
-            onClick: () => {
+            onClick: async () => {
               const ids = isMulti ? selectedIds : [contextNode.id];
-              ids.forEach(id => vfsStore.restoreFromTrash(id));
+              const { rename } = await import('../../fs/operations');
+              const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+              const dbModule = await import('../../fs/db');
+              const db = await dbModule.getDB();
+
+              for (const id of ids) {
+                try {
+                  const node = await db.get('inodes', id);
+                  if (node) {
+                    const oldPath = await getAbsolutePathAsync(id);
+                    const targetParentId = node.meta?.originalParentId || HOME_ID;
+                    const targetParentPath = await getAbsolutePathAsync(targetParentId);
+                    await rename(oldPath, `${targetParentPath}/${node.name}`);
+                  }
+                } catch (e) {
+                  console.error('Failed to restore from trash', e);
+                }
+              }
+              setSelectedIds([]);
               hideMenu();
             }
           },
@@ -248,13 +358,7 @@ export function FileManager({ windowId }: FileManagerProps) {
             icon: !canWriteNode ? 'lock' : undefined,
             onClick: () => {
               const ids = isMulti ? selectedIds : [contextNode.id];
-              ids.forEach(id => {
-                attemptWithPolkit(
-                  () => vfsStore.deleteNode(id),
-                  `Authentication is needed to delete this item.`,
-                  'org.freedesktop.filemanager.delete'
-                );
-              });
+              setDeleteConfirm(ids);
               hideMenu();
             }
           }
@@ -319,6 +423,19 @@ export function FileManager({ windowId }: FileManagerProps) {
           onClick: () => {
             const ids = isMulti ? selectedIds : [contextNode.id];
             vfsStore.setClipboard('copy', ids);
+            hideMenu();
+          }
+        },
+        {
+          id: 'download',
+          label: isMulti ? `Download ${selectedIds.length} Items (ZIP)` : (contextNode.type === 'directory' ? 'Download Folder (ZIP)' : 'Download'),
+          onClick: () => {
+            const ids = isMulti ? selectedIds : [contextNode.id];
+            if (ids.length > 1 || (ids.length === 1 && vfsStore.map[ids[0]]?.type === 'directory')) {
+              import('../../utils/hostInterop').then(({ downloadFilesAsZip }) => downloadFilesAsZip(ids, 'archive.zip'));
+            } else {
+              import('../../utils/hostInterop').then(({ downloadFile }) => downloadFile(ids[0]));
+            }
             hideMenu();
           }
         },
@@ -502,32 +619,40 @@ export function FileManager({ windowId }: FileManagerProps) {
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
           const { action, nodeIds } = vfsStore.clipboard;
           if (action && nodeIds && nodeIds.length > 0) {
-            attemptWithPolkit(
-              () => {
-                let firstError: string | undefined;
-                if (action === 'cut') {
-                  nodeIds.forEach(id => {
-                    const err = vfsStore.moveNode(id, cwdId);
-                    if (err && !firstError) firstError = err;
-                  });
-                  if (!firstError) vfsStore.setClipboard(null, []);
-                  return firstError;
-                } else if (action === 'copy') {
+            if (action === 'cut') {
+              import('../../fs/operations').then(async ({ rename }) => {
+                const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+                const cwdPath = await getAbsolutePathAsync(cwdId);
+                for (const id of nodeIds) {
+                  const oldPath = await getAbsolutePathAsync(id);
+                  const name = oldPath.split('/').pop();
+                  if (name) await rename(oldPath, `${cwdPath}/${name}`).catch(console.error);
+                }
+                vfsStore.setClipboard(null, []);
+              });
+            } else if (action === 'copy') {
+              // Copy is harder without operations.ts copy function, we'll keep legacy for now
+              attemptWithPolkit(
+                () => {
+                  let firstError;
                   nodeIds.forEach(id => {
                     const err = vfsStore.duplicateNode(id, cwdId).error;
                     if (err && !firstError) firstError = err;
                   });
                   return firstError;
-                }
-                return undefined;
-              },
-              `Authentication is needed to paste into this location.`,
-              'org.freedesktop.filemanager.paste'
-            );
+                },
+                `Authentication is needed to paste into this location.`,
+                'org.freedesktop.filemanager.paste'
+              );
+            }
           }
         } else if (e.key === 'Delete' && selectedIds.length > 0 && !editingId) {
           e.preventDefault();
-          setTrashConfirm([...selectedIds]);
+          if (cwdId === TRASH_ID) {
+            setDeleteConfirm([...selectedIds]);
+          } else {
+            setTrashConfirm([...selectedIds]);
+          }
         }
       }}
     >
@@ -543,11 +668,35 @@ export function FileManager({ windowId }: FileManagerProps) {
             e.preventDefault();
             const multiNodes = e.dataTransfer.getData('application/x-vfs-nodes');
             const nodeId = e.dataTransfer.getData('application/x-vfs-node');
+            
+            const handleDropMove = async (ids: string[]) => {
+              const { rename } = await import('../../fs/operations');
+              const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+              const cwdPath = await getAbsolutePathAsync(cwdId);
+              for (const id of ids) {
+                const oldPath = await getAbsolutePathAsync(id);
+                const name = oldPath.split('/').pop();
+                if (name) await rename(oldPath, `${cwdPath}/${name}`).catch(console.error);
+              }
+            };
+
             if (multiNodes) {
-              const ids: string[] = JSON.parse(multiNodes);
-              ids.forEach(id => useVFSStore.getState().moveNode(id, cwdId));
+              handleDropMove(JSON.parse(multiNodes));
             } else if (nodeId) {
-              useVFSStore.getState().moveNode(nodeId, cwdId);
+              handleDropMove([nodeId]);
+            } else if (e.dataTransfer.files.length > 0) {
+              const addNotification = useNotificationStore.getState().addNotification;
+              const updateNotification = useNotificationStore.getState().updateNotification;
+              
+              const notifId = addNotification({ title: 'Uploading Files', message: 'Starting upload...', progress: 0 });
+              
+              handleHostDrop(e, cwdId, (msg: string, current: number, total: number) => {
+                updateNotification(notifId, { message: msg, progress: total > 0 ? Math.round((current / total) * 100) : 0 });
+              }).then(() => {
+                updateNotification(notifId, { title: 'Upload Complete', message: 'Files uploaded successfully.', progress: undefined });
+              }).catch((err: any) => {
+                updateNotification(notifId, { title: 'Upload Failed', message: err.message, progress: undefined });
+              });
             }
           }}
         >
@@ -642,6 +791,15 @@ export function FileManager({ windowId }: FileManagerProps) {
           names={trashConfirm.map(id => files.find(f => f.id === id)?.name || id)}
           onConfirm={handleTrashConfirm}
           onCancel={() => setTrashConfirm(null)}
+        />,
+        document.body
+      )}
+
+      {deleteConfirm && createPortal(
+        <DeleteConfirmDialog
+          names={deleteConfirm.map(id => files.find(f => f.id === id)?.name || id)}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeleteConfirm(null)}
         />,
         document.body
       )}

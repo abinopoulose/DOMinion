@@ -119,6 +119,37 @@
   color: var(--color-text-secondary);
 }
 
+.notification-card__progress-container {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.notification-card__progress-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.notification-card__progress-text {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.notification-card__progress {
+  width: 100%;
+  height: 4px;
+  background: var(--color-surface-hover);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.notification-card__progress-bar {
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.2s ease-out;
+}
+
 .calendar-menu__footer {
   display: flex;
   justify-content: space-between;

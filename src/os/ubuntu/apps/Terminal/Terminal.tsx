@@ -79,7 +79,7 @@ export function Terminal({ windowId }: TerminalProps) {
     return `${effectiveUser}@${hostname}:${displayPath}${promptChar} `;
   };
 
-  const executeCommand = (cmdStr: string, asRoot: boolean) => {
+  const executeCommand = async (cmdStr: string, asRoot: boolean) => {
     let output: string[] = [];
     let isError = false;
     let nextCwdId = cwdId;
@@ -224,7 +224,7 @@ export function Terminal({ windowId }: TerminalProps) {
                 }
               };
               
-              const handlerResult = handler(parsed.args, cwdId, updateCwd, clearHistoryFn, appState, process);
+              const handlerResult = await handler(parsed.args, cwdId, updateCwd, clearHistoryFn, appState, process);
               
               if (handlerResult.nextCwdId) nextCwdId = handlerResult.nextCwdId;
               if (handlerResult.shouldClear) shouldClear = handlerResult.shouldClear;
@@ -340,7 +340,7 @@ export function Terminal({ windowId }: TerminalProps) {
           stderr: { writeLine: (l: string) => { sudoOutput.push(l); sudoIsError = true; }, write: (l: string) => { sudoOutput.push(l); sudoIsError = true; } },
           stdin: { readAll: () => '' }
         };
-        const sudoResult = handleSudo(
+        const sudoResult = await handleSudo(
           parsed![0].args, tempCwdId, (id: string) => { tempCwdId = id; }, () => {},
           appState, windowId, effectiveUser, mockProcess
         );
@@ -618,7 +618,7 @@ export function Terminal({ windowId }: TerminalProps) {
         stderr: { writeLine: (l: string) => { sudoOutput.push(l); sudoIsError = true; }, write: (l: string) => { sudoOutput.push(l); sudoIsError = true; } },
         stdin: { readAll: () => '' }
       };
-      const sudoResult = handleSudo(
+      const sudoResult = await handleSudo(
         parsed[0].args, cwdId, updateCwdId, () => {},
         appState, windowId, effectiveUser, mockProcess
       );
@@ -665,7 +665,7 @@ export function Terminal({ windowId }: TerminalProps) {
         stderr: { write: (l: string) => { suOutput.push(l); suIsError = true; }, writeLine: (l: string) => { suOutput.push(l); suIsError = true; } },
         stdin: { readAll: () => '' }, pid: 1, fds: {}
       } as any;
-      const suResult = commandRegistry['su'](parsed[0].args, cwdId, updateCwdId, () => {}, appState, processMock);
+      const suResult = await commandRegistry['su'](parsed[0].args, cwdId, updateCwdId, () => {}, appState, processMock);
       
       if (!suIsError && !suResult.isError) {
         let targetUser = 'root';
@@ -695,7 +695,7 @@ export function Terminal({ windowId }: TerminalProps) {
     }
 
     // Normal execution
-    const execResult = executeCommand(trimmed, false);
+    const execResult = await executeCommand(trimmed, false);
 
     newHistoryEntry.output = execResult.output || [];
     newHistoryEntry.isError = execResult.isError;
@@ -821,7 +821,7 @@ export function TerminalHeaderControls({ windowId }: { windowId: string }) {
   const windowState = useWindowStore(useCallback((s) => s.windows.find(w => w.id === windowId), [windowId]));
   const updateAppState = useWindowStore((s) => s.updateAppState);
   
-  const appState = (windowState?.appState as TerminalAppState) || {};
+  const appState = (windowState?.appState || {}) as TerminalAppState;
   const fontSize = appState.fontSize || 13;
 
   const handleZoomIn = () => updateAppState(windowId, { ...appState, fontSize: Math.min(fontSize + 1, 36) });

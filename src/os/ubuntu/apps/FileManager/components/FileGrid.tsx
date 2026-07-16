@@ -1,19 +1,21 @@
 import React, { useEffect, useRef, useCallback } from 'react';
-import type { VFSNode } from '../../../fs/types';
-import { getIconForFile } from '../../../utils/iconResolver';
+import type { LegacyVFSNode } from '../../../fs/types';
+import { FileIcon } from '../../../components/FileIcon/FileIcon';
 import { useVFSStore } from '../../../store';
 import { useSettingsStore } from '../../Settings/store/useSettingsStore';
 import { useUbuntuAuthStore } from '../../../store/useUbuntuAuthStore';
 import { hasPermission } from '../../../fs/permissions';
 import { useSelectionBox } from '../../../hooks/useSelectionBox';
 import { initDynamicDrag, updateDynamicDrag, cleanupDynamicDrag } from '../../../utils/dragGhost';
+import { handleHostDrop } from '../../../utils/hostInterop';
+import { useNotificationStore } from '../../../components/Notifications/useNotificationStore';
 
 interface FileGridProps {
-  files: VFSNode[];
+  files: LegacyVFSNode[];
   onNavigate: (id: string) => void;
   onOpenFile: (id: string) => void;
   onRename: (id: string, newName: string) => void;
-  onContextMenu: (e: React.MouseEvent, node?: VFSNode) => void;
+  onContextMenu: (e: React.MouseEvent, node?: LegacyVFSNode) => void;
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
 
@@ -133,11 +135,39 @@ export function FileGrid({
             e.preventDefault(); e.stopPropagation();
             const multi = e.dataTransfer.getData('application/x-vfs-nodes');
             const single = e.dataTransfer.getData('application/x-vfs-node');
+            const handleDropMove = async (ids: string[]) => {
+              const { rename } = await import('../../../fs/operations');
+              const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
+              const targetPath = await getAbsolutePathAsync(file.id);
+              for (const id of ids) {
+                if (id === file.id) continue;
+                try {
+                  const oldPath = await getAbsolutePathAsync(id);
+                  const name = oldPath.split('/').pop();
+                  if (name) await rename(oldPath, `${targetPath}/${name}`);
+                } catch (err) {
+                  console.error(err);
+                }
+              }
+            };
+
             if (multi) {
-              (JSON.parse(multi) as string[]).filter(id => id !== file.id).forEach(id =>
-                useVFSStore.getState().moveNode(id, file.id));
+              handleDropMove(JSON.parse(multi));
             } else if (single && single !== file.id) {
-              useVFSStore.getState().moveNode(single, file.id);
+              handleDropMove([single]);
+            } else if (e.dataTransfer.files.length > 0) {
+              const addNotification = useNotificationStore.getState().addNotification;
+              const updateNotification = useNotificationStore.getState().updateNotification;
+              
+              const notifId = addNotification({ title: 'Uploading Files', message: 'Starting upload...', progress: 0 });
+              
+              handleHostDrop(e, file.id, (msg: string, current: number, total: number) => {
+                updateNotification(notifId, { message: msg, progress: total > 0 ? Math.round((current / total) * 100) : 0 });
+              }).then(() => {
+                updateNotification(notifId, { title: 'Upload Complete', message: 'Files uploaded successfully.', progress: undefined });
+              }).catch((err: any) => {
+                updateNotification(notifId, { title: 'Upload Failed', message: err.message, progress: undefined });
+              });
             }
           }}
           onClick={(e) => {
@@ -159,14 +189,14 @@ export function FileGrid({
           }}
         >
           <div className="file-icon-container" style={{ position: 'relative', width: dockIconSize, height: dockIconSize }}>
-            <img
-              src={getIconForFile(file.name, file.type === 'directory')}
-              alt={file.name}
-              className={`fm-item-icon ${!hasPermission(vfsStoreMap, file.id, 'write', username) ? 'file-item-protected' : ''}`}
-              draggable={false}
+            <FileIcon
+              fileId={file.id}
+              fileName={file.name}
+              isDirectory={file.type === 'directory'}
+              className={`fm-item-icon ${!hasPermission(vfsStoreMap, file.id, 'write', username, undefined, file) ? 'file-item-protected' : ''}`}
               style={{ width: '100%', height: '100%' }}
             />
-            {!hasPermission(vfsStoreMap, file.id, 'write', username) && (
+            {!hasPermission(vfsStoreMap, file.id, 'write', username, undefined, file) && (
               <div className="file-lock-badge" title="Read-only">
                 <svg viewBox="0 0 24 24" width="10" height="10" fill="#e95420">
                   <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>

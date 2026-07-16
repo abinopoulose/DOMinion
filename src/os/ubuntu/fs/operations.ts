@@ -1,17 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { NodeMap, VFSNode, VFSNodeType } from './types';
+import type { NodeMap, LegacyVFSNode, LegacyVFSNodeType } from './types';
 
-export function getNode(map: NodeMap, id: string): VFSNode | null {
+export function getNode(map: NodeMap, id: string): LegacyVFSNode | null {
   return map[id] || null;
 }
 
-export function getChildren(map: NodeMap, id: string): VFSNode[] {
+export function getChildren(map: NodeMap, id: string): LegacyVFSNode[] {
   const node = getNode(map, id);
   if (!node || node.type !== 'directory') return [];
   return node.children.map(childId => map[childId]).filter(Boolean);
 }
 
-export function getParent(map: NodeMap, id: string): VFSNode | null {
+export function getParent(map: NodeMap, id: string): LegacyVFSNode | null {
   const node = getNode(map, id);
   if (!node || !node.parentId) return null;
   return getNode(map, node.parentId);
@@ -26,11 +26,11 @@ export function createNode(
   map: NodeMap,
   parentId: string,
   name: string,
-  type: VFSNodeType,
+  type: LegacyVFSNodeType,
   content: string = '',
   owner?: string,
   group?: string
-): { newMap: NodeMap; node: VFSNode; error?: string } {
+): { newMap: NodeMap; node: LegacyVFSNode; error?: string } {
   const parent = getNode(map, parentId);
   if (!parent) return { newMap: map, node: null as any, error: 'Parent directory does not exist' };
   if (parent.type !== 'directory') return { newMap: map, node: null as any, error: 'Parent is not a directory' };
@@ -44,7 +44,7 @@ export function createNode(
     extension = name.split('.').pop() || '';
   }
 
-  const node: VFSNode = {
+  const node: LegacyVFSNode = {
     id,
     name,
     type,
@@ -258,7 +258,7 @@ export function duplicateNode(map: NodeMap, id: string, newParentId: string): { 
     const newId = uuidv4();
     const now = Date.now();
     
-    const copiedNode: VFSNode = {
+    const copiedNode: LegacyVFSNode = {
       ...sourceNode,
       id: newId,
       name: overriddenName || sourceNode.name,
@@ -290,4 +290,262 @@ export function duplicateNode(map: NodeMap, id: string, newParentId: string): { 
   
   const newId = deepCopy(id, newParentId, targetName);
   return { newMap: currentMap, newId };
+}
+
+// ---- ASYNC IMPLEMENTATIONS FOR TASK 2 ----
+
+import { getDB } from './db';
+import type { VFSNode } from './types';
+import { resolvePathAsync, clearPathCache } from './pathResolver';
+import { fsEvents } from './events';
+import { getAuthContext } from '../store/authContext';
+
+export async function stat(path: string): Promise<VFSNode> {
+  const node = await resolvePathAsync(path);
+  if (!node) throw new Error(`ENOENT: no such file or directory, stat '${path}'`);
+  return node;
+}
+
+export async function readdir(path: string): Promise<VFSNode[]> {
+  const node = await resolvePathAsync(path);
+  if (!node) throw new Error(`ENOENT: no such file or directory, scandir '${path}'`);
+  if (node.type !== 'directory') throw new Error(`ENOTDIR: not a directory, scandir '${path}'`);
+  
+  const db = await getDB();
+  return await db.getAllFromIndex('inodes', 'by-parent', node.id);
+}
+
+export async function readFile(path: string): Promise<Blob> {
+  const node = await stat(path);
+  if (node.type === 'directory') throw new Error(`EISDIR: illegal operation on a directory, read '${path}'`);
+  
+  const db = await getDB();
+  const fileData = await db.get('file_data', node.id);
+  if (!fileData) {
+    return new Blob([], { type: node.meta?.mimeType || 'application/octet-stream' });
+  }
+  
+  return fileData as Blob;
+}
+
+export async function writeFile(path: string, data: Blob | string | Uint8Array, options?: { append?: boolean }): Promise<VFSNode> {
+  console.log(`[VFS Sync: operations] writeFile initiated for path: ${path}`);
+  const segments = path.split('/').filter(Boolean);
+  const fileName = segments.pop();
+  if (!fileName) {
+    console.error(`[VFS Sync: operations] EISDIR: illegal operation on a directory, write '${path}'`);
+    throw new Error(`EISDIR: illegal operation on a directory, write '${path}'`);
+  }
+
+  const parentPath = '/' + segments.join('/');
+  console.log(`[VFS Sync: operations] Resolving parent path: ${parentPath}`);
+  const parentNode = await resolvePathAsync(parentPath);
+  if (!parentNode) {
+    console.error(`[VFS Sync: operations] ENOENT: parent directory not found for open '${path}'`);
+    throw new Error(`ENOENT: no such file or directory, open '${path}'`);
+  }
+  if (parentNode.type !== 'directory') {
+    console.error(`[VFS Sync: operations] ENOTDIR: parent path is not a directory '${parentPath}'`);
+    throw new Error(`ENOTDIR: not a directory, open '${parentPath}'`);
+  }
+
+  let node = await resolvePathAsync(path);
+  if (node && node.type === 'directory') {
+    console.error(`[VFS Sync: operations] EISDIR: target path is a directory '${path}'`);
+    throw new Error(`EISDIR: illegal operation on a directory, write '${path}'`);
+  }
+
+  let blobData: Blob;
+  if (data instanceof Blob) blobData = data;
+  else if (data instanceof Uint8Array) blobData = new Blob([data as any]);
+  else blobData = new Blob([data], { type: 'text/plain' });
+
+  const db = await getDB();
+  console.log(`[VFS Sync: operations] Acquired IDB connection for write transaction`);
+  const tx = db.transaction(['inodes', 'file_data'], 'readwrite');
+  const inodeStore = tx.objectStore('inodes');
+  const dataStore = tx.objectStore('file_data');
+
+  if (node && options?.append) {
+    console.log(`[VFS Sync: operations] Append option specified, fetching existing data`);
+    const existingData = await dataStore.get(node.id) as Blob;
+    if (existingData) {
+      blobData = new Blob([existingData, blobData]);
+    }
+  }
+
+  let isNew = false;
+  if (!node) {
+    isNew = true;
+    // Create new node
+    const id = uuidv4();
+    const now = Date.now();
+    let extension = '';
+    if (fileName.includes('.')) {
+      extension = fileName.split('.').pop() || '';
+    }
+
+    const currentUser = getAuthContext().username;
+    node = {
+      id,
+      name: fileName,
+      type: 'file',
+      parentId: parentNode.id,
+      permissions: 0o644,
+      ownerId: currentUser,
+      groupId: currentUser,
+      createdAt: now,
+      modifiedAt: now,
+      accessedAt: now,
+      sizeBytes: blobData.size,
+      hasBinaryContent: blobData.size > 0,
+      meta: { extension }
+    };
+  } else {
+    // Update existing node
+    console.log(`[VFS Sync: operations] Updating existing node: ${node.id}`);
+    node.modifiedAt = Date.now();
+    node.sizeBytes = blobData.size;
+    node.hasBinaryContent = blobData.size > 0;
+  }
+
+  try {
+    await inodeStore.put(node);
+    if (blobData.size > 0) {
+      await dataStore.put(blobData, node.id);
+    } else {
+      await dataStore.delete(node.id); // clean up if empty
+    }
+
+    await tx.done;
+    console.log(`[VFS Sync: operations] Transaction successfully committed for '${path}'`);
+  } catch (err) {
+    console.error(`[VFS Sync: operations] Transaction failed for '${path}'`, err);
+    throw err;
+  }
+  
+  clearPathCache();
+  fsEvents.emit(path, isNew ? 'fs:created' : 'fs:changed');
+  return node;
+}
+
+export async function unlink(path: string): Promise<void> {
+  const node = await resolvePathAsync(path);
+  if (!node) throw new Error(`ENOENT: no such file or directory, unlink '${path}'`);
+  if (node.type === 'directory') throw new Error(`EISDIR: illegal operation on a directory, unlink '${path}'`);
+
+  const db = await getDB();
+  const tx = db.transaction(['inodes', 'file_data'], 'readwrite');
+  await tx.objectStore('inodes').delete(node.id);
+  await tx.objectStore('file_data').delete(node.id);
+  await tx.done;
+  clearPathCache();
+  fsEvents.emit(path, 'fs:deleted');
+}
+
+export async function mkdir(path: string): Promise<VFSNode> {
+  const segments = path.split('/').filter(Boolean);
+  const dirName = segments.pop();
+  if (!dirName) throw new Error(`EEXIST: file already exists, mkdir '${path}'`);
+
+  const parentPath = '/' + segments.join('/');
+  const parentNode = await resolvePathAsync(parentPath);
+  if (!parentNode) throw new Error(`ENOENT: no such file or directory, mkdir '${path}'`);
+  if (parentNode.type !== 'directory') throw new Error(`ENOTDIR: not a directory, mkdir '${parentPath}'`);
+  
+  const existingNode = await resolvePathAsync(path);
+  if (existingNode) throw new Error(`EEXIST: file already exists, mkdir '${path}'`);
+
+  const id = uuidv4();
+  const now = Date.now();
+
+  const currentUser = getAuthContext().username;
+  const node: VFSNode = {
+    id,
+    name: dirName,
+    type: 'directory',
+    parentId: parentNode.id,
+    permissions: 0o755,
+    ownerId: currentUser,
+    groupId: currentUser,
+    createdAt: now,
+    modifiedAt: now,
+    accessedAt: now,
+    sizeBytes: 0,
+    hasBinaryContent: false
+  };
+
+  const db = await getDB();
+  await db.put('inodes', node);
+  clearPathCache();
+  fsEvents.emit(path, 'fs:created');
+  return node;
+}
+
+export async function rmdir(path: string, options?: { recursive?: boolean }): Promise<void> {
+  const node = await resolvePathAsync(path);
+  if (!node) throw new Error(`ENOENT: no such file or directory, rmdir '${path}'`);
+  if (node.type !== 'directory') throw new Error(`ENOTDIR: not a directory, rmdir '${path}'`);
+
+  const db = await getDB();
+  const children = await db.getAllFromIndex('inodes', 'by-parent', node.id);
+  
+  if (children.length > 0 && !options?.recursive) {
+    throw new Error(`ENOTEMPTY: directory not empty, rmdir '${path}'`);
+  }
+
+  const tx = db.transaction(['inodes', 'file_data'], 'readwrite');
+  const inodeStore = tx.objectStore('inodes');
+  const dataStore = tx.objectStore('file_data');
+
+  async function deleteRecursive(targetNode: VFSNode) {
+    if (targetNode.type === 'directory') {
+      const childNodes = await inodeStore.index('by-parent').getAll(targetNode.id);
+      for (const child of childNodes) {
+        await deleteRecursive(child);
+      }
+    }
+    await inodeStore.delete(targetNode.id);
+    await dataStore.delete(targetNode.id);
+  }
+
+  await deleteRecursive(node);
+  await tx.done;
+  clearPathCache();
+  fsEvents.emit(path, 'fs:deleted');
+}
+
+export async function rename(oldPath: string, newPath: string): Promise<void> {
+  const node = await resolvePathAsync(oldPath);
+  if (!node) throw new Error(`ENOENT: no such file or directory, rename '${oldPath}'`);
+
+  const newSegments = newPath.split('/').filter(Boolean);
+  const newName = newSegments.pop();
+  if (!newName) throw new Error(`EBUSY: resource busy or locked, rename '${oldPath}' -> '${newPath}'`);
+
+  const newParentPath = '/' + newSegments.join('/');
+  const newParentNode = await resolvePathAsync(newParentPath);
+  if (!newParentNode) throw new Error(`ENOENT: no such file or directory, rename '${oldPath}' -> '${newPath}'`);
+  if (newParentNode.type !== 'directory') throw new Error(`ENOTDIR: not a directory, rename '${oldPath}' -> '${newPath}'`);
+
+  const existingNode = await resolvePathAsync(newPath);
+  if (existingNode) {
+    if (existingNode.type === 'directory') throw new Error(`EISDIR: illegal operation on a directory, rename '${oldPath}' -> '${newPath}'`);
+    await unlink(newPath);
+  }
+
+  node.parentId = newParentNode.id;
+  node.name = newName;
+  node.modifiedAt = Date.now();
+
+  const db = await getDB();
+  await db.put('inodes', node);
+  clearPathCache();
+  fsEvents.emit(oldPath, 'fs:deleted');
+  fsEvents.emit(newPath, 'fs:created');
+}
+
+export async function createReadStream(path: string): Promise<ReadableStream> {
+  const blob = await readFile(path);
+  return blob.stream();
 }

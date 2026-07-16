@@ -52,19 +52,29 @@ export function hasPermission(
   nodeId: string,
   operationType: 'read' | 'write' | 'execute',
   executionUser: string,
-  _role?: string
+  _role?: string,
+  nodeOverride?: any
 ): boolean {
   if (executionUser === 'root') return true;
   
-  const node = map[nodeId];
+  const node = nodeOverride || map[nodeId];
   if (!node) return false;
 
   const euid = getUidForUser(executionUser);
   const egid = euid;
   
-  const mode = parseInt(node.permissions || (node.type === 'directory' ? '755' : '644'), 8);
-  const uid = getUidForUser(node.owner || 'user');
-  const gid = getUidForUser(node.group || 'user');
+  let mode: number;
+  if (typeof node.permissions === 'number') {
+    mode = node.permissions;
+  } else if (typeof node.permissions === 'string') {
+    mode = parseInt(node.permissions, 8);
+  } else {
+    mode = node.type === 'directory' ? 0o755 : 0o644;
+  }
+  const ownerName = (node as any).ownerId || node.owner || 'user';
+  const groupName = (node as any).groupId || node.group || 'user';
+  const uid = getUidForUser(ownerName);
+  const gid = getUidForUser(groupName);
 
   // Fake an inode for the check
   const fakeInode: Inode = {

@@ -73,9 +73,15 @@
 }
 
 .topbar__tray-icon {
-  width: 14px;
-  height: 14px;
-  fill: white;
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
   opacity: 0.9;
 }
 

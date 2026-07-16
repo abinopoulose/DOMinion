@@ -1,24 +1,166 @@
-import { get, setMany } from 'idb-keyval';
-import type { VFSNode } from './types';
+import { getDB } from './db';
+import type { LegacyVFSNode, VFSNode } from './types';
 
-// Browser-side parser that seeds IDB
+function legacyToVFSNode(legacy: LegacyVFSNode): VFSNode {
+  const permissions = typeof legacy.permissions === 'string'
+    ? parseInt(legacy.permissions, 8)
+    : 0o755;
+  const hasBinaryContent = legacy.type === 'file' && !!legacy.content;
+
+  return {
+    id: legacy.id,
+    name: legacy.name,
+    type: legacy.type,
+    parentId: legacy.parentId,
+    permissions,
+    ownerId: legacy.owner || 'user',
+    groupId: legacy.group || 'user',
+    createdAt: legacy.createdAt || Date.now(),
+    modifiedAt: legacy.modifiedAt || Date.now(),
+    accessedAt: legacy.modifiedAt || Date.now(),
+    sizeBytes: hasBinaryContent ? legacy.content.length : 0,
+    hasBinaryContent,
+    meta: legacy.meta || {},
+  };
+}
+
+/**
+ * Seeds the VFS. Returns as soon as the base OS tree is ready (instant).
+ * The full 26K-node snapshot from vfs_seed.json loads in the background.
+ */
 export async function seedVfsFromSnapshot() {
-  const isSeeded = await get('vfs_seeded_v3');
-  if (isSeeded) return;
+  const db = await getDB();
 
+  // Check if root already exists — DB is already seeded
+  const rootExists = await db.get('inodes', 'root');
+  if (rootExists) {
+    console.log('[VFS Seed] Database already seeded. Skipping.');
+    return;
+  }
+
+  console.log('[VFS Seed] Root node missing. Seeding base OS tree...');
+
+  // Seed base OS structure from seedNodeMap() — fast, ~38 nodes
+  const { seedNodeMap } = await import('./seed');
+  const baseMap = seedNodeMap();
+  const baseNodeCount = Object.keys(baseMap).length;
+
+  const baseTx = db.transaction(['inodes', 'file_data'], 'readwrite');
+  for (const id in baseMap) {
+    const vfsNode = legacyToVFSNode(baseMap[id]);
+    baseTx.objectStore('inodes').put(vfsNode);
+    if (baseMap[id].type === 'file' && baseMap[id].content) {
+      const blob = new Blob([baseMap[id].content], { type: 'text/plain' });
+      baseTx.objectStore('file_data').put(blob, vfsNode.id);
+    }
+  }
+  await baseTx.done;
+  console.log(`[VFS Seed] ✅ Base OS tree ready (${baseNodeCount} nodes). UI can boot now.`);
+
+  // Seed Resume.pdf to user desktops
+  try {
+    const resumeRes = await fetch('/Resume.pdf');
+    if (resumeRes.ok) {
+      const resumeBlob = await resumeRes.blob();
+      const resumeTx = db.transaction(['inodes', 'file_data'], 'readwrite');
+      
+      const users = ['peasant', 'abino'];
+      for (const u of users) {
+        const id = `home-${u}-desktop-resume`;
+        const node: VFSNode = {
+          id,
+          name: 'Resume.pdf',
+          type: 'file',
+          parentId: `home-${u}-desktop`,
+          permissions: 0o644,
+          ownerId: u,
+          groupId: u,
+          createdAt: Date.now(),
+          modifiedAt: Date.now(),
+          accessedAt: Date.now(),
+          sizeBytes: resumeBlob.size,
+          hasBinaryContent: true,
+          meta: { extension: 'pdf', mimeType: 'application/pdf' }
+        };
+        resumeTx.objectStore('inodes').put(node);
+        resumeTx.objectStore('file_data').put(resumeBlob, id);
+      }
+      await resumeTx.done;
+      console.log(`[VFS Seed] ✅ Seeded Resume.pdf to user desktops.`);
+    }
+  } catch (e) {
+    console.warn(`[VFS Seed] Failed to seed Resume.pdf:`, e);
+  }
+
+  // Fire-and-forget: load the full snapshot in the background
+  seedSnapshotInBackground();
+}
+
+/** Loads vfs_seed.json in the background without blocking the UI */
+async function seedSnapshotInBackground() {
   try {
     const res = await fetch('/ubuntu/vfs_seed.json');
     if (!res.ok) return;
-    const nodes: VFSNode[] = await res.json();
+    const nodes: LegacyVFSNode[] = await res.json();
+    console.log(`[VFS Seed BG] Seeding ${nodes.length} snapshot nodes in background...`);
 
-    // Save to IDB in chunks
-    for (let i = 0; i < nodes.length; i += 1000) {
-      const chunk = nodes.slice(i, i + 1000);
-      await setMany(chunk.map(n => [`vfs_node_${n.id}`, n]));
+    const db = await getDB();
+
+    // Build dedup index: collect all existing (parentId, name) pairs from base seed
+    const existingIndex = new Set<string>();
+    const allExisting = await db.getAll('inodes');
+    for (const node of allExisting) {
+      if (node.parentId) {
+        existingIndex.add(`${node.parentId}::${node.name}`);
+      }
     }
-    
-    await setMany([['vfs_seeded_v3', true]]);
+    console.log(`[VFS Seed BG] Built dedup index with ${existingIndex.size} existing entries.`);
+
+    const BATCH_SIZE = 1000;
+    let written = 0;
+    let skipped = 0;
+
+    for (let i = 0; i < nodes.length; i += BATCH_SIZE) {
+      const batch = nodes.slice(i, i + BATCH_SIZE);
+      const tx = db.transaction(['inodes', 'file_data'], 'readwrite');
+
+      for (const legacy of batch) {
+        try {
+          const dedupKey = `${legacy.parentId}::${legacy.name}`;
+          if (existingIndex.has(dedupKey)) {
+            skipped++;
+            continue;
+          }
+          existingIndex.add(dedupKey);
+
+          const vfsNode = legacyToVFSNode(legacy);
+
+          // Fix ownership: user home files should be owned by the user, not root
+          if (legacy.parentId && legacy.parentId.startsWith('home-') && !legacy.parentId.startsWith('home-root')) {
+            const username = legacy.parentId.replace('home-', '').split('-')[0];
+            if (username && username !== 'root') {
+              vfsNode.ownerId = legacy.owner || username;
+              vfsNode.groupId = legacy.group || username;
+            }
+          }
+
+          tx.objectStore('inodes').put(vfsNode);
+          if (legacy.type === 'file' && legacy.content) {
+            const blob = new Blob([legacy.content], { type: vfsNode.meta?.mimeType || 'text/plain' });
+            tx.objectStore('file_data').put(blob, vfsNode.id);
+          }
+          written++;
+        } catch (_) {}
+      }
+
+      await tx.done;
+
+      // Yield to event loop so UI stays responsive
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    console.log(`[VFS Seed BG] ✅ Background seeding complete. Written: ${written}, Skipped (deduped): ${skipped}.`);
   } catch (err) {
-    console.error('Failed to seed VFS:', err);
+    console.warn('[VFS Seed BG] Background seeding failed (non-critical):', err);
   }
 }

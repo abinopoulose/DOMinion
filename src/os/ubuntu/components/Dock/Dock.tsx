@@ -3,7 +3,7 @@ const terminalIcon = '/ubuntu/icons/terminal-app.png';
 const fileManagerIcon = '/ubuntu/icons/folder.png';
 const browserIcon = '/ubuntu/icons/browser.svg';
 const settingsIcon = '/ubuntu/icons/system-settings.png';
-const textIcon = '/ubuntu/icons/text-x-generic.png';
+const textIcon = '/ubuntu/icons/text-editor.png';
 const clockIcon = '/ubuntu/icons/clock-app.png';
 import { getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
@@ -79,6 +79,7 @@ const APP_META: Record<string, { label: string; icon: string }> = {
   'settings': { label: 'Settings', icon: settingsIcon },
   'text-editor': { label: 'Text Editor', icon: textIcon },
   'clock': { label: 'Clocks', icon: clockIcon },
+  'welcome': { label: 'Welcome to Ubuntu', icon: '/ubuntu/icons/ubuntu-logo.svg' },
 };
 
 export function Dock() {

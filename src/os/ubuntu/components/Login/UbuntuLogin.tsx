@@ -37,10 +37,16 @@ export function UbuntuLogin() {
       }
     }
 
-    // Fallback to config/accounts.ts if VFS shadow doesn't exist yet (migration)
-    if (!isValid && !shadowNode) {
-      const userObj = UBUNTU_ACCOUNTS.find(u => u.username === selectedUser);
-      isValid = !!(userObj && userObj.password === password);
+    const selectedAccount = UBUNTU_ACCOUNTS.find(u => u.username === selectedUser);
+    const isAutoLogin = !!selectedAccount?.autoLogin;
+
+    if (isAutoLogin) {
+      isValid = true;
+    } else {
+      // Fallback to config/accounts.ts if VFS shadow doesn't exist yet (migration)
+      if (!isValid && !shadowNode) {
+        isValid = !!(selectedAccount && selectedAccount.password === password);
+      }
     }
 
     if (isValid) {
@@ -108,21 +114,29 @@ export function UbuntuLogin() {
             <h2 className="ubuntu-login-name">{UBUNTU_ACCOUNTS.find(a => a.username === selectedUser)?.displayName || selectedUser}</h2>
             
             <form onSubmit={handleLogin} className="ubuntu-login-form">
-              <div className="ubuntu-login-input-wrapper">
-                <input
-                  type="password"
-                  className="ubuntu-login-input"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                  autoFocus
-                />
-                {password && (
-                  <button type="submit" className="ubuntu-login-submit-btn">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+              {UBUNTU_ACCOUNTS.find(a => a.username === selectedUser)?.autoLogin ? (
+                <div className="ubuntu-login-input-wrapper">
+                  <button type="submit" className="ubuntu-login-submit-btn" style={{ position: 'relative', width: '100%', right: 'auto', background: 'var(--color-accent)', padding: '8px 16px', borderRadius: '4px', display: 'flex', justifyContent: 'center' }}>
+                    Log In
                   </button>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="ubuntu-login-input-wrapper">
+                  <input
+                    type="password"
+                    className="ubuntu-login-input"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                    autoFocus
+                  />
+                  {password && (
+                    <button type="submit" className="ubuntu-login-submit-btn">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+                    </button>
+                  )}
+                </div>
+              )}
               {error && <div className="ubuntu-login-error">{error}</div>}
             </form>
             

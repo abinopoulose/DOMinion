@@ -50,4 +50,4 @@ export type CommandHandler = (
   clearHistory: () => void,
   appState: TerminalAppState,
   process: import('../../../fs/fd').ProcessState
-) => Partial<CommandResult>;
+) => Partial<CommandResult> | Promise<Partial<CommandResult>>;

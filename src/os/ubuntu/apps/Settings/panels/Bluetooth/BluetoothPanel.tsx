@@ -74,11 +74,23 @@ export function BluetoothPanel() {
           </>
         ) : (
           <div className="ubuntu-settings-panel-empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginTop: '64px', opacity: 0.8 }}>
-            <svg width="128" height="128" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '16px' }}>
-              <rect x="10" y="10" width="80" height="80" rx="16" fill="#8c8c8c" />
-              <path d="M48 28L58 38L50 46V54L58 62L48 72V28Z" fill="#8c8c8c" />
-              <path d="M48 28L58 38L50 46M50 46L40 38M50 46V54M50 54L58 62L48 72V54M50 54L40 62" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <div 
+              style={{ 
+                width: 128, 
+                height: 128, 
+                marginBottom: '16px', 
+                backgroundColor: 'currentColor', 
+                opacity: 0.5,
+                WebkitMaskImage: `url('/ubuntu/status/${airplaneMode ? 'bluetooth-hardware-disabled-symbolic.svg' : 'bluetooth-disabled-symbolic.svg'}')`,
+                WebkitMaskSize: 'contain',
+                WebkitMaskRepeat: 'no-repeat',
+                WebkitMaskPosition: 'center',
+                maskImage: `url('/ubuntu/status/${airplaneMode ? 'bluetooth-hardware-disabled-symbolic.svg' : 'bluetooth-disabled-symbolic.svg'}')`,
+                maskSize: 'contain',
+                maskRepeat: 'no-repeat',
+                maskPosition: 'center'
+              }}
+            />
             <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px 0', color: 'var(--color-text)' }}>
               {airplaneMode ? 'Bluetooth is Disabled' : 'Bluetooth Turned Off'}
             </h2>

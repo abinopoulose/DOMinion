@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { NodeMap, VFSNodeType, VFSNode } from '../fs/types';
+import type { NodeMap, LegacyVFSNodeType, LegacyVFSNode } from '../fs/types';
 import { ubuntuIdbStorage } from './persistence';
 import {
   createNode as createNodeOp,
@@ -22,8 +22,10 @@ import { nodeMapToInodeTable, buildCompatNodeMap } from '../fs/inodeCompat';
 import * as inodeOps from '../fs/inodeOperations';
 import { ROOT_ID, ROOT_HOME_ID, seedNodeMap, seedUserHome, getHomeId, getDesktopId, getTrashId } from '../fs/seed';
 import { UBUNTU_ACCOUNTS } from '../../../config/accounts';
-import { useUbuntuAuthStore } from './useUbuntuAuthStore';
 import { hasPermission } from '../fs/permissions';
+import { fsEvents } from '../fs/events';
+import { getAuthContext, setTempExecutionUser } from './authContext';
+export { getAuthContext, setTempExecutionUser };
 
 function canDeleteOrRename(map: NodeMap, nodeId: string, user: string): boolean {
   if (user === 'root') return true;
@@ -49,25 +51,6 @@ import {
 } from '../fs/authSeed';
 import { etcEntries } from '../fs/etcSeed';
 
-let tempExecutionUser: string | null = null;
-
-/**
- * INTERNAL ONLY. Sets a temporary execution user for VFS operations.
- * Use `withElevation()` from SudoService instead of calling this directly.
- */
-export function setTempExecutionUser(user: string | null) {
-  tempExecutionUser = user;
-}
-
-export function getAuthContext() {
-  if (tempExecutionUser) {
-    return { username: tempExecutionUser, role: 'admin' };
-  }
-  const username = useUbuntuAuthStore.getState().currentUser || 'peasant';
-  const role = UBUNTU_ACCOUNTS.find(u => u.username === username)?.role || 'standard';
-  return { username, role };
-}
-
 export interface ClipboardState {
   action: 'cut' | 'copy' | null;
   nodeIds: string[];
@@ -85,7 +68,7 @@ interface VFSStore {
   setClipboard: (action: 'cut' | 'copy' | null, nodeIds: string[]) => void;
 
   // Mutations (return error string if failed, undefined if success)
-  createNode: (parentId: string, name: string, type: VFSNodeType, content?: string, executionUser?: string) => { id?: string; error?: string };
+  createNode: (parentId: string, name: string, type: LegacyVFSNodeType, content?: string, executionUser?: string) => { id?: string; error?: string };
   createLink: (parentId: string, name: string, targetId: string, executionUser?: string) => { error?: string };
   createSymlink: (parentId: string, name: string, targetPath: string, executionUser?: string) => { id?: string; error?: string };
   deleteNode: (id: string, executionUser?: string) => string | undefined;
@@ -99,12 +82,12 @@ interface VFSStore {
   restoreFromTrash: (id: string, executionUser?: string) => string | undefined;
 
   // Queries
-  getNode: (id: string, executionUser?: string) => VFSNode | null;
-  getChildren: (id: string, executionUser?: string) => VFSNode[];
-  getParent: (id: string) => VFSNode | null;
-  resolvePath: (absolutePath: string) => VFSNode | null;
+  getNode: (id: string, executionUser?: string) => LegacyVFSNode | null;
+  getChildren: (id: string, executionUser?: string) => LegacyVFSNode[];
+  getParent: (id: string) => LegacyVFSNode | null;
+  resolvePath: (absolutePath: string) => LegacyVFSNode | null;
   getAbsolutePath: (id: string) => string;
-  resolveRelativePath: (cwdId: string, path: string) => VFSNode | null;
+  resolveRelativePath: (cwdId: string, path: string) => LegacyVFSNode | null;
   exists: (parentId: string, name: string) => boolean;
 
   // Lazy Loading
@@ -149,6 +132,7 @@ export const useVFSStore = create<VFSStore>()(
           
           return { map: result.newMap };
         });
+        if (!error && id) fsEvents.emit(get().getAbsolutePath(parentId), 'fs:created');
         return { id, error };
       },
 
@@ -228,14 +212,21 @@ export const useVFSStore = create<VFSStore>()(
           }
           
           import('idb-keyval').then(({ set, del }) => {
-            del(`vfs_node_${id}`); // Shallow delete from IDB. Full recursive delete is complex but okay for now
+            del(`vfs_node_${id}`);
             if (parentId && result.newMap[parentId]) {
               set(`vfs_node_${parentId}`, result.newMap[parentId]);
             }
           });
+          import('../fs/db').then(async ({ getDB }) => {
+            const db = await getDB();
+            // Delete from inodes and file_data recursively is needed, but shallow is okay for now just to fix UI sync
+            await db.delete('inodes', id);
+            await db.delete('file_data', id);
+          });
           
           return { map: result.newMap };
         });
+        if (!error) fsEvents.emit(get().getAbsolutePath(id), 'fs:deleted');
         return error;
       },
 
@@ -256,8 +247,18 @@ export const useVFSStore = create<VFSStore>()(
             const updated = result.newMap[id];
             if (updated) set(`vfs_node_${id}`, updated);
           });
+          import('../fs/db').then(async ({ getDB }) => {
+            const db = await getDB();
+            const inode = await db.get('inodes', id);
+            if (inode) {
+              inode.name = newName;
+              inode.modifiedAt = Date.now();
+              await db.put('inodes', inode);
+            }
+          });
           return { map: result.newMap };
         });
+        if (!error) fsEvents.emit(get().getAbsolutePath(id), 'fs:changed');
         return error;
       },
 
@@ -281,8 +282,21 @@ export const useVFSStore = create<VFSStore>()(
             if (result.newMap[newParentId]) set(`vfs_node_${newParentId}`, result.newMap[newParentId]);
             if (oldParentId && result.newMap[oldParentId]) set(`vfs_node_${oldParentId}`, result.newMap[oldParentId]);
           });
+          import('../fs/db').then(async ({ getDB }) => {
+            const db = await getDB();
+            const inode = await db.get('inodes', id);
+            if (inode) {
+              inode.parentId = newParentId;
+              inode.modifiedAt = Date.now();
+              await db.put('inodes', inode);
+            }
+          });
           return { map: result.newMap };
         });
+        if (!error) {
+          fsEvents.emit(get().getAbsolutePath(id), 'fs:changed');
+          fsEvents.emit(get().getAbsolutePath(newParentId), 'fs:changed');
+        }
         return error;
       },
 
@@ -303,6 +317,7 @@ export const useVFSStore = create<VFSStore>()(
           newId = result.newId;
           return { map: result.newMap };
         });
+        if (!error && newId) fsEvents.emit(get().getAbsolutePath(newParentId), 'fs:created');
         return { id: newId, error };
       },
 
@@ -416,8 +431,21 @@ export const useVFSStore = create<VFSStore>()(
               }
             }
           }
+
+          import('../fs/db').then(async ({ getDB }) => {
+            const db = await getDB();
+            const inode = await db.get('inodes', id);
+            if (inode) {
+              inode.parentId = TRASH_ID;
+              inode.modifiedAt = Date.now();
+              inode.meta = { ...inode.meta, originalParentId: node.parentId || HOME_ID };
+              await db.put('inodes', inode);
+            }
+          });
+
           return { map: newMap };
         });
+        if (!error) fsEvents.emit(get().getAbsolutePath(id), 'fs:deleted');
         return error;
       },
 
@@ -457,8 +485,24 @@ export const useVFSStore = create<VFSStore>()(
             };
           }
           
+          import('idb-keyval').then(({ set }) => {
+            if (newMap[id]) set(`vfs_node_${id}`, newMap[id]);
+            if (newMap[targetParentId]) set(`vfs_node_${targetParentId}`, newMap[targetParentId]);
+          });
+          import('../fs/db').then(async ({ getDB }) => {
+            const db = await getDB();
+            const inode = await db.get('inodes', id);
+            if (inode) {
+              inode.parentId = targetParentId;
+              inode.modifiedAt = Date.now();
+              inode.meta = { ...inode.meta, originalParentId: undefined };
+              await db.put('inodes', inode);
+            }
+          });
+          
           return { map: newMap };
         });
+        if (!error) fsEvents.emit(get().getAbsolutePath(id), 'fs:changed');
         return error;
       },
 
@@ -493,7 +537,7 @@ export const useVFSStore = create<VFSStore>()(
         
         const children = await idbGetMany(node.children.map((cid: string) => `vfs_node_${cid}`));
         const newMap = { ...get().map, [id]: node };
-        children.forEach((child: VFSNode) => {
+        children.forEach((child: LegacyVFSNode) => {
           if (child) newMap[child.id] = child;
         });
         
@@ -527,7 +571,7 @@ export const useVFSStore = create<VFSStore>()(
           }
           
           const children = await idbGetMany(node.children.map((cid: string) => `vfs_node_${cid}`));
-          const child = children.find((c: VFSNode) => c && c.name === segment);
+          const child = children.find((c: LegacyVFSNode) => c && c.name === segment);
           if (!child) return;
           
           map[child.id] = child;
@@ -537,7 +581,7 @@ export const useVFSStore = create<VFSStore>()(
         
         if (node && node.type === 'directory') {
           const children = await idbGetMany(node.children.map((cid: string) => `vfs_node_${cid}`));
-          children.forEach((c: VFSNode) => { if (c) map[c.id] = c; });
+          children.forEach((c: LegacyVFSNode) => { if (c) map[c.id] = c; });
         }
       
         const { nodeMapToInodeTable } = await import('../fs/inodeCompat');
@@ -639,7 +683,7 @@ export const useVFSStore = create<VFSStore>()(
         // Ensure auth files exist in /etc (migration for existing VFS)
         const etcNode = Object.values(migratedMap).find(
           (n: any) => n.name === 'etc' && n.parentId === ROOT_ID
-        ) as VFSNode | undefined;
+        ) as LegacyVFSNode | undefined;
         if (etcNode) {
           migratedMap[etcNode.id].permissions = '700';
           const ensureEtcFile = (name: string, content: string, permissions: string, group?: string, owner: string = 'root') => {

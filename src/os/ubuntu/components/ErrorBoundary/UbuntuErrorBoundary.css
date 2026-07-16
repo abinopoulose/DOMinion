@@ -1,0 +1,101 @@
+.ubuntu-error-desktop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4); /* Just a subtle dimming, no wallpaper */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  font-family: 'Ubuntu', 'Inter', system-ui, sans-serif;
+}
+
+.ubuntu-error-window {
+  position: relative;
+  background: var(--bg-window, #242424);
+  color: var(--color-text-primary, #eeeeee);
+  border-radius: 12px;
+  width: 550px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: ubuntu-error-window-open 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes ubuntu-error-window-open {
+  0% { transform: scale(0.95); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.ubuntu-error-window-header {
+  height: 46px;
+  background: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  user-select: none;
+}
+
+.ubuntu-error-window-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #eeeeee;
+}
+
+.ubuntu-error-window-controls {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ubuntu-error-window-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #eeeeee;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.ubuntu-error-window-close:hover {
+  background: #e5534b;
+  color: #ffffff;
+}
+
+.ubuntu-error-window-content {
+  padding: 32px;
+  background: var(--bg-window, #242424);
+  display: flex;
+  flex-direction: column;
+}
+
+.ubuntu-error-btn-send {
+  padding: 10px 20px;
+  background: var(--color-accent, #e95420);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ubuntu-error-btn-send:hover {
+  background: #df4b1b;
+}
+
+.ubuntu-error-btn-send:active {
+  background: #c34316;
+}

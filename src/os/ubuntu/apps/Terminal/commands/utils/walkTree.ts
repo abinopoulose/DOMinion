@@ -1,5 +1,5 @@
 import { useVFSStore } from '../../../../store';
-import type { VFSNode } from '../../../../fs/types';
+import type { LegacyVFSNode } from '../../../../fs/types';
 
 /**
  * Recursively walk the VFS tree starting from `nodeId`, calling `visitor`
@@ -7,7 +7,7 @@ import type { VFSNode } from '../../../../fs/types';
  *
  * @param nodeId      - Starting node ID in the VFS.
  * @param currentPath - The display path for this node (e.g. "." or "./Documents").
- * @param visitor     - Callback invoked for each node with its VFSNode and display path.
+ * @param visitor     - Callback invoked for each node with its LegacyVFSNode and display path.
  *
  * @example
  * // Collect all file paths under current directory
@@ -20,7 +20,7 @@ export function walkTree(
   nodeId: string,
   currentPath: string,
   username: string,
-  visitor: (node: VFSNode, path: string) => void
+  visitor: (node: LegacyVFSNode, path: string) => void
 ): void {
   const store = useVFSStore.getState();
   const node = store.getNode(nodeId, username);

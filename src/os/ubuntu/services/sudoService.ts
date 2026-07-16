@@ -234,12 +234,20 @@ export async function verifySudoPassword(
  *     store.deleteNode(protectedNodeId);
  *   });
  */
-export function withElevation<T>(operation: () => T): T {
+export function withElevation<T>(operation: () => T | Promise<T>): T | Promise<T> {
   try {
     setTempExecutionUser('root');
-    return operation();
-  } finally {
+    const result = operation();
+    if (result instanceof Promise) {
+      return result.finally(() => {
+        setTempExecutionUser(null);
+      });
+    }
     setTempExecutionUser(null);
+    return result;
+  } catch (error) {
+    setTempExecutionUser(null);
+    throw error;
   }
 }
 

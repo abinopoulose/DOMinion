@@ -105,7 +105,6 @@
   background-color: var(--bg-window);
   overflow-y: auto;
   align-items: center;
-  padding: 36px;
 }
 
 /* Base style for GNOME 46 Panels */

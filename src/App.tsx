@@ -1,4 +1,4 @@
-import { useCallback, useEffect, Suspense } from 'react'
+import { useCallback, useEffect, Suspense, useState } from 'react'
 import { useHardwareStore } from './hardware/store/useHardwareStore'
 import { useUbuntuAuthStore } from './os/ubuntu/store/useUbuntuAuthStore'
 import { useWindowsAuthStore } from './os/windows/store/useWindowsAuthStore'
@@ -42,6 +42,12 @@ import { ClockApp, ClockHeaderControls } from './os/ubuntu/apps/Clock/ClockApp'
 import { useClockDaemon } from './os/ubuntu/apps/Clock/hooks/useClockDaemon'
 import { SystemDialog } from './os/ubuntu/components/SystemDialog/SystemDialog'
 import { NotificationPopup } from './os/ubuntu/components/Notifications/NotificationPopup'
+import { ImageViewer } from './os/ubuntu/apps/ImageViewer/ImageViewer'
+import { VideoPlayer } from './os/ubuntu/apps/VideoPlayer/VideoPlayer'
+import { DocumentViewer } from './os/ubuntu/apps/DocumentViewer/DocumentViewer'
+import { DiskUsageAnalyzer } from './os/ubuntu/apps/DiskUsageAnalyzer/DiskUsageAnalyzer'
+import { WelcomeApp } from './os/ubuntu/apps/Welcome/WelcomeApp'
+import { ErrorReporter } from './os/ubuntu/apps/ErrorReporter/ErrorReporter'
 import './App.css'
 
 const APP_META: Record<string, { title: string; icon: string; defaultSize: { width: number; height: number } }> = {
@@ -52,6 +58,12 @@ const APP_META: Record<string, { title: string; icon: string; defaultSize: { wid
   calculator: { title: 'Calculator', icon: calculatorIcon, defaultSize: { width: 320, height: 480 } },
   settings: { title: 'Settings', icon: settingsIcon, defaultSize: { width: 900, height: 600 } },
   clock: { title: 'Clocks', icon: clockIcon, defaultSize: { width: 800, height: 600 } },
+  'image-viewer': { title: 'Image Viewer', icon: '/ubuntu/icons/image-viewer.png', defaultSize: { width: 800, height: 600 } },
+  'video-player': { title: 'Video Player', icon: '/ubuntu/icons/video-x-generic.png', defaultSize: { width: 800, height: 600 } },
+  'document-viewer': { title: 'Document Viewer', icon: '/ubuntu/icons/document-viewer.png', defaultSize: { width: 800, height: 900 } },
+  'disk-usage-analyzer': { title: 'Disk Usage Analyzer', icon: '/ubuntu/icons/disk.png', defaultSize: { width: 500, height: 400 } },
+  welcome: { title: 'Welcome to Ubuntu', icon: '/ubuntu/icons/ubuntu-logo.svg', defaultSize: { width: 700, height: 500 } },
+  'error-reporter': { title: 'System Error', icon: '/ubuntu/icons/system-settings.png', defaultSize: { width: 550, height: 450 } },
 }
 
 function MockAppContent({ appId, windowId }: { appId: string, windowId: string }) {
@@ -62,16 +74,29 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
   if (appId === 'calculator') return <Calculator windowId={windowId} />;
   if (appId === 'settings') return <Settings />;
   if (appId === 'clock') return <ClockApp windowId={windowId} />;
+  if (appId === 'image-viewer') return <ImageViewer windowId={windowId} />;
+  if (appId === 'video-player') return <VideoPlayer windowId={windowId} />;
+  if (appId === 'document-viewer') return <DocumentViewer windowId={windowId} />;
+  if (appId === 'disk-usage-analyzer') return <DiskUsageAnalyzer windowId={windowId} />;
+  if (appId === 'welcome') return <WelcomeApp windowId={windowId} />;
+  if (appId === 'error-reporter') return <ErrorReporter windowId={windowId} />;
   return null;
 }
 
 function UbuntuEnvironment() {
   useClockDaemon();
 
+  const [vfsReady, setVfsReady] = useState(false);
+
   useEffect(() => {
-    import('./os/ubuntu/fs/vfsDb').then(({ seedVfsFromSnapshot }) => {
-      seedVfsFromSnapshot();
+    let mounted = true;
+    import('./os/ubuntu/fs/vfsDb').then(async ({ seedVfsFromSnapshot }) => {
+      await seedVfsFromSnapshot();
+      const { migrateVFS } = await import('./os/ubuntu/fs/migration');
+      await migrateVFS();
+      if (mounted) setVfsReady(true);
     });
+    return () => { mounted = false; };
   }, []);
 
   const currentUser = useUbuntuAuthStore((s) => s.currentUser);
@@ -202,6 +227,10 @@ function UbuntuEnvironment() {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [nextWorkspace, prevWorkspace, toggleOverview, switchDesktopShortcut, switchAppShortcut, cycleWindows]);
+
+  if (!vfsReady) return (
+    <div style={{ width: '100vw', height: '100vh', background: '#2E222A' }} />
+  );
 
   if (!currentUser) return (
     <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#2E222A' }} />}>
@@ -432,7 +461,11 @@ export default function App() {
   if (powerState === 'os') {
     return (
       <>
-        {activeOS === 'ubuntu' ? <UbuntuEnvironment /> : activeOS === 'windows' ? <WindowsEnvironment /> : null}
+        {activeOS === 'ubuntu' ? (
+          <UbuntuEnvironment />
+        ) : activeOS === 'windows' ? (
+          <WindowsEnvironment />
+        ) : null}
         {isSuspended && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'black', zIndex: 999999, cursor: 'none' }} />
         )}

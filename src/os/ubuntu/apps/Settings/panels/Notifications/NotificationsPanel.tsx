@@ -3,7 +3,7 @@ import { SettingsPanelWrapper } from '../../components/SettingsPanelWrapper';
 const terminalIcon = '/ubuntu/icons/terminal-app.png';
 const fileManagerIcon = '/ubuntu/icons/folder.png';
 const browserIcon = '/ubuntu/icons/browser.svg';
-const textIcon = '/ubuntu/icons/text-x-generic.png';
+const textIcon = '/ubuntu/icons/text-editor.png';
 const settingsIcon = '/ubuntu/icons/system-settings.png';
 
 const APPS = [

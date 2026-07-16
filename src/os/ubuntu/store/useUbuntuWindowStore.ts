@@ -36,6 +36,12 @@ const DEFAULT_SIZES: Record<AppId, { width: number; height: number }> = {
   calculator: { width: 320, height: 480 },
   settings: { width: 900, height: 600 },
   clock: { width: 800, height: 600 },
+  'image-viewer': { width: 800, height: 600 },
+  'video-player': { width: 800, height: 600 },
+  'document-viewer': { width: 800, height: 900 },
+  'disk-usage-analyzer': { width: 500, height: 400 },
+  welcome: { width: 740, height: 520 },
+  'error-reporter': { width: 550, height: 450 },
 };
 
 const APP_TITLES: Record<AppId, string> = {
@@ -46,6 +52,12 @@ const APP_TITLES: Record<AppId, string> = {
   calculator: 'Calculator',
   settings: 'Settings',
   clock: 'Clocks',
+  'image-viewer': 'Image Viewer',
+  'video-player': 'Video Player',
+  'document-viewer': 'Document Viewer',
+  'disk-usage-analyzer': 'Disk Usage Analyzer',
+  welcome: 'Welcome to Ubuntu',
+  'error-reporter': 'System Error',
 };
 
 export const useWindowStore = create<WindowStore>()(
@@ -60,24 +72,26 @@ export const useWindowStore = create<WindowStore>()(
       openWindow: (appId: AppId, initialAppState?: unknown, options?: { position?: { x: number, y: number } }) => {
         const { windows, nextZIndex } = get();
 
-        // Enforce singleton for settings app
-        if (appId === 'settings') {
-          const existingSettings = windows.find(w => w.appId === 'settings');
-          if (existingSettings) {
-            useWorkspaceStore.getState().setActiveWorkspace(existingSettings.workspaceId);
+        // Enforce singleton for specific apps
+        if (appId === 'settings' || appId === 'welcome') {
+          const existingApp = windows.find(w => w.appId === appId);
+          if (existingApp) {
+            console.log(`[WindowStore] ${appId} already open, focusing window ${existingApp.id}`);
+            useWorkspaceStore.getState().setActiveWorkspace(existingApp.workspaceId);
             set((state) => ({
               windows: state.windows.map(w => 
-                w.id === existingSettings.id 
+                w.id === existingApp.id 
                   ? { ...w, isMinimized: false, isFocused: true, zIndex: state.nextZIndex }
                   : { ...w, isFocused: false }
               ),
               nextZIndex: state.nextZIndex + 1,
             }));
-            return existingSettings.id;
+            return existingApp.id;
           }
         }
 
         const id = uuidv4();
+        console.log(`[WindowStore] Opening new window: ${appId} (ID: ${id})`);
         const activeWorkspace = useWorkspaceStore.getState().activeWorkspace;
         
         // cascade offset
@@ -106,12 +120,14 @@ export const useWindowStore = create<WindowStore>()(
       },
 
       closeWindow: (id: string) => {
+        console.log(`[WindowStore] Closing window: ${id}`);
         set((state) => ({
           windows: state.windows.filter((w) => w.id !== id),
         }));
       },
 
       focusWindow: (id: string) => {
+        console.log(`[WindowStore] Focusing window: ${id}`);
         set((state) => {
           const windowExists = state.windows.some(w => w.id === id);
           if (!windowExists) return state;

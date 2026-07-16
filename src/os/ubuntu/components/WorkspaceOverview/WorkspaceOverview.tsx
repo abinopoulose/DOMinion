@@ -6,10 +6,14 @@ import type { WindowState } from '../../types';
 const terminalIcon = '/ubuntu/icons/terminal-app.png';
 const fileManagerIcon = '/ubuntu/icons/folder.png';
 const browserIcon = '/ubuntu/icons/browser.svg';
-const textIcon = '/ubuntu/icons/text-x-generic.png';
+const textIcon = '/ubuntu/icons/text-editor.png';
 const settingsIcon = '/ubuntu/icons/system-settings.png';
 const calculatorIcon = '/ubuntu/icons/calculator-app.png';
 const clockIcon = '/ubuntu/icons/clock-app.png';
+const imageViewerIcon = '/ubuntu/icons/image-viewer.png';
+const videoPlayerIcon = '/ubuntu/icons/video-x-generic.png';
+const documentViewerIcon = '/ubuntu/icons/document-viewer.png';
+const diskUsageIcon = '/ubuntu/icons/disk.png';
 
 import './WorkspaceOverview.css';
 
@@ -21,6 +25,10 @@ const APP_ICONS: Record<string, string> = {
   calculator: calculatorIcon,
   settings: settingsIcon,
   clock: clockIcon,
+  'image-viewer': imageViewerIcon,
+  'video-player': videoPlayerIcon,
+  'document-viewer': documentViewerIcon,
+  'disk-usage-analyzer': diskUsageIcon,
 };
 
 interface WorkspaceOverviewProps {
@@ -45,6 +53,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
   const moveWindowToWorkspace = useWindowStore((s) => s.moveWindowToWorkspace);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredApps = Object.entries(APP_ICONS).filter(([id]) => {
@@ -53,8 +62,17 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
     return label.toLowerCase().includes(searchQuery.toLowerCase());
   }).map(([id, icon]) => ({ id, icon, label: id === 'file-manager' ? 'Files' : id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') }));
 
-  // Close overview on Escape key
+  // Close overview on Escape key and handle autofocus
   useEffect(() => {
+    if (isOpen) {
+      // Small timeout to ensure CSS transitions don't break focus
+      setTimeout(() => {
+        if (searchInputRef.current) searchInputRef.current.focus();
+      }, 50);
+    } else {
+      setSearchQuery('');
+    }
+
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -128,6 +146,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
     <div
       ref={containerRef}
       className={`workspace-overview ${isOpen ? 'workspace-overview--open' : ''}`}
+      onClick={handleBackdropClick}
     >
       {/* Backdrop */}
       <div className="workspace-overview__backdrop" onClick={handleBackdropClick} />
@@ -135,12 +154,12 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
       {/* Search Bar (Top) */}
       <div className="workspace-overview__search-container" onClick={(e) => e.stopPropagation()}>
         <input 
+          ref={searchInputRef}
           type="text" 
           className="workspace-overview__search" 
           placeholder="Type to search" 
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          autoFocus={isAppGridOpen}
         />
       </div>
 
@@ -154,7 +173,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
                 className={`workspace-thumbnail ${
                   i === activeWorkspace ? 'workspace-thumbnail--active' : ''
                 }`}
-                onClick={() => handleThumbnailClick(i)}
+                onClick={(e) => { e.stopPropagation(); handleThumbnailClick(i); }}
                 draggable
                 onDragStart={(e) => {
                   e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'workspace', index: i }));
@@ -217,7 +236,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
         {/* Add workspace button */}
         {workspaceCount < 8 && (
           <div style={{ position: 'relative', paddingBottom: '24px' }}>
-            <div className="workspace-overview__add-btn" onClick={addWorkspace} title="Add workspace">
+            <div className="workspace-overview__add-btn" onClick={(e) => { e.stopPropagation(); addWorkspace(); }} title="Add workspace">
               <svg viewBox="0 0 24 24">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
@@ -269,7 +288,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
             className={`workspace-overview__dot ${
               i === activeWorkspace ? 'workspace-overview__dot--active' : ''
             }`}
-            onClick={() => handleThumbnailClick(i)}
+            onClick={(e) => { e.stopPropagation(); handleThumbnailClick(i); }}
           />
         ))}
       </div>

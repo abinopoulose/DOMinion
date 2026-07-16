@@ -38,7 +38,7 @@ export interface SudoCommandResult extends CommandResult {
   targetUser?: string;
 }
 
-export function handleSudo(
+export async function handleSudo(
   args: string[],
   cwdId: string,
   updateCwd: (id: string) => void,
@@ -47,7 +47,7 @@ export function handleSudo(
   windowId: string,
   currentUser: string,
   process: any
-): SudoCommandResult {
+): Promise<SudoCommandResult> {
   // Parse sudo-specific flags
   const { flags, options, positional } = parseArgs(args, ['u']);
   const targetUser = options.u || 'root';
@@ -114,14 +114,14 @@ export function handleSudo(
   }
 
   // Credentials cached or no password required — execute immediately
-  return executeSudoCommand(positional, cwdId, updateCwd, clearHistory, appState, targetUser, process);
+  return await executeSudoCommand(positional, cwdId, updateCwd, clearHistory, appState, targetUser, process);
 }
 
 /**
  * Execute the actual command with elevated privileges.
  * Called after password verification (or when credentials are cached).
  */
-export function executeSudoCommand(
+export async function executeSudoCommand(
   commandParts: string[],
   cwdId: string,
   updateCwd: (id: string) => void,
@@ -129,7 +129,7 @@ export function executeSudoCommand(
   appState: TerminalAppState | undefined,
   _targetUser: string = 'root',
   process: any
-): Partial<CommandResult> {
+): Promise<Partial<CommandResult>> {
   const commandName = commandParts[0];
   const commandArgs = commandParts.slice(1);
 
@@ -158,7 +158,7 @@ export function executeSudoCommand(
   }
 
   // Execute with elevated privileges
-  return withElevation(() => handler(commandArgs, cwdId, updateCwd, clearHistory, appState as any, process));
+  return await withElevation(async () => await handler(commandArgs, cwdId, updateCwd, clearHistory, appState as any, process));
 }
 
 /**

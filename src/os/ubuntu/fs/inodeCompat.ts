@@ -1,5 +1,15 @@
 import { type InodeTable, getDentries } from './inode';
-import { type NodeMap, type VFSNode } from './types';
+import { type NodeMap, type LegacyVFSNode } from './types';
+import { UBUNTU_ACCOUNTS } from '../../../config/accounts';
+
+function getUsernameForUid(uid: number): string {
+  if (uid === 0) return 'root';
+  const index = uid - 1000;
+  if (index >= 0 && index < UBUNTU_ACCOUNTS.length) {
+    return UBUNTU_ACCOUNTS[index].username;
+  }
+  return 'user';
+}
 
 export function buildCompatNodeMap(table: InodeTable, rootIno: number, inoToId: Record<number, string>): NodeMap {
   const map: NodeMap = {};
@@ -19,7 +29,7 @@ export function buildCompatNodeMap(table: InodeTable, rootIno: number, inoToId: 
         .map(d => inoToId[d.ino] || d.ino.toString());
     }
 
-    const node: VFSNode = {
+    const node: LegacyVFSNode = {
       id,
       name,
       type: inode.type === 'directory' ? 'directory' : 'file',
@@ -28,8 +38,8 @@ export function buildCompatNodeMap(table: InodeTable, rootIno: number, inoToId: 
       content: inode.data || '',
       createdAt: inode.ctime,
       modifiedAt: inode.mtime,
-      owner: inode.uid === 0 ? 'root' : 'user',
-      group: inode.gid === 0 ? 'root' : 'user',
+      owner: getUsernameForUid(inode.uid),
+      group: getUsernameForUid(inode.gid),
       permissions: inode.permissions.toString(8),
     };
 
@@ -90,8 +100,8 @@ export function nodeMapToInodeTable(map: NodeMap, rootId: string): { table: Inod
       ino,
       type: node.type === 'directory' ? 'directory' : 'file',
       permissions: parseInt(node.permissions || (node.type === 'directory' ? '755' : '644'), 8),
-      uid: node.owner === 'root' ? 0 : 1000,
-      gid: node.group === 'root' ? 0 : 1000,
+      uid: node.owner === 'root' ? 0 : (UBUNTU_ACCOUNTS.findIndex(a => a.username === node.owner) >= 0 ? 1000 + UBUNTU_ACCOUNTS.findIndex(a => a.username === node.owner) : 1000),
+      gid: node.group === 'root' ? 0 : (UBUNTU_ACCOUNTS.findIndex(a => a.username === node.group) >= 0 ? 1000 + UBUNTU_ACCOUNTS.findIndex(a => a.username === node.group) : 1000),
       size: data ? new Blob([data]).size : 0,
       atime: node.createdAt || Date.now(),
       mtime: node.modifiedAt || Date.now(),

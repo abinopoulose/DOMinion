@@ -81,6 +81,16 @@ export function CalendarMenu({ onClose }: { onClose: () => void }) {
                          {notif.message.split('\n').length > 1 && (
                            <p>{notif.message.split('\n').slice(1).join(' ')}</p>
                          )}
+                         {notif.progress !== undefined && (
+                           <div className="notification-card__progress-container">
+                             <div className="notification-card__progress-header">
+                               <span className="notification-card__progress-text">{notif.progress}%</span>
+                             </div>
+                             <div className="notification-card__progress">
+                               <div className="notification-card__progress-bar" style={{ width: `${notif.progress}%` }} />
+                             </div>
+                           </div>
+                         )}
                        </>
                     )}
                   </div>

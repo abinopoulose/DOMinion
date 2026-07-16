@@ -15,8 +15,14 @@ self.addEventListener('fetch', (event) => {
   // Ignore chrome-extension:// and other non-http/https requests
   if (!event.request.url.startsWith('http')) return;
 
+  // Strip Vite's cache-busting parameters ?t= and ?v= to match cached files, but keep ?import
+  const url = new URL(event.request.url);
+  url.searchParams.delete('t');
+  url.searchParams.delete('v');
+  const cacheRequest = new Request(url.toString(), event.request);
+
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(cacheRequest).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
@@ -26,12 +32,13 @@ self.addEventListener('fetch', (event) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(cacheRequest, responseToCache);
           });
         }
         return networkResponse;
-      }).catch(() => {
-        // If both cache and network fail, just return undefined (or a fallback)
+      }).catch((err) => {
+        console.error('[Service Worker] Fetch failed:', err);
+        return Response.error();
       });
     })
   );

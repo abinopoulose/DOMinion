@@ -264,9 +264,9 @@ export function Browser({ windowId }: BrowserProps) {
         </div>
         
         <button 
-          className="browser-nav-btn" 
+          className={`browser-nav-btn ${showSettingsMenu ? 'active' : ''}`} 
           onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-          style={{ backgroundColor: showSettingsMenu ? '#42414d' : 'transparent' }}
+          style={{ backgroundColor: showSettingsMenu ? 'var(--color-surface-active)' : 'transparent' }}
         >
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
             <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>

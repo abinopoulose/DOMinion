@@ -24,7 +24,14 @@ export function PolkitDialog() {
   const isCurrentUserAdmin = currentUserObj?.role === 'admin' || currentUser === 'root';
   const adminUsers = UBUNTU_ACCOUNTS.filter(a => a.role === 'admin');
 
-  const [authTargetUser, setAuthTargetUser] = useState(isCurrentUserAdmin ? currentUser : (adminUsers[0]?.username || 'root'));
+  // If requireAdmin is explicitly false, standard users can authenticate as themselves.
+  const requireAdmin = polkitRequest?.requireAdmin !== false;
+  
+  const defaultAuthTarget = requireAdmin
+    ? (isCurrentUserAdmin ? currentUser : (adminUsers[0]?.username || 'root'))
+    : currentUser;
+
+  const [authTargetUser, setAuthTargetUser] = useState(defaultAuthTarget);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [attempts, setAttempts] = useState(0);
@@ -112,7 +119,7 @@ export function PolkitDialog() {
             </svg>
           </div>
           <div className="polkit-user-info">
-            {isCurrentUserAdmin ? (
+            {authTargetUser === currentUser || isCurrentUserAdmin ? (
               <div className="polkit-user-name">{authTargetUser}</div>
             ) : (
               <select

@@ -7,12 +7,14 @@ export function NotificationPopup() {
 
   useEffect(() => {
     if (activePopup) {
+      if (activePopup.progress !== undefined) return; // Don't auto-dismiss progress notifications
+      
       const timer = setTimeout(() => {
         dismissPopup();
       }, 5000); // Auto-dismiss after 5 seconds
       return () => clearTimeout(timer);
     }
-  }, [activePopup, dismissPopup]);
+  }, [activePopup?.id, activePopup?.progress, dismissPopup]);
 
   if (!activePopup) return null;
 
@@ -23,6 +25,16 @@ export function NotificationPopup() {
         <div className="notification-popup__text">
           <h4>{activePopup.title}</h4>
           <p>{activePopup.message}</p>
+          {activePopup.progress !== undefined && (
+            <div className="notification-popup__progress-container">
+              <div className="notification-popup__progress-header">
+                <span className="notification-popup__progress-text">{activePopup.progress}%</span>
+              </div>
+              <div className="notification-popup__progress">
+                <div className="notification-popup__progress-bar" style={{ width: `${activePopup.progress}%` }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <button className="notification-popup__close" onClick={dismissPopup}>

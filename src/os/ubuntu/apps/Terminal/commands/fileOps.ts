@@ -5,32 +5,37 @@ import { hasPermission } from '../../../fs/permissions';
 import { parseArgs } from '../commandParser';
 import { walkTree } from './utils';
 
-export const cat: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const cat: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   if (args.length === 0) {
     const input = process.stdin.readAll();
     input.split('\n').forEach((line: string) => process.stdout.writeLine(line));
     return {};
   }
   
-  const store = useVFSStore.getState();
-  const node = store.resolveRelativePath(cwdId, args[0]);
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { readFile } = await import('../../../fs/operations');
 
-  if (!node) {
-    [`cat: ${args[0]}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line));
-    return {};
-  }
-  if (node.type === 'directory') {
-    [`cat: ${args[0]}: Is a directory`].forEach((line: string) => process.stderr.writeLine(line));
-    return {};
-  }
-  
-  const username = _appState?.effectiveUser || getAuthContext().username;
-  if (!hasPermission(store.map, node.id, 'read', username)) {
-    [`cat: ${args[0]}: Permission denied`].forEach((line: string) => process.stderr.writeLine(line));
+  const cwdPath = await getAbsolutePathAsync(cwdId);
+  const targetNode = await resolveRelativePathAsync(cwdPath, args[0]);
+
+  if (!targetNode) {
+    process.stderr.writeLine(`cat: ${args[0]}: No such file or directory`);
     return {};
   }
   
-  node.content.split('\n').forEach((line: string) => process.stdout.writeLine(line));
+  if (targetNode.type === 'directory') {
+    process.stderr.writeLine(`cat: ${args[0]}: Is a directory`);
+    return {};
+  }
+  
+  const targetAbsPath = await getAbsolutePathAsync(targetNode.id);
+  try {
+    const blob = await readFile(targetAbsPath);
+    const text = await blob.text();
+    text.split('\n').forEach((line: string) => process.stdout.writeLine(line));
+  } catch (err: any) {
+    process.stderr.writeLine(`cat: ${args[0]}: ${err.message}`);
+  }
   return {};
 };
 

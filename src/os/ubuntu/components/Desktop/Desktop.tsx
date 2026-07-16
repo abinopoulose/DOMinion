@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 const wallpaper = '/ubuntu/wallpapers/ubuntu_wallpaper.jpg';
 const homeIcon = '/ubuntu/icons/user-home.png';
@@ -10,11 +10,14 @@ import { useWindowStore, useVFSStore } from '../../store';
 import { getDesktopId, getHomeId, getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { getIconForFile, getSpecialFolderIconUrl } from '../../utils/iconResolver';
-import type { VFSNode } from '../../fs/types';
+import type { LegacyVFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
 import { useSelectionBox } from '../../hooks/useSelectionBox';
 import { TrashConfirmDialog } from '../TrashConfirmDialog/TrashConfirmDialog';
 import { initDynamicDrag, updateDynamicDrag, cleanupDynamicDrag } from '../../utils/dragGhost';
+import { useFileSystem } from '../../hooks/useFileSystem';
+import { handleHostDrop } from '../../utils/hostInterop';
+import { useNotificationStore } from '../../components/Notifications/useNotificationStore';
 import './Desktop.css';
 
 const DESKTOP_ICONS = [
@@ -30,7 +33,7 @@ interface DesktopProps {
 
 export function Desktop({ onUnfocusAll }: DesktopProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [trashConfirm, setTrashConfirm] = useState<string[] | null>(null);
+  const [trashConfirm, setTrashConfirm] = useState<{id: string, name: string}[] | null>(null);
   // Ref on .desktop itself — it receives all pointer events
   const desktopRef = useRef<HTMLDivElement>(null);
   const { menu, show: showContextMenu, hide: hideContextMenu } = useContextMenu();
@@ -45,15 +48,17 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const HOME_ID = getHomeId(username);
   const TRASH_ID = getTrashId(username);
 
-  const desktopFiles = vfsStore.getChildren(DESKTOP_ID);
+  const desktopPath = `/home/${username}/Desktop`;
+  const { nodes: fsNodes } = useFileSystem(desktopPath);
+  const desktopFiles = fsNodes as any[];
 
   // Fallback to default wallpaper if not set in store
   const activeWallpaper = settingsWallpaper || wallpaper;
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [propertiesNode, setPropertiesNode] = useState<VFSNode | null>(null);
-  const [contextNode, setContextNode] = useState<VFSNode | null>(null);
+  const [propertiesNode, setPropertiesNode] = useState<LegacyVFSNode | null>(null);
+  const [contextNode, setContextNode] = useState<LegacyVFSNode | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const desktopIconOrder = useSettingsStore((s: any) => s.desktopIconOrder);
@@ -65,6 +70,14 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
   const isTrashFull = vfsStore.getChildren(TRASH_ID).length > 0;
   const currentTrashIcon = isTrashFull ? '/ubuntu/icons/user-trash-full.png' : '/ubuntu/icons/user-trash.png';
+
+  useEffect(() => {
+    const welcomeKey = `ubuntu-welcome-shown`;
+    if (!localStorage.getItem(welcomeKey)) {
+      openWindow('welcome');
+      localStorage.setItem(welcomeKey, 'true');
+    }
+  }, [openWindow]);
 
   const combinedIcons = useMemo(() => {
     const arr: any[] = [];
@@ -183,9 +196,17 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     return positions;
   }, [combinedIcons, desktopIconPositions, dockPosition, dockIconSize, dockAutoHide]);
 
-  const commitRename = () => {
+  const commitRename = async () => {
     if (editingId && editValue.trim()) {
-      useVFSStore.getState().renameNode(editingId, editValue.trim());
+      const node = desktopFiles.find(n => n.id === editingId);
+      if (node) {
+        try {
+          const { rename } = await import('../../fs/operations');
+          await rename(`${desktopPath}/${node.name}`, `${desktopPath}/${editValue.trim()}`);
+        } catch (e) {
+          console.error('Rename failed', e);
+        }
+      }
     }
     setEditingId(null);
   };
@@ -212,18 +233,82 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     showContextMenu(e);
   };
 
-  const handleFileContextMenu = (e: React.MouseEvent, file: VFSNode) => {
+  const handleFileContextMenu = (e: React.MouseEvent, file: LegacyVFSNode) => {
     e.stopPropagation();
     if (!selectedIds.has(file.id)) setSelectedIds(new Set([file.id]));
     setContextNode(file);
     showContextMenu(e);
   };
 
-  const handleDeleteRequest = (ids: string[]) => setTrashConfirm(ids);
+  const handleDeleteRequest = async (ids: string[]) => {
+    console.log('[Desktop] handleDeleteRequest called with ids:', ids);
+    const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+    const items = [];
+    for (const id of ids) {
+      if (!id) {
+        console.warn('[Desktop] handleDeleteRequest received falsy id:', id);
+        continue; // Safety check for invalid IDs
+      }
+      let name = id;
+      const icon = combinedIcons.find(i => i.id === id);
+      console.log(`[Desktop] Checking id: ${id}, found icon:`, icon);
+      if (icon) {
+        name = icon.label || icon.name || id;
+        console.log(`[Desktop] Using name from icon:`, name);
+      } else {
+        const path = await getAbsolutePathAsync(id);
+        console.log(`[Desktop] No icon found for ${id}, resolved path:`, path);
+        if (path && path !== '/') name = path.split('/').pop() || id;
+      }
+      console.log(`[Desktop] Final resolved name for ${id}:`, name);
+      items.push({ id, name });
+    }
+    if (items.length > 0) {
+      console.log('[Desktop] Opening TrashConfirmDialog with items:', items);
+      setTrashConfirm(items);
+    } else {
+      console.warn('[Desktop] No valid items to trash after processing ids');
+    }
+  };
 
-  const handleTrashConfirm = () => {
+  const handleTrashConfirm = async () => {
+    console.log('[Desktop] handleTrashConfirm triggered. Current trashConfirm state:', trashConfirm);
     if (!trashConfirm) return;
-    trashConfirm.forEach(id => useVFSStore.getState().moveToTrash(id));
+    const { rename } = await import('../../fs/operations');
+    const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+    for (const item of trashConfirm) {
+      if (!item || !item.id) {
+        console.warn('[Desktop] handleTrashConfirm encountered invalid item:', item);
+        continue;
+      }
+      console.log(`[Desktop] Moving item to trash: ${item.name} (${item.id})`);
+      try {
+        const dbModule = await import('../../fs/db');
+        const db = await dbModule.getDB();
+        const inode = await db.get('inodes', item.id);
+        console.log(`[Desktop] Found inode for ${item.id}:`, inode);
+        if (inode) {
+          inode.meta = { ...inode.meta, originalParentId: inode.parentId };
+          await db.put('inodes', inode);
+        } else {
+          console.warn(`[Desktop] INODE NOT FOUND IN DB for ${item.id}`);
+        }
+
+        const oldPath = await getAbsolutePathAsync(item.id);
+        console.log(`[Desktop] Resolved old path for ${item.id}:`, oldPath);
+        if (oldPath && oldPath !== '/') {
+          const trashPath = `/home/${username}/.Trash/${item.name || 'unnamed'}`;
+          console.log(`[Desktop] Renaming ${oldPath} -> ${trashPath}`);
+          await rename(oldPath, trashPath);
+          console.log(`[Desktop] Successfully moved ${item.id} to trash!`);
+        } else {
+          console.warn(`[Desktop] Could not resolve old path or path is root for ${item.id}`);
+        }
+      } catch (e) {
+        console.error(`[Desktop] Failed to move ${item.id} to trash`, e);
+      }
+    }
+    console.log('[Desktop] Finished handleTrashConfirm, resetting state.');
     setSelectedIds(new Set());
     setTrashConfirm(null);
   };
@@ -246,7 +331,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
   // Determine what menu items to show based on what was right-clicked
   const canWriteDesktop = hasPermission(vfsStore.map, DESKTOP_ID, 'write', username);
-  const canWriteNode = contextNode ? hasPermission(vfsStore.map, contextNode.id, 'write', username) : false;
+  const canWriteNode = contextNode ? ((contextNode as any).ownerId === username || hasPermission(vfsStore.map, contextNode.id, 'write', username)) : false;
 
   const menuItems = contextNode ? [
     {
@@ -289,6 +374,21 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
           ? [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id))
           : [contextNode.id];
         useVFSStore.getState().setClipboard('copy', ids);
+        hideContextMenu();
+      }
+    },
+    {
+      id: 'download',
+      label: selectedIds.size > 1 && selectedIds.has(contextNode.id)
+        ? `Download ${selectedIds.size} Items (ZIP)`
+        : (contextNode.type === 'directory' ? 'Download Folder (ZIP)' : 'Download'),
+      onClick: () => {
+        const ids = selectedIds.size > 1 && selectedIds.has(contextNode.id) ? Array.from(selectedIds) : [contextNode.id];
+        if (ids.length > 1 || (ids.length === 1 && useVFSStore.getState().map[ids[0]]?.type === 'directory')) {
+          import('../../utils/hostInterop').then(({ downloadFilesAsZip }) => downloadFilesAsZip(ids, 'archive.zip'));
+        } else {
+          import('../../utils/hostInterop').then(({ downloadFile }) => downloadFile(ids[0]));
+        }
         hideContextMenu();
       }
     },
@@ -380,7 +480,8 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
           }
         } else if (e.key === 'Delete' && selectedIds.size > 0 && !editingId) {
           e.preventDefault();
-          setTrashConfirm([...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id)));
+          const ids = [...selectedIds].filter(id => !DESKTOP_ICONS.some(di => di.id === id));
+          if (ids.length > 0) handleDeleteRequest(ids);
         }
       }}
       onDragOver={(e) => e.preventDefault()}
@@ -478,10 +579,42 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
           setDesktopIconPositions(newPositions);
         }
         
+        const handleDropMove = async (ids: string[], targetId: string) => {
+          const { rename } = await import('../../fs/operations');
+          const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+          const targetPath = await getAbsolutePathAsync(targetId);
+          for (const id of ids) {
+            if (id === targetId) continue;
+            try {
+              const oldPath = await getAbsolutePathAsync(id);
+              const name = oldPath.split('/').pop();
+              if (name) await rename(oldPath, `${targetPath}/${name}`);
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        };
+
         if (multi && !desktopIconId) {
-          (JSON.parse(multi) as string[]).forEach(id => useVFSStore.getState().moveNode(id, DESKTOP_ID));
+          handleDropMove(JSON.parse(multi), DESKTOP_ID);
         } else if (single && !desktopIconId) {
-          useVFSStore.getState().moveNode(single, DESKTOP_ID);
+          handleDropMove([single], DESKTOP_ID);
+        } else if (!desktopIconId && !multi && !single && e.dataTransfer.files.length > 0) {
+          console.log(`[Desktop Drop] Host file drop detected. Files: ${e.dataTransfer.files.length}, targetId: ${DESKTOP_ID}`);
+          const addNotification = useNotificationStore.getState().addNotification;
+          const updateNotification = useNotificationStore.getState().updateNotification;
+          
+          const notifId = addNotification({ title: 'Uploading Files', message: 'Starting upload...', progress: 0 });
+          
+          handleHostDrop(e, DESKTOP_ID, (msg: string, current: number, total: number) => {
+            updateNotification(notifId, { message: msg, progress: total > 0 ? Math.round((current / total) * 100) : 0 });
+          }).then(() => {
+            console.log('[Desktop Drop] Upload completed successfully');
+            updateNotification(notifId, { title: 'Upload Complete', message: 'Files uploaded successfully.', progress: undefined });
+          }).catch((err: any) => {
+            console.error('[Desktop Drop] Upload failed:', err);
+            updateNotification(notifId, { title: 'Upload Failed', message: err.message, progress: undefined });
+          });
         }
       }}
     >
@@ -515,21 +648,67 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
             onDragEnd={cleanupDynamicDrag}
             onDragOver={(e) => {
               e.preventDefault();
-              if (item.type === 'directory') e.stopPropagation();
+              if (item.type === 'directory' || item.id === 'trash') e.stopPropagation();
             }}
             onDrop={(e) => {
+              if (item.id === 'trash') {
+                const multi = e.dataTransfer.getData('application/x-vfs-nodes');
+                const single = e.dataTransfer.getData('application/x-vfs-node');
+                
+                let idsToTrash: string[] = [];
+                if (multi) idsToTrash = JSON.parse(multi);
+                else if (single) idsToTrash = [single];
+
+                if (idsToTrash.length > 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDeleteRequest(idsToTrash);
+                }
+                return;
+              }
+
               if (!item.isStatic && item.type === 'directory') {
                 const multi = e.dataTransfer.getData('application/x-vfs-nodes');
                 const single = e.dataTransfer.getData('application/x-vfs-node');
+                const handleDropMove = async (ids: string[], targetId: string) => {
+                  const { rename } = await import('../../fs/operations');
+                  const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+                  const targetPath = await getAbsolutePathAsync(targetId);
+                  for (const id of ids) {
+                    if (id === targetId) continue;
+                    try {
+                      const oldPath = await getAbsolutePathAsync(id);
+                      const name = oldPath.split('/').pop();
+                      if (name) await rename(oldPath, `${targetPath}/${name}`);
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }
+                };
+
                 if (multi) {
                   e.preventDefault();
                   e.stopPropagation();
-                  (JSON.parse(multi) as string[]).filter(id => id !== item.id).forEach(id =>
-                    useVFSStore.getState().moveNode(id, item.id));
+                  handleDropMove(JSON.parse(multi), item.id);
                 } else if (single && single !== item.id) {
                   e.preventDefault();
                   e.stopPropagation();
-                  useVFSStore.getState().moveNode(single, item.id);
+                  handleDropMove([single], item.id);
+                } else if (e.dataTransfer.files.length > 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const addNotification = useNotificationStore.getState().addNotification;
+                  const updateNotification = useNotificationStore.getState().updateNotification;
+                  
+                  const notifId = addNotification({ title: 'Uploading Files', message: 'Starting upload...', progress: 0 });
+                  
+                  handleHostDrop(e, item.id, (msg: string, current: number, total: number) => {
+                    updateNotification(notifId, { message: msg, progress: total > 0 ? Math.round((current / total) * 100) : 0 });
+                  }).then(() => {
+                    updateNotification(notifId, { title: 'Upload Complete', message: 'Files uploaded successfully.', progress: undefined });
+                  }).catch((err: any) => {
+                    updateNotification(notifId, { title: 'Upload Failed', message: err.message, progress: undefined });
+                  });
                 }
               }
             }}
@@ -548,7 +727,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
                 return;
               }
               if (item.type === 'directory') openWindow('file-manager', { cwdId: item.id });
-              else openWindow('text-editor', { fileId: item.id });
+              else import('../../utils/openFile').then(({ openFileApp }) => openFileApp(item.id, false));
             }}
             onContextMenu={(e) => {
               if (item.isStatic) {
@@ -634,27 +813,29 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
               if (item.id === 'open-terminal') {
                 openWindow('terminal');
               } else if (item.id === 'new-folder') {
-                const store = useVFSStore.getState();
-                let name = 'New Folder';
-                let i = 1;
-                while (store.exists(DESKTOP_ID, name)) name = `New Folder ${i++}`;
-                const { id, error } = store.createNode(DESKTOP_ID, name, 'directory');
-                console.log('Created folder:', { id, error });
-                if (id) {
-                  setEditingId(id);
-                  setEditValue(name);
-                }
+                import('../../fs/operations').then(({ mkdir }) => {
+                  let name = 'New Folder';
+                  let i = 1;
+                  while (desktopFiles.some(f => f.name === name)) name = `New Folder ${i++}`;
+                  mkdir(`${desktopPath}/${name}`).then(node => {
+                    if (node) {
+                      setEditingId(node.id);
+                      setEditValue(node.name);
+                    }
+                  });
+                });
               } else if (item.id === 'new-file') {
-                const store = useVFSStore.getState();
-                let name = 'Untitled';
-                let i = 1;
-                while (store.exists(DESKTOP_ID, name)) name = `Untitled ${i++}`;
-                const { id, error } = store.createNode(DESKTOP_ID, name, 'file');
-                console.log('Created file:', { id, error });
-                if (id) {
-                  setEditingId(id);
-                  setEditValue(name);
-                }
+                import('../../fs/operations').then(({ writeFile }) => {
+                  let name = 'Untitled';
+                  let i = 1;
+                  while (desktopFiles.some(f => f.name === name)) name = `Untitled ${i++}`;
+                  writeFile(`${desktopPath}/${name}`, '').then(node => {
+                    if (node) {
+                      setEditingId(node.id);
+                      setEditValue(node.name);
+                    }
+                  });
+                });
               }
               hideContextMenu();
             },
@@ -699,7 +880,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
       {trashConfirm && trashConfirm.length > 0 && createPortal(
         <TrashConfirmDialog
-          names={trashConfirm.map(id => combinedIcons.find(i => i.id === id)?.label || id)}
+          names={trashConfirm.map(item => item.name)}
           onConfirm={handleTrashConfirm}
           onCancel={() => setTrashConfirm(null)}
         />,
