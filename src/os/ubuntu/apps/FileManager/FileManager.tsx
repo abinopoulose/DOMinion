@@ -256,7 +256,7 @@ export function FileManager({ windowId }: FileManagerProps) {
           const db = await dbModule.getDB();
           const inode = await db.get('inodes', id);
           if (inode) {
-            inode.meta = { ...inode.meta, originalParentId: inode.parentId };
+            inode.meta = { ...inode.meta, originalParentId: inode.parentId ?? undefined };
             await db.put('inodes', inode);
           }
 
@@ -634,7 +634,7 @@ export function FileManager({ windowId }: FileManagerProps) {
               // Copy is harder without operations.ts copy function, we'll keep legacy for now
               attemptWithPolkit(
                 () => {
-                  let firstError;
+                  let firstError: string | undefined;
                   nodeIds.forEach(id => {
                     const err = vfsStore.duplicateNode(id, cwdId).error;
                     if (err && !firstError) firstError = err;

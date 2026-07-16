@@ -92,7 +92,7 @@ export const ls: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
       let perms = c.permissions ? c.permissions.toString(8) : (c.type === 'directory' ? '755' : '644');
       if (perms.length < 3) perms = perms.padStart(3, '0');
       
-      const rwx = perms.split('').slice(-3).map(digit => {
+      const rwx = perms.split('').slice(-3).map((digit: string) => {
         const val = parseInt(digit, 8);
         return (val & 4 ? 'r' : '-') + (val & 2 ? 'w' : '-') + (val & 1 ? 'x' : '-');
       }).join('');

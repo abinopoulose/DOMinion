@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
+import { useState, useRef } from 'react';
+
 import { useWindowStore } from '../../store/useUbuntuWindowStore';
 import { useWindowDrag } from '../../hooks/useWindowDrag';
 import { WelcomeStep1 } from './WelcomeStep1';

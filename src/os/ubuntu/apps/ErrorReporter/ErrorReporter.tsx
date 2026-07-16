@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useWindowStore } from '../../store';
 import { BRANDING } from '../../../../config/branding';
 import './ErrorReporter.css';

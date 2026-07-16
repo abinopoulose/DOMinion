@@ -13,7 +13,7 @@ export function UsersPage() {
   const [isNameEditing, setIsNameEditing] = useState(false);
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   
-  const account = UBUNTU_ACCOUNTS.find(a => a.username === currentUser);
+  const account = UBUNTU_ACCOUNTS.find((a: any) => a.username === currentUser);
   
   const [displayName, setDisplayName] = useState(account?.displayName || currentUser || 'User');
   const [password, setPassword] = useState(account?.password || '');

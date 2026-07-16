@@ -1,7 +1,7 @@
 import type { CommandHandler } from './types';
 import { useVFSStore } from '../../../store';
 import { getAuthContext } from '../../../store/useUbuntuVFSStore';
-import { hasPermission } from '../../../fs/permissions';
+
 import { parseArgs } from '../commandParser';
 import { walkTree } from './utils';
 

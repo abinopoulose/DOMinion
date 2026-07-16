@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useVFSStore } from '../../store';
+
 
 export function DiskUsageAnalyzer(_props: { windowId: string }) {
   const [usage, setUsage] = useState<number>(0);

@@ -1,6 +1,6 @@
 import { useFileUrl } from '../../hooks/useFileUrl';
 import { useWindowStore } from '../../store';
-import { useVFSStore } from '../../store';
+
 
 interface DocumentViewerProps {
   windowId: string;
