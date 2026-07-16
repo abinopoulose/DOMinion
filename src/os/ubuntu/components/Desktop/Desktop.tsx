@@ -288,7 +288,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
         const inode = await db.get('inodes', item.id);
         console.log(`[Desktop] Found inode for ${item.id}:`, inode);
         if (inode) {
-          inode.meta = { ...inode.meta, originalParentId: inode.parentId };
+          inode.meta = { ...inode.meta, originalParentId: inode.parentId ?? undefined };
           await db.put('inodes', inode);
         } else {
           console.warn(`[Desktop] INODE NOT FOUND IN DB for ${item.id}`);

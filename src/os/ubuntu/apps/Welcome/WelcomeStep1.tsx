@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 export function WelcomeStep1({ onNext }: { onNext: () => void }) {
   return (

@@ -136,9 +136,7 @@ export async function handleHostDrop(e: React.DragEvent, targetDirId: string, on
     for (let i = 0; i < fallbackFiles.length; i++) {
       const file = fallbackFiles[i];
       const absolutePath = targetPath + '/' + file.name;
-      const segments = absolutePath.split('/').filter(Boolean);
-      const nodeName = segments.pop()!;
-      const parentPath = '/' + segments.join('/');
+
       
       console.log(`[VFS Sync: hostInterop] Fallback processing file: ${absolutePath}`);
       onProgress?.(`Uploading ${file.name}...`, i, fallbackFiles.length);
@@ -146,7 +144,6 @@ export async function handleHostDrop(e: React.DragEvent, targetDirId: string, on
       try {
         console.log(`[VFS Sync: hostInterop] Executing backend writeFile for: ${absolutePath}`);
         
-        const stream = file.stream();
         const totalSize = file.size;
         
         // Simulate upload progress for UI smoothness (since local writes are near-instant)
@@ -175,9 +172,7 @@ export async function handleHostDrop(e: React.DragEvent, targetDirId: string, on
   let currentIndex = 0;
   for (const { entry, path } of queue) {
     const absolutePath = targetPath + '/' + (path ? path + '/' : '') + entry.name;
-    const segments = absolutePath.split('/').filter(Boolean);
-    const nodeName = segments.pop()!;
-    const parentPath = '/' + segments.join('/');
+
     
     if (entry.isFile) {
       console.log(`[VFS Sync: hostInterop] Processing file entry: ${absolutePath}`);

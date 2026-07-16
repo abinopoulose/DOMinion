@@ -131,8 +131,8 @@ export function generateSudoersContent(): string {
  */
 export function generateGroupContent(): string {
   const adminUsers = UBUNTU_ACCOUNTS
-    .filter(a => a.role === 'admin')
-    .map(a => a.username);
+    .filter((a: any) => a.role === 'admin')
+    .map((a: any) => a.username);
 
   const lines: string[] = [
     'root:x:0:',

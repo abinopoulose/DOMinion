@@ -61,7 +61,7 @@ export function seedNodeMap(): NodeMap {
   map[ROOT_ID].children.push(ROOT_HOME_ID);
 
   // Seed user directories
-  UBUNTU_ACCOUNTS.forEach((account) => {
+  UBUNTU_ACCOUNTS.forEach((account: any) => {
     seedUserHome(map, account.username);
   });
 

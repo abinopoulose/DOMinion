@@ -1,5 +1,5 @@
 import { useWindowStore } from '../store';
-import { useVFSStore } from '../store';
+
 import { readFile } from '../fs/operations';
 import { sniffMimeType } from '../fs/mimeSniffer';
 

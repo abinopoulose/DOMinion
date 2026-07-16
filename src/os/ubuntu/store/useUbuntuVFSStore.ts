@@ -391,7 +391,7 @@ export const useVFSStore = create<VFSStore>()(
           const TRASH_ID = getTrashId(user);
 
           const protectedIds = [ROOT_ID, ROOT_HOME_ID];
-          UBUNTU_ACCOUNTS.forEach(acc => {
+          UBUNTU_ACCOUNTS.forEach((acc: any) => {
             protectedIds.push(getHomeId(acc.username), getDesktopId(acc.username), getTrashId(acc.username));
           });
 
@@ -753,7 +753,7 @@ export const useVFSStore = create<VFSStore>()(
         }
 
         // Ensure all registered users have a home directory (migration/seeding for new users)
-        UBUNTU_ACCOUNTS.forEach(acc => {
+        UBUNTU_ACCOUNTS.forEach((acc: any) => {
           seedUserHome(migratedMap, acc.username, actualHomeId);
           // Enforce strict 750 permissions on home directories so other users cannot access them
           const homeId = getHomeId(acc.username);

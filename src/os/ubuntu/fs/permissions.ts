@@ -41,7 +41,7 @@ import { UBUNTU_ACCOUNTS } from '../../../config/accounts';
 
 function getUidForUser(username: string): number {
   if (username === 'root') return 0;
-  const index = UBUNTU_ACCOUNTS.findIndex(a => a.username === username);
+  const index = UBUNTU_ACCOUNTS.findIndex((a: any) => a.username === username);
   if (index >= 0) return 1000 + index;
   return 9999;
 }

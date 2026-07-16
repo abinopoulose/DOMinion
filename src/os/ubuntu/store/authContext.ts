@@ -16,6 +16,6 @@ export function getAuthContext() {
     return { username: tempExecutionUser, role: 'admin' };
   }
   const username = useUbuntuAuthStore.getState().currentUser || 'peasant';
-  const role = UBUNTU_ACCOUNTS.find(u => u.username === username)?.role || 'standard';
+  const role = UBUNTU_ACCOUNTS.find((u: any) => u.username === username)?.role || 'standard';
   return { username, role };
 }

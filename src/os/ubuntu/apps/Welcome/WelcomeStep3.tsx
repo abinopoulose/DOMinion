@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 export function WelcomeStep3({ onFinish }: { onFinish: () => void }) {
   return (

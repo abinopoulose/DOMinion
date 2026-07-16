@@ -37,7 +37,7 @@ export function UbuntuLogin() {
       }
     }
 
-    const selectedAccount = UBUNTU_ACCOUNTS.find(u => u.username === selectedUser);
+    const selectedAccount = UBUNTU_ACCOUNTS.find((u: any) => u.username === selectedUser);
     const isAutoLogin = !!selectedAccount?.autoLogin;
 
     if (isAutoLogin) {
@@ -93,7 +93,7 @@ export function UbuntuLogin() {
       <div className="ubuntu-login-box">
         {!selectedUser ? (
           <div className="ubuntu-user-list">
-            {UBUNTU_ACCOUNTS.map(acc => (
+            {UBUNTU_ACCOUNTS.map((acc: any) => (
               <div 
                 key={acc.username} 
                 className="ubuntu-user-list-item"
@@ -111,10 +111,10 @@ export function UbuntuLogin() {
             <div className="ubuntu-login-avatar">
                <svg viewBox="0 0 24 24" width="56" height="56" fill="rgba(255,255,255,0.6)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
             </div>
-            <h2 className="ubuntu-login-name">{UBUNTU_ACCOUNTS.find(a => a.username === selectedUser)?.displayName || selectedUser}</h2>
+            <h2 className="ubuntu-login-name">{UBUNTU_ACCOUNTS.find((a: any) => a.username === selectedUser)?.displayName || selectedUser}</h2>
             
             <form onSubmit={handleLogin} className="ubuntu-login-form">
-              {UBUNTU_ACCOUNTS.find(a => a.username === selectedUser)?.autoLogin ? (
+              {UBUNTU_ACCOUNTS.find((a: any) => a.username === selectedUser)?.autoLogin ? (
                 <div className="ubuntu-login-input-wrapper">
                   <button type="submit" className="ubuntu-login-submit-btn" style={{ position: 'relative', width: '100%', right: 'auto', background: 'var(--color-accent)', padding: '8px 16px', borderRadius: '4px', display: 'flex', justifyContent: 'center' }}>
                     Log In

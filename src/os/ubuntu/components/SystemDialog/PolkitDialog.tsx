@@ -20,9 +20,9 @@ export function PolkitDialog() {
   const { polkitRequest, closeDialog } = useSystemDialogStore();
   const currentUser = useUbuntuAuthStore((s) => s.currentUser) || 'user';
 
-  const currentUserObj = UBUNTU_ACCOUNTS.find(a => a.username === currentUser);
+  const currentUserObj = UBUNTU_ACCOUNTS.find((a: any) => a.username === currentUser);
   const isCurrentUserAdmin = currentUserObj?.role === 'admin' || currentUser === 'root';
-  const adminUsers = UBUNTU_ACCOUNTS.filter(a => a.role === 'admin');
+  const adminUsers = UBUNTU_ACCOUNTS.filter((a: any) => a.role === 'admin');
 
   // If requireAdmin is explicitly false, standard users can authenticate as themselves.
   const requireAdmin = polkitRequest?.requireAdmin !== false;
@@ -138,7 +138,7 @@ export function PolkitDialog() {
                   width: '100%'
                 }}
               >
-                {adminUsers.map(admin => (
+                {adminUsers.map((admin: any) => (
                   <option key={admin.username} value={admin.username} style={{ background: 'var(--color-bg-window)', color: 'var(--color-text-primary)' }}>
                     {admin.displayName || admin.username}
                   </option>
