@@ -1,1 +1,0 @@
-import{i as e,o as t}from"./dist-QqjHNI13.js";async function n(){if(!await e(`vfs_seeded_v3`))try{let e=await fetch(`/ubuntu/vfs_seed.json`);if(!e.ok)return;let n=await e.json();for(let e=0;e<n.length;e+=1e3)await t(n.slice(e,e+1e3).map(e=>[`vfs_node_${e.id}`,e]));await t([[`vfs_seeded_v3`,!0]])}catch(e){console.error(`Failed to seed VFS:`,e)}}export{n as seedVfsFromSnapshot};

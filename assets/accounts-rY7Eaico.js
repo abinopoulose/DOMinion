@@ -1,1 +1,0 @@
-var e=[{username:`peasant`,password:`password`,role:`standard`,displayName:`LePeasant`},{username:`abino`,password:`password123`,role:`admin`,displayName:`Abino Poulose`}],t=[{username:`abinopoulose@outlook.com`,password:`password`,role:`admin`,displayName:`Abino Poulose`}];export{t as n,e as t};
