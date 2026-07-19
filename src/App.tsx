@@ -1,18 +1,10 @@
 import { useCallback, useEffect, Suspense, useState } from 'react'
 import { useHardwareStore } from './hardware/store/useHardwareStore'
 import { useUbuntuAuthStore } from './os/ubuntu/store/useUbuntuAuthStore'
-import { useWindowsAuthStore } from './os/windows/store/useWindowsAuthStore'
 import { useSettingsStore } from './os/ubuntu/apps/Settings/store/useSettingsStore'
-
-// Static load Hardware components
-import { POST } from './hardware/components/post/POST'
-import { BIOS } from './hardware/components/bios/BIOS'
-import { Grub } from './hardware/components/grub/Grub'
 
 // Static load OS components
 import { UbuntuLogin } from './os/ubuntu/components/Login/UbuntuLogin'
-import { WindowsLogin } from './os/windows/components/Login/WindowsLogin'
-import { WindowsDesktop } from './os/windows/components/Desktop/WindowsDesktop'
 
 // Ubuntu UI
 import { useWindowStore } from './os/ubuntu/store/useUbuntuWindowStore'
@@ -306,21 +298,6 @@ function UbuntuEnvironment() {
   );
 }
 
-function WindowsEnvironment() {
-  const currentUser = useWindowsAuthStore((s) => s.currentUser);
-  
-  if (!currentUser) return (
-    <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#0067b8' }} />}>
-      <WindowsLogin />
-    </Suspense>
-  );
-  
-  return (
-    <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#0067b8' }} />}>
-      <WindowsDesktop />
-    </Suspense>
-  );
-}
 
 export default function App() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -331,25 +308,11 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  if (isMobile) {
-    return (
-      <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000', color: '#fff', padding: '24px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-        <svg viewBox="0 0 24 24" width="64" height="64" fill="currentColor" style={{ marginBottom: '24px' }}>
-          <path d="M4 6h16v12H4z" opacity=".3"/>
-          <path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v12H4V6z"/>
-        </svg>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>Desktop Only</h1>
-        <p style={{ fontSize: '16px', lineHeight: '1.5', color: '#ccc' }}>
-          This website is designed exclusively for large screens.<br/><br/>
-          Please visit this site from a laptop or desktop computer to continue.
-        </p>
-      </div>
-    );
-  }
+
   const { powerState, activeOS, turnOn, hardPowerOff, isSuspended, wake } = useHardwareStore();
 
   useEffect(() => {
-    if (activeOS === 'windows') {
+    if (activeOS !== 'ubuntu') {
       document.body.style.background = '#000';
     } else {
       document.body.style.background = '';
@@ -419,9 +382,23 @@ export default function App() {
       useWindowStore.getState().clearAllWindows();
       useWorkspaceStore.getState().resetWorkspaces();
       useUbuntuAuthStore.getState().logout();
-      useWindowsAuthStore.getState().logout();
     }
   }, [powerState]);
+  if (isMobile) {
+    return (
+      <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000', color: '#fff', padding: '24px', textAlign: 'center', fontFamily: 'sans-serif' }}>
+        <svg viewBox="0 0 24 24" width="64" height="64" fill="currentColor" style={{ marginBottom: '24px' }}>
+          <path d="M4 6h16v12H4z" opacity=".3"/>
+          <path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v12H4V6z"/>
+        </svg>
+        <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>Desktop Only</h1>
+        <p style={{ fontSize: '16px', lineHeight: '1.5', color: '#ccc' }}>
+          This website is designed exclusively for large screens.<br/><br/>
+          Please visit this site from a laptop or desktop computer to continue.
+        </p>
+      </div>
+    );
+  }
 
   if (powerState === 'off') {
     return (
@@ -451,9 +428,7 @@ export default function App() {
       </div>
     );
   }
-  if (powerState === 'post') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><POST /></Suspense>;
-  if (powerState === 'bios') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><BIOS /></Suspense>;
-  if (powerState === 'grub') return <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: 'black' }} />}><Grub /></Suspense>;
+
   
   if (powerState === 'shutting_down') {
     if (activeOS === 'ubuntu') {
@@ -486,8 +461,6 @@ export default function App() {
       <>
         {activeOS === 'ubuntu' ? (
           <UbuntuEnvironment />
-        ) : activeOS === 'windows' ? (
-          <WindowsEnvironment />
         ) : null}
         {isSuspended && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'black', zIndex: 999999, cursor: 'none' }} />

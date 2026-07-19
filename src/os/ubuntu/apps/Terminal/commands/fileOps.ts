@@ -223,7 +223,7 @@ export const chown: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
  *   - Dir (-r): Deep copy using VFS duplicateNode
  *   - source === dest: Error
  */
-export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const cp: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { flags, positional } = parseArgs(args);
   const recursive = flags.r || flags.R;
 
@@ -233,11 +233,14 @@ export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
 
   const sourcePath = positional[0];
   const destPath = positional[1];
-  const store = useVFSStore.getState();
-  const username = _appState?.effectiveUser || getAuthContext().username;
+
+  const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
+  const { readFile, writeFile, stat, readdir, mkdir } = await import('../../../fs/operations');
+
+  const cwdAbs = await getAbsolutePathAsync(cwdId);
 
   // Resolve source
-  const sourceNode = store.resolveRelativePath(cwdId, sourcePath);
+  const sourceNode = await resolveRelativePathAsync(cwdAbs, sourcePath);
   if (!sourceNode) {
     [`cp: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
@@ -247,68 +250,57 @@ export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
     [`cp: -r not specified; omitting directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
-  // Resolve destination
-  const destNode = store.resolveRelativePath(cwdId, destPath);
+  const destNode = await resolveRelativePathAsync(cwdAbs, destPath);
+  const sourceAbsPath = await getAbsolutePathAsync(sourceNode.id);
 
-  if (destNode) {
-    // Destination exists
-    if (destNode.id === sourceNode.id) {
-      [`cp: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  async function copyRecursive(srcAbs: string, destAbs: string) {
+    const node = await stat(srcAbs);
+    if (node.type === 'directory') {
+      try { await mkdir(destAbs); } catch(e) {}
+      const children = await readdir(srcAbs);
+      for (const child of children) {
+        await copyRecursive(srcAbs === '/' ? '/' + child.name : srcAbs + '/' + child.name, destAbs === '/' ? '/' + child.name : destAbs + '/' + child.name);
+      }
+    } else {
+      const blob = await readFile(srcAbs);
+      await writeFile(destAbs, blob);
     }
+  }
 
-    if (destNode.type === 'directory') {
-      // Copy into existing directory
-      if (sourceNode.type === 'file') {
-        // Check if file with same name already exists in dest
-        const existing = store.getChildren(destNode.id).find(c => c.name === sourceNode.name);
-        if (existing) {
-          // Overwrite: update content
-          store.updateContent(existing.id, sourceNode.content, username);
-        } else {
-          const { error } = store.createNode(destNode.id, sourceNode.name, 'file', sourceNode.content, username);
-          if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-        }
+  try {
+    if (destNode) {
+      if (destNode.id === sourceNode.id) {
+        [`cp: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+      }
+      
+      const destAbsPath = await getAbsolutePathAsync(destNode.id);
+
+      if (destNode.type === 'directory') {
+        const finalDestPath = destAbsPath === '/' ? '/' + sourceNode.name : destAbsPath + '/' + sourceNode.name;
+        await copyRecursive(sourceAbsPath, finalDestPath);
       } else {
-        // Directory → copy into dest directory
-        const { error } = store.duplicateNode(sourceNode.id, destNode.id, username);
-        if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+        if (sourceNode.type === 'directory') {
+          [`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+        }
+        await copyRecursive(sourceAbsPath, destAbsPath);
       }
     } else {
-      // Destination is a file — overwrite its content (only if source is also a file)
-      if (sourceNode.type === 'directory') {
-        [`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+      // Destination doesn't exist, resolve parent
+      const destParts = destPath.split('/');
+      const destName = destParts.pop()!;
+      const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
+      
+      const destParentNode = await resolveRelativePathAsync(cwdAbs, destParentPath);
+      if (!destParentNode || destParentNode.type !== 'directory') {
+        [`cp: cannot create '${destPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
       }
-      store.updateContent(destNode.id, sourceNode.content, username);
+      
+      const destParentAbs = await getAbsolutePathAsync(destParentNode.id);
+      const finalDestPath = destParentAbs === '/' ? '/' + destName : destParentAbs + '/' + destName;
+      await copyRecursive(sourceAbsPath, finalDestPath);
     }
-  } else {
-    // Destination does not exist — resolve parent
-    const destParts = destPath.split('/');
-    const destName = destParts.pop()!;
-    const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
-
-    let destParentNode;
-    if (destParentPath === '.') {
-      destParentNode = store.getNode(cwdId);
-    } else {
-      destParentNode = store.resolveRelativePath(cwdId, destParentPath);
-    }
-
-    if (!destParentNode || destParentNode.type !== 'directory') {
-      [`cp: cannot create '${destPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-    }
-
-    if (sourceNode.type === 'file') {
-      const { error } = store.createNode(destParentNode.id, destName, 'file', sourceNode.content, username);
-      if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-    } else {
-      // For directory copy to a new name, use duplicateNode then rename
-      const { error, id: newId } = store.duplicateNode(sourceNode.id, destParentNode.id, username);
-      if (error) { [`cp: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-      // Rename the copy to destName if different
-      if (newId && destName !== sourceNode!.name) {
-        store.renameNode(newId, destName, username);
-      }
-    }
+  } catch (err: any) {
+    [`cp: ${err.message}`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   [].forEach((line: string) => process.stdout.writeLine(line)); return {};
@@ -327,7 +319,7 @@ export const cp: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
  *   - Works for both files and directories (VFS moveNode handles trees)
  *   - Circular-move protection is built into fs/operations.ts
  */
-export const mv: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const mv: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
   const { positional } = parseArgs(args);
 
   if (positional.length < 2) {
@@ -336,70 +328,55 @@ export const mv: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appS
 
   const sourcePath = positional[0];
   const destPath = positional[1];
-  const store = useVFSStore.getState();
-  const username = _appState?.effectiveUser || getAuthContext().username;
+  
+  const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
+  const { rename, stat } = await import('../../../fs/operations');
+
+  const cwdAbs = await getAbsolutePathAsync(cwdId);
 
   // Resolve source
-  const sourceNode = store.resolveRelativePath(cwdId, sourcePath);
+  const sourceNode = await resolveRelativePathAsync(cwdAbs, sourcePath);
   if (!sourceNode) {
     [`mv: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
-  // Resolve destination
-  const destNode = store.resolveRelativePath(cwdId, destPath);
+  const destNode = await resolveRelativePathAsync(cwdAbs, destPath);
+  const sourceAbsPath = await getAbsolutePathAsync(sourceNode.id);
 
-  if (destNode) {
-    if (destNode.id === sourceNode.id) {
-      [`mv: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-    }
-
-    if (destNode.type === 'directory') {
-      // Move into existing directory
-      const err = store.moveNode(sourceNode.id, destNode.id, username);
-      if (err) { [`mv: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-    } else {
-      if (sourceNode.type === 'directory') {
-        [`mv: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  try {
+    if (destNode) {
+      if (destNode.id === sourceNode.id) {
+        [`mv: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => process.stderr.writeLine(line)); return {};
       }
-      store.deleteNode(destNode.id, username);
-      if (sourceNode.parentId === destNode.parentId) {
-        store.renameNode(sourceNode.id, destNode.name, username);
+
+      const destAbsPath = await getAbsolutePathAsync(destNode.id);
+
+      if (destNode.type === 'directory') {
+        const finalDestPath = destAbsPath === '/' ? '/' + sourceNode.name : destAbsPath + '/' + sourceNode.name;
+        await rename(sourceAbsPath, finalDestPath);
       } else {
-        store.moveNode(sourceNode.id, destNode.parentId!, username);
-        store.renameNode(sourceNode.id, destNode.name, username);
+        if (sourceNode.type === 'directory') {
+          [`mv: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+        }
+        await rename(sourceAbsPath, destAbsPath);
       }
-    }
-  } else {
-    // Destination does not exist — resolve parent for move + rename
-    const destParts = destPath.split('/');
-    const destName = destParts.pop()!;
-    const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
-
-    let destParentNode;
-    if (destParentPath === '.') {
-      destParentNode = store.getNode(cwdId);
     } else {
-      destParentNode = store.resolveRelativePath(cwdId, destParentPath);
-    }
-
-    if (!destParentNode || destParentNode.type !== 'directory') {
-      [`mv: cannot move '${sourcePath}' to '${destPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-    }
-
-    // If source parent === dest parent, this is just a rename
-    if (sourceNode!.parentId === destParentNode!.id) {
-      const err = store.renameNode(sourceNode!.id, destName, username);
-      if (err) { [`mv: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-    } else {
-      // Move to new parent, then rename
-      const moveErr = store.moveNode(sourceNode.id, destParentNode.id, username);
-      if (moveErr) { [`mv: ${moveErr}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-
-      if (destName !== sourceNode.name) {
-        const renameErr = store.renameNode(sourceNode.id, destName, username);
-        if (renameErr) { [`mv: ${renameErr}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+      // Destination doesn't exist, resolve parent
+      const destParts = destPath.split('/');
+      const destName = destParts.pop()!;
+      const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
+      
+      const destParentNode = await resolveRelativePathAsync(cwdAbs, destParentPath);
+      if (!destParentNode || destParentNode.type !== 'directory') {
+        [`mv: cannot move '${sourcePath}' to '${destPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
       }
+      
+      const destParentAbs = await getAbsolutePathAsync(destParentNode.id);
+      const finalDestPath = destParentAbs === '/' ? '/' + destName : destParentAbs + '/' + destName;
+      await rename(sourceAbsPath, finalDestPath);
     }
+  } catch (err: any) {
+    [`mv: ${err.message}`].forEach((line: string) => process.stderr.writeLine(line)); return {};
   }
 
   [].forEach((line: string) => process.stdout.writeLine(line)); return {};

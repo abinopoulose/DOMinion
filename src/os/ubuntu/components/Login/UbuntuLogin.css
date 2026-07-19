@@ -47,7 +47,8 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.ubuntu-user-list-item:hover {
+.ubuntu-user-list-item:hover,
+.ubuntu-user-list-item.focused {
   background: rgba(255, 255, 255, 0.15);
 }
 
@@ -133,9 +134,9 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 40%, transparent);
 }
 
-.ubuntu-login-submit-btn {
+.ubuntu-login-submit-btn,
+.ubuntu-login-eye-btn {
   position: absolute;
-  right: 6px;
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -148,7 +149,17 @@
   cursor: pointer;
   transition: background 0.1s;
 }
-.ubuntu-login-submit-btn:hover {
+
+.ubuntu-login-submit-btn {
+  right: 6px;
+}
+
+.ubuntu-login-eye-btn {
+  right: 36px;
+}
+
+.ubuntu-login-submit-btn:hover,
+.ubuntu-login-eye-btn:hover {
   background: rgba(255,255,255,0.2);
 }
 

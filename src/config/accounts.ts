@@ -22,6 +22,3 @@ export function updateUbuntuAccount(username: string, updates: any) {
   }
 }
 
-export const WINDOWS_ACCOUNTS = [
-  { username: 'abinopoulose@outlook.com', password: 'admin', role: 'admin', displayName: 'Abino Poulose' },
-];
