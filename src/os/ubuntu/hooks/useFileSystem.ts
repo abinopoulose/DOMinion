@@ -3,35 +3,36 @@ import { fsEvents } from '../fs/events';
 import * as fs from '../fs/operations';
 import type { VFSNode } from '../fs/types';
 
+// Global cache for fast UI reads without hitting IDB every time
+const vfsCache = new Map<string, VFSNode[]>();
+
 export function useFileSystem(path: string) {
-  const [nodes, setNodes] = useState<VFSNode[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [nodes, setNodes] = useState<VFSNode[]>(vfsCache.get(path) || []);
+  const [loading, setLoading] = useState(!vfsCache.has(path));
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     
+    let fetchTimeout: any;
+
     const fetchDir = async () => {
-      console.log(`[VFS Sync: useFileSystem] fetchDir triggered for path: ${path}`);
       try {
-        setLoading(true);
+        if (!vfsCache.has(path)) setLoading(true);
         const children = await fs.readdir(path);
-        console.log(`[VFS Sync: useFileSystem] Successfully read directory: ${path}. Children count: ${children.length}`);
+        vfsCache.set(path, children);
+        
         if (isMounted) {
           setNodes(children);
           setError(null);
         }
       } catch (err: any) {
-        console.error(`[VFS Sync: useFileSystem] Error reading directory '${path}':`, err);
+        if (!err.message?.includes('ENOENT')) {
+          console.error(`[VFS Sync: useFileSystem] Error reading directory '${path}':`, err);
+        }
         if (isMounted) {
           setError(err);
           setNodes([]);
-          import('../components/Notifications/useNotificationStore').then(({ useNotificationStore }) => {
-            useNotificationStore.getState().addNotification({
-              title: 'Filesystem Error',
-              message: err.message || 'Failed to read directory'
-            });
-          });
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -40,10 +41,23 @@ export function useFileSystem(path: string) {
 
     fetchDir();
 
-    const unsubscribe = fsEvents.subscribe(path, fetchDir);
+    const handleEvent = () => {
+      if (fetchTimeout) clearTimeout(fetchTimeout);
+      fetchTimeout = setTimeout(() => {
+        vfsCache.delete(path);
+        fetchDir();
+      }, 50);
+    };
+
+    // Subscribe both to specific path and globally to ensure all deep nested changes trigger UI updates reliably
+    const unsubscribe1 = fsEvents.subscribe(path, handleEvent);
+    const unsubscribe2 = fsEvents.subscribeGlobal(handleEvent);
+
     return () => {
       isMounted = false;
-      unsubscribe();
+      if (fetchTimeout) clearTimeout(fetchTimeout);
+      unsubscribe1();
+      unsubscribe2();
     };
   }, [path]);
 

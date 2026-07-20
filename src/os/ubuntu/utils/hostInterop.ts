@@ -1,15 +1,17 @@
 import React from 'react';
 import { zipSync } from 'fflate';
-import { useVFSStore } from '../store';
 import { readFile, mkdir, writeFile } from '../fs/operations';
+import { getAbsolutePathAsync } from '../fs/pathResolver';
+import { getDB } from '../fs/db';
 
 export async function downloadFile(id: string) {
-  const store = useVFSStore.getState();
-  const node = store.map[id];
+  const db = await getDB();
+  const node = await db.get('inodes', id);
   if (!node || node.type === 'directory') return;
 
   try {
-    const blob = await readFile(store.getAbsolutePath(id));
+    const path = await getAbsolutePathAsync(id);
+    const blob = await readFile(path);
     if (blob instanceof Blob) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -33,24 +35,26 @@ export async function downloadFile(id: string) {
 }
 
 async function collectFilesForZip(nodeId: string, currentPath: string, zipData: Record<string, Uint8Array>) {
-  const store = useVFSStore.getState();
-  const node = store.map[nodeId];
+  const db = await getDB();
+  const node = await db.get('inodes', nodeId);
   if (!node) return;
 
   if (node.type === 'directory') {
-    for (const childId of node.children) {
-      await collectFilesForZip(childId, `${currentPath}${node.name}/`, zipData);
+    const children = await db.getAllFromIndex('inodes', 'by-parent', nodeId);
+    for (const child of children) {
+      await collectFilesForZip(child.id, currentPath ? `${currentPath}/${node.name}` : node.name, zipData);
     }
   } else {
     try {
-      const blob = await readFile(store.getAbsolutePath(nodeId));
+      const path = await getAbsolutePathAsync(nodeId);
+      const blob = await readFile(path);
       let uint8array: Uint8Array;
       if (blob instanceof Blob) {
         uint8array = new Uint8Array(await blob.arrayBuffer());
       } else {
         uint8array = new TextEncoder().encode(blob as string);
       }
-      zipData[`${currentPath}${node.name}`] = uint8array;
+      zipData[`${currentPath ? `${currentPath}/` : ''}${node.name}`] = uint8array;
     } catch (err) {
       console.warn('Failed to read file for zip', err);
     }
@@ -58,17 +62,18 @@ async function collectFilesForZip(nodeId: string, currentPath: string, zipData: 
 }
 
 export async function downloadFilesAsZip(ids: string[], zipName: string = 'archive.zip') {
-  const store = useVFSStore.getState();
+  const db = await getDB();
   const zipData: Record<string, Uint8Array> = {};
 
   for (const id of ids) {
-    const node = store.map[id];
+    const node = await db.get('inodes', id);
     if (node) {
       if (node.type === 'directory') {
         await collectFilesForZip(id, '', zipData);
       } else {
         try {
-          const blob = await readFile(store.getAbsolutePath(id));
+          const path = await getAbsolutePathAsync(id);
+          const blob = await readFile(path);
           let uint8array: Uint8Array;
           if (blob instanceof Blob) {
             uint8array = new Uint8Array(await blob.arrayBuffer());
@@ -126,8 +131,7 @@ export async function handleHostDrop(e: React.DragEvent, targetDirId: string, on
     }
   }
 
-  const store = useVFSStore.getState();
-  const targetPath = store.getAbsolutePath(targetDirId);
+  const targetPath = await getAbsolutePathAsync(targetDirId);
   console.log(`[VFS Sync: hostInterop] Resolved absolute target path: ${targetPath}`);
 
   // Process fallback flat files if webkitGetAsEntry failed

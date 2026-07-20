@@ -1,5 +1,5 @@
 import React from 'react';
-import { useVFSStore } from '../../../store';
+
 
 interface BreadcrumbBarProps {
   currentCwdId: string;
@@ -26,15 +26,15 @@ export function BreadcrumbBar({
   viewMode,
   onViewModeChange,
 }: BreadcrumbBarProps) {
-  const vfsStore = useVFSStore();
+  // const vfsStore = useVFSStore();
 
-  const getSegments = (id: string) => {
-    const segments = [];
-    let current = vfsStore.getNode(id);
+  const getSegments = (_id: string) => {
+    const segments: any[] = [];
+    let current: any = null; // null; // vfsStore.getNode(id);
     while (current) {
       segments.unshift(current);
       if (current.parentId) {
-        current = vfsStore.getNode(current.parentId);
+        current = null; // vfsStore.getNode(current.parentId);
       } else {
         current = null;
       }

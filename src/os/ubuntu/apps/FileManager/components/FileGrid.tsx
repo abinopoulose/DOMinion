@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import type { LegacyVFSNode } from '../../../fs/types';
 import { FileIcon } from '../../../components/FileIcon/FileIcon';
-import { useVFSStore } from '../../../store';
+// removed useVFSStore
 import { useSettingsStore } from '../../Settings/store/useSettingsStore';
 import { useUbuntuAuthStore } from '../../../store/useUbuntuAuthStore';
 import { hasPermission } from '../../../fs/permissions';
@@ -47,7 +47,7 @@ export function FileGrid({
   const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
   
   const username     = useUbuntuAuthStore((s) => s.currentUser) || 'user';
-  const vfsStoreMap  = useVFSStore((s) => s.map);
+
 
   useEffect(() => {
     if (editingId && inputRef.current) {
@@ -61,16 +61,33 @@ export function FileGrid({
     onSelectionChange([...new Set(ids)]);
   }, [onSelectionChange]);
 
-  const toggleItem = useCallback((id: string, multi: boolean) => {
-    let next: Set<string>;
-    if (multi) {
-      next = new Set(selectedIds);
-      if (next.has(id)) next.delete(id); else next.add(id);
+  const lastSelectedIndex = useRef<number | null>(null);
+
+  const handleItemClick = useCallback((index: number, e: React.MouseEvent) => {
+    const file = files[index];
+    if (e.shiftKey && lastSelectedIndex.current !== null) {
+      const start = Math.min(lastSelectedIndex.current, index);
+      const end = Math.max(lastSelectedIndex.current, index);
+      const next = new Set(selectedIds);
+      if (!e.ctrlKey && !e.metaKey) {
+        next.clear();
+      }
+      for (let i = start; i <= end; i++) {
+        next.add(files[i].id);
+      }
+      onSelectionChange([...next]);
     } else {
-      next = new Set([id]);
+      let next: Set<string>;
+      if (e.ctrlKey || e.metaKey) {
+        next = new Set(selectedIds);
+        if (next.has(file.id)) next.delete(file.id); else next.add(file.id);
+      } else {
+        next = new Set([file.id]);
+      }
+      onSelectionChange([...next]);
+      lastSelectedIndex.current = index;
     }
-    onSelectionChange([...next]);
-  }, [selectedIds, onSelectionChange]);
+  }, [files, selectedIds, onSelectionChange]);
 
   // --- rubber-band selection ---
   const { selectionRect, handlePointerDown } = useSelectionBox({
@@ -109,7 +126,7 @@ export function FileGrid({
       onClick={() => applySelection([])}
       onContextMenu={(e) => onContextMenu(e)}
     >
-      {files.map((file) => (
+      {files.map((file, index) => (
         <div
           key={file.id}
           /* data-sel-id is the attribute the hook queries for */
@@ -173,7 +190,7 @@ export function FileGrid({
           onClick={(e) => {
             e.stopPropagation();
             if (editingId === file.id) return;
-            toggleItem(file.id, e.ctrlKey || e.metaKey);
+            handleItemClick(index, e);
             setEditingId(null);
           }}
           onDoubleClick={(e) => {
@@ -184,7 +201,7 @@ export function FileGrid({
           }}
           onContextMenu={(e) => {
             e.stopPropagation();
-            if (!selectedIdsSet.has(file.id)) toggleItem(file.id, false);
+            if (!selectedIdsSet.has(file.id)) handleItemClick(index, { ...e, ctrlKey: false, metaKey: false, shiftKey: false } as any);
             onContextMenu(e, file);
           }}
         >
@@ -193,10 +210,10 @@ export function FileGrid({
               fileId={file.id}
               fileName={file.name}
               isDirectory={file.type === 'directory'}
-              className={`fm-item-icon ${!hasPermission(vfsStoreMap, file.id, 'write', username, undefined, file) ? 'file-item-protected' : ''}`}
+              className={`fm-item-icon ${!hasPermission(file as any, 'write', username) ? 'file-item-protected' : ''}`}
               style={{ width: '100%', height: '100%' }}
             />
-            {!hasPermission(vfsStoreMap, file.id, 'write', username, undefined, file) && (
+            {!hasPermission(file as any, 'write', username) && (
               <div className="file-lock-badge" title="Read-only">
                 <svg viewBox="0 0 24 24" width="10" height="10" fill="#e95420">
                   <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
@@ -219,6 +236,7 @@ export function FileGrid({
               onBlur={commitRename}
               onKeyDown={(e) => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') setEditingId(null); }}
               onClick={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => e.stopPropagation()}
             />
           ) : (
             <span

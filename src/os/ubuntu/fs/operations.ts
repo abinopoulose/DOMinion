@@ -1,299 +1,4 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { NodeMap, LegacyVFSNode, LegacyVFSNodeType } from './types';
-
-export function getNode(map: NodeMap, id: string): LegacyVFSNode | null {
-  return map[id] || null;
-}
-
-export function getChildren(map: NodeMap, id: string): LegacyVFSNode[] {
-  const node = getNode(map, id);
-  if (!node || node.type !== 'directory') return [];
-  return node.children.map(childId => map[childId]).filter(Boolean);
-}
-
-export function getParent(map: NodeMap, id: string): LegacyVFSNode | null {
-  const node = getNode(map, id);
-  if (!node || !node.parentId) return null;
-  return getNode(map, node.parentId);
-}
-
-export function exists(map: NodeMap, parentId: string, name: string): boolean {
-  const children = getChildren(map, parentId);
-  return children.some(child => child.name === name);
-}
-
-export function createNode(
-  map: NodeMap,
-  parentId: string,
-  name: string,
-  type: LegacyVFSNodeType,
-  content: string = '',
-  owner?: string,
-  group?: string
-): { newMap: NodeMap; node: LegacyVFSNode; error?: string } {
-  const parent = getNode(map, parentId);
-  if (!parent) return { newMap: map, node: null as any, error: 'Parent directory does not exist' };
-  if (parent.type !== 'directory') return { newMap: map, node: null as any, error: 'Parent is not a directory' };
-  if (exists(map, parentId, name)) return { newMap: map, node: null as any, error: 'File or directory already exists' };
-
-  const id = uuidv4();
-  const now = Date.now();
-  
-  let extension = '';
-  if (type === 'file' && name.includes('.')) {
-    extension = name.split('.').pop() || '';
-  }
-
-  const node: LegacyVFSNode = {
-    id,
-    name,
-    type,
-    parentId,
-    children: [],
-    content,
-    createdAt: now,
-    modifiedAt: now,
-    owner: owner || 'user',
-    group: group || 'user',
-    permissions: type === 'directory' ? '755' : '644',
-    meta: {
-      extension
-    }
-  };
-
-  const newMap = {
-    ...map,
-    [id]: node,
-    [parentId]: {
-      ...parent,
-      children: [...parent.children, id],
-      modifiedAt: now
-    }
-  };
-
-  return { newMap, node };
-}
-
-export function deleteNode(map: NodeMap, id: string): { newMap: NodeMap; error?: string } {
-  const node = getNode(map, id);
-  if (!node) return { newMap: map, error: 'Node does not exist' };
-  
-  let newMap = { ...map };
-  
-  // Recursively delete children
-  if (node.type === 'directory') {
-    for (const childId of node.children) {
-      newMap = deleteNode(newMap, childId).newMap;
-    }
-  }
-
-  // Remove from parent
-  if (node.parentId) {
-    const parent = newMap[node.parentId];
-    if (parent) {
-      newMap[node.parentId] = {
-        ...parent,
-        children: parent.children.filter(childId => childId !== id),
-        modifiedAt: Date.now()
-      };
-    }
-  }
-
-  delete newMap[id];
-  return { newMap };
-}
-
-export function renameNode(map: NodeMap, id: string, newName: string): { newMap: NodeMap; error?: string } {
-  const node = getNode(map, id);
-  if (!node) return { newMap: map, error: 'Node does not exist' };
-  if (!node.parentId) return { newMap: map, error: 'Cannot rename root node' };
-  
-  if (exists(map, node.parentId, newName)) {
-    return { newMap: map, error: 'A file or directory with this name already exists' };
-  }
-
-  return {
-    newMap: {
-      ...map,
-      [id]: {
-        ...node,
-        name: newName,
-        modifiedAt: Date.now()
-      }
-    }
-  };
-}
-
-export function moveNode(map: NodeMap, id: string, newParentId: string): { newMap: NodeMap; error?: string } {
-  const node = getNode(map, id);
-  const newParent = getNode(map, newParentId);
-  
-  if (!node) return { newMap: map, error: 'Node does not exist' };
-  if (!newParent) return { newMap: map, error: 'Target directory does not exist' };
-  if (newParent.type !== 'directory') return { newMap: map, error: 'Target is not a directory' };
-  if (!node.parentId) return { newMap: map, error: 'Cannot move root node' };
-  if (node.parentId === newParentId) return { newMap: map };
-  if (exists(map, newParentId, node.name)) return { newMap: map, error: 'A file or directory with this name already exists in the target' };
-
-  // Prevent circular moves (moving a folder into its own child)
-  let currentParentId: string | null = newParentId;
-  while (currentParentId) {
-    if (currentParentId === id) return { newMap: map, error: 'Cannot move a directory into itself or its children' };
-    const p = getNode(map, currentParentId);
-    currentParentId = p ? p.parentId : null;
-  }
-
-  const oldParent = getNode(map, node.parentId);
-  if (!oldParent) return { newMap: map, error: 'Old parent does not exist' };
-
-  const now = Date.now();
-
-  return {
-    newMap: {
-      ...map,
-      [node.parentId]: {
-        ...oldParent,
-        children: oldParent.children.filter(childId => childId !== id),
-        modifiedAt: now
-      },
-      [newParentId]: {
-        ...newParent,
-        children: [...newParent.children, id],
-        modifiedAt: now
-      },
-      [id]: {
-        ...node,
-        parentId: newParentId,
-        modifiedAt: now
-      }
-    }
-  };
-}
-
-export function updateContent(map: NodeMap, id: string, content: string): { newMap: NodeMap; error?: string } {
-  const node = getNode(map, id);
-  if (!node) return { newMap: map, error: 'Node does not exist' };
-  if (node.type !== 'file') return { newMap: map, error: 'Cannot update content of a directory' };
-
-  return {
-    newMap: {
-      ...map,
-      [id]: {
-        ...node,
-        content,
-        modifiedAt: Date.now()
-      }
-    }
-  };
-}
-
-export function updatePermissions(map: NodeMap, id: string, permissions: string): { newMap: NodeMap; error?: string } {
-  const node = getNode(map, id);
-  if (!node) return { newMap: map, error: 'Node does not exist' };
-  
-  return {
-    newMap: {
-      ...map,
-      [id]: {
-        ...node,
-        permissions,
-        modifiedAt: Date.now()
-      }
-    }
-  };
-}
-
-export function updateOwner(map: NodeMap, id: string, owner?: string, group?: string): { newMap: NodeMap; error?: string } {
-  const node = getNode(map, id);
-  if (!node) return { newMap: map, error: 'Node does not exist' };
-  
-  return {
-    newMap: {
-      ...map,
-      [id]: {
-        ...node,
-        owner: owner || node.owner,
-        group: group || node.group,
-        modifiedAt: Date.now()
-      }
-    }
-  };
-}
-
-export function duplicateNode(map: NodeMap, id: string, newParentId: string): { newMap: NodeMap; newId?: string; error?: string } {
-  const node = getNode(map, id);
-  const newParent = getNode(map, newParentId);
-  if (!node) return { newMap: map, error: 'Node does not exist' };
-  if (!newParent) return { newMap: map, error: 'Target directory does not exist' };
-  if (newParent.type !== 'directory') return { newMap: map, error: 'Target is not a directory' };
-  
-  // Prevent circular duplication (copying a folder into its own child)
-  let currentParentId: string | null = newParentId;
-  while (currentParentId) {
-    if (currentParentId === id) return { newMap: map, error: 'Cannot copy a directory into itself or its children' };
-    const p = getNode(map, currentParentId);
-    currentParentId = p ? p.parentId : null;
-  }
-
-  // Generate unique name for the target directory
-  let targetName = node.name;
-  if (newParentId === node.parentId) {
-    targetName = `${node.name} (copy)`;
-    let i = 1;
-    while (exists(map, newParentId, targetName)) {
-      targetName = `${node.name} (copy ${i++})`;
-    }
-  } else {
-    let i = 1;
-    while (exists(map, newParentId, targetName)) {
-      targetName = `${node.name} ${i++}`;
-    }
-  }
-
-  let currentMap = { ...map };
-  
-  // Recursive function to deep copy a node
-  function deepCopy(sourceId: string, destParentId: string, overriddenName?: string): string {
-    const sourceNode = currentMap[sourceId];
-    const newId = uuidv4();
-    const now = Date.now();
-    
-    const copiedNode: LegacyVFSNode = {
-      ...sourceNode,
-      id: newId,
-      name: overriddenName || sourceNode.name,
-      parentId: destParentId,
-      children: [], // will be populated
-      createdAt: now,
-      modifiedAt: now
-    };
-    
-    currentMap[newId] = copiedNode;
-    
-    // add to parent
-    const parent = currentMap[destParentId];
-    currentMap[destParentId] = {
-      ...parent,
-      children: [...parent.children, newId],
-      modifiedAt: now
-    };
-    
-    if (sourceNode.type === 'directory') {
-      for (const childId of sourceNode.children) {
-        const copiedChildId = deepCopy(childId, newId);
-        currentMap[newId].children.push(copiedChildId);
-      }
-    }
-    
-    return newId;
-  }
-  
-  const newId = deepCopy(id, newParentId, targetName);
-  return { newMap: currentMap, newId };
-}
-
-// ---- ASYNC IMPLEMENTATIONS FOR TASK 2 ----
-
 import { getDB } from './db';
 import type { VFSNode } from './types';
 import { resolvePathAsync, clearPathCache } from './pathResolver';
@@ -548,4 +253,166 @@ export async function rename(oldPath: string, newPath: string): Promise<void> {
 export async function createReadStream(path: string): Promise<ReadableStream> {
   const blob = await readFile(path);
   return blob.stream();
+}
+
+export async function chmod(path: string, mode: number): Promise<void> {
+  const node = await resolvePathAsync(path);
+  if (!node) throw new Error(`ENOENT: no such file or directory, chmod '${path}'`);
+  
+  node.permissions = mode;
+  node.modifiedAt = Date.now();
+  
+  const db = await getDB();
+  await db.put('inodes', node);
+  clearPathCache();
+  fsEvents.emit(path, 'fs:changed');
+}
+
+export async function chown(path: string, uid: string, gid: string): Promise<void> {
+  const node = await resolvePathAsync(path);
+  if (!node) throw new Error(`ENOENT: no such file or directory, chown '${path}'`);
+  
+  node.ownerId = uid;
+  node.groupId = gid;
+  node.modifiedAt = Date.now();
+  
+  const db = await getDB();
+  await db.put('inodes', node);
+  clearPathCache();
+  fsEvents.emit(path, 'fs:changed');
+}
+
+export async function symlink(target: string, path: string): Promise<VFSNode> {
+  const segments = path.split('/').filter(Boolean);
+  const linkName = segments.pop();
+  if (!linkName) throw new Error(`EEXIST: file already exists, symlink '${path}'`);
+
+  const parentPath = '/' + segments.join('/');
+  const parentNode = await resolvePathAsync(parentPath);
+  if (!parentNode) throw new Error(`ENOENT: no such file or directory, symlink '${path}'`);
+  if (parentNode.type !== 'directory') throw new Error(`ENOTDIR: not a directory, symlink '${parentPath}'`);
+  
+  const existingNode = await resolvePathAsync(path);
+  if (existingNode) throw new Error(`EEXIST: file already exists, symlink '${path}'`);
+
+  const id = uuidv4();
+  const now = Date.now();
+  const currentUser = getAuthContext().username;
+
+  const node: VFSNode = {
+    id,
+    name: linkName,
+    type: 'symlink',
+    parentId: parentNode.id,
+    permissions: 0o777,
+    ownerId: currentUser,
+    groupId: currentUser,
+    createdAt: now,
+    modifiedAt: now,
+    accessedAt: now,
+    sizeBytes: target.length,
+    hasBinaryContent: false,
+    meta: { symlinkTarget: target }
+  };
+
+  const db = await getDB();
+  await db.put('inodes', node);
+  clearPathCache();
+  fsEvents.emit(path, 'fs:created');
+  return node;
+}
+
+export async function readlink(path: string): Promise<string> {
+  const node = await resolvePathAsync(path);
+  if (!node) throw new Error(`ENOENT: no such file or directory, readlink '${path}'`);
+  if (node.type !== 'symlink') throw new Error(`EINVAL: invalid argument, readlink '${path}'`);
+  
+  return node.meta?.symlinkTarget || '';
+}
+
+/**
+ * Move a node (by ID) to a new parent directory (by ID).
+ */
+export async function moveNode(nodeId: string, newParentId: string): Promise<void> {
+  const db = await getDB();
+  const node = await db.get('inodes', nodeId);
+  if (!node) throw new Error(`ENOENT: node '${nodeId}' not found`);
+  const newParent = await db.get('inodes', newParentId);
+  if (!newParent || newParent.type !== 'directory') throw new Error(`ENOTDIR: target is not a directory`);
+
+  node.parentId = newParentId;
+  node.modifiedAt = Date.now();
+  await db.put('inodes', node);
+  clearPathCache();
+  fsEvents.emit('/', 'fs:modified');
+}
+
+/**
+ * Recursively duplicate a node (by ID) into a target parent directory (by ID).
+ */
+export async function duplicateNode(nodeId: string, targetParentId: string): Promise<VFSNode> {
+  const db = await getDB();
+  const src = await db.get('inodes', nodeId);
+  if (!src) throw new Error(`ENOENT: node '${nodeId}' not found`);
+
+  const newId = uuidv4();
+  const now = Date.now();
+  const clone: VFSNode = { ...src, id: newId, parentId: targetParentId, createdAt: now, modifiedAt: now };
+
+  // Deduplicate name in target
+  const siblings = await db.getAllFromIndex('inodes', 'by-parent', targetParentId);
+  let name = src.name;
+  if (siblings.some(s => s.name === name)) {
+    let i = 1;
+    const ext = name.includes('.') ? '.' + name.split('.').pop()! : '';
+    const base = ext ? name.slice(0, -ext.length) : name;
+    while (siblings.some(s => s.name === `${base} (copy${i > 1 ? ' ' + i : ''})${ext}`)) i++;
+    name = `${base} (copy${i > 1 ? ' ' + i : ''})${ext}`;
+  }
+  clone.name = name;
+
+  await db.put('inodes', clone);
+
+  // Copy file data if file
+  if (src.type === 'file') {
+    const data = await db.get('file_data', nodeId);
+    if (data) await db.put('file_data', data, newId);
+  }
+
+  // Recurse for directory children
+  if (src.type === 'directory') {
+    const children = await db.getAllFromIndex('inodes', 'by-parent', nodeId);
+    for (const child of children) {
+      await duplicateNode(child.id, newId);
+    }
+  }
+
+  clearPathCache();
+  fsEvents.emit('/', 'fs:created');
+  return clone;
+}
+
+/**
+ * Remove a node (by ID), moving it to trash or deleting recursively.
+ */
+export async function removeNode(nodeId: string): Promise<void> {
+  const db = await getDB();
+  const node = await db.get('inodes', nodeId);
+  if (!node) return;
+
+  // Remove children recursively for directories
+  if (node.type === 'directory') {
+    const children = await db.getAllFromIndex('inodes', 'by-parent', nodeId);
+    for (const child of children) {
+      await removeNode(child.id);
+    }
+  }
+
+  // Remove file data
+  await db.delete('file_data', nodeId);
+  // Remove inode
+  await db.delete('inodes', nodeId);
+
+  clearPathCache();
+  fsEvents.emit('/', 'fs:deleted');
 }

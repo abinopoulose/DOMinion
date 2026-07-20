@@ -1,6 +1,6 @@
 import type { CommandHandler } from './types';
 import { getAuthContext } from '../../../store/useUbuntuVFSStore';
-import { useUbuntuVFSStore } from '../../../store';
+// import removed: useUbuntuVFSStore
 import { getUserGroups } from '../../../services/sudoersParser';
 
 /**
@@ -13,35 +13,40 @@ import { getUserGroups } from '../../../services/sudoersParser';
  * Output format (matches real Linux):
  *   uid=1000(user) gid=1000(user) groups=1000(user),4(admin),27(sudo)
  */
-export const id: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, appState, process) => {
-  const targetUser = args[0] || appState?.effectiveUser || getAuthContext().username;
+export const id: CommandHandler = async (args, env, streams) => {
+  const targetUser = args[0] || env?.effectiveUser || getAuthContext().username;
 
-  // Read /etc/passwd for UID/GID
-  const store = useUbuntuVFSStore.getState();
-  const passwdNode = store.resolvePath('/etc/passwd');
-
-  if (!passwdNode || passwdNode.type !== 'file') {
-    [`uid=1000(${targetUser}) gid=1000(${targetUser}) groups=1000(${targetUser})`].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  const { readFile } = await import('../../../fs/operations');
+  let passwdContent = '';
+  try {
+    const blob = await readFile('/etc/passwd');
+    passwdContent = await blob.text();
+  } catch (e) {
+    [`uid=1000(${targetUser}) gid=1000(${targetUser}) groups=1000(${targetUser})`].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
   }
 
-  const lines = passwdNode.content.split('\n');
+  const lines = passwdContent.split('\n');
   const userLine = lines.find(l => l.startsWith(targetUser + ':'));
 
   if (!userLine) {
-    [`id: '${targetUser}': no such user`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    [`id: '${targetUser}': no such user`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   const parts = userLine.split(':');
   const uid = parts[2];
   const gid = parts[3];
 
-  // Get groups
-  const groups = getUserGroups(targetUser);
+  const groups = await getUserGroups(targetUser);
+  
+  let groupContent = '';
+  try {
+    const groupBlob = await readFile('/etc/group');
+    groupContent = await groupBlob.text();
+  } catch (e) {}
+
   const groupStr = groups.map((g, i) => {
-    // Read /etc/group for GID
-    const groupNode = store.resolvePath('/etc/group');
-    if (groupNode && groupNode.type === 'file') {
-      const groupLines = groupNode.content.split('\n');
+    if (groupContent) {
+      const groupLines = groupContent.split('\n');
       const groupLine = groupLines.find(l => l.startsWith(g + ':'));
       if (groupLine) {
         const groupGid = groupLine.split(':')[2];
@@ -51,7 +56,7 @@ export const id: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, appS
     return `${1000 + i}(${g})`;
   }).join(',');
 
-  [`uid=${uid}(${targetUser}) gid=${gid}(${targetUser}) groups=${groupStr}`].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  [`uid=${uid}(${targetUser}) gid=${gid}(${targetUser}) groups=${groupStr}`].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
 };
 
 /**
@@ -61,15 +66,15 @@ export const id: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, appS
  *   groups              Print current user's groups
  *   groups <username>    Print specific user's groups
  */
-export const groups: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, appState, process) => {
-  const targetUser = args[0] || appState?.effectiveUser || getAuthContext().username;
-  const userGroups = getUserGroups(targetUser);
+export const groups: CommandHandler = async (args, env, streams) => {
+  const targetUser = args[0] || env?.effectiveUser || getAuthContext().username;
+  const userGroups = await getUserGroups(targetUser);
 
   if (userGroups.length === 0) {
-    [targetUser].forEach((line: string) => process.stdout.writeLine(line)); return {};
+    [targetUser].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
   }
 
-  [`${targetUser} : ${userGroups.join(' ')}`].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  [`${targetUser} : ${userGroups.join(' ')}`].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
 };
 
 /**
@@ -83,23 +88,18 @@ export const groups: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, 
  * (prompts for old password, new password, confirm). For our simulation,
  * we output educational information about what would happen.
  */
-export const passwd: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, _appState, process) => {
-  const username = _appState?.effectiveUser || getAuthContext().username;
+export const passwd: CommandHandler = (args, env, streams) => {
+  const username = env?.effectiveUser || getAuthContext().username;
   const targetUser = args[0] || username;
 
   if (targetUser !== username && username !== 'root') {
-    ['passwd: You may not view or modify password information for other users.'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    ['passwd: You may not view or modify password information for other users.'].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
-  [`passwd: Changing password for ${targetUser}.`].forEach((line: string) => process.stdout.writeLine(line));
+  [`passwd: Changing password for ${targetUser}.`].forEach((line: string) => streams.stdout.writeLine(line));
+  [`(interactive password change not supported in this version)`].forEach((line: string) => streams.stdout.writeLine(line));
 
-  return {
-    output: [],
-    newPasswdState: {
-      step: username === 'root' ? 'new' : 'current',
-      targetUser,
-    }
-  };
+  return 0;
 };
 
 /**
@@ -110,15 +110,15 @@ export const passwd: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, 
  *
  * Educational output showing what would happen.
  */
-export const adduser: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory, _appState, process) => {
-  const username = _appState?.effectiveUser || getAuthContext().username;
+export const adduser: CommandHandler = (args, env, streams) => {
+  const username = env?.effectiveUser || getAuthContext().username;
 
   if (username !== 'root') {
-    ['adduser: Only root may add a user or group to the system.'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    ['adduser: Only root may add a user or group to the system.'].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   if (args.length === 0) {
-    ['adduser: Only one or two names allowed.'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    ['adduser: Only one or two names allowed.'].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   const newUser = args[0];
@@ -137,5 +137,5 @@ export const adduser: CommandHandler = (args, _cwdId, _updateCwd, _clearHistory,
     '  2. Ask for full name, room number, etc. (GECOS fields)',
     '  3. Create the home directory with default files',
     '  4. Add entries to /etc/passwd, /etc/shadow, /etc/group',
-  ].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  ].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
 };

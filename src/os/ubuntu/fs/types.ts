@@ -1,5 +1,31 @@
 export type VFSNodeType = 'file' | 'directory' | 'symlink' | 'proc_file' | 'character_device';
-export type LegacyVFSNodeType = VFSNodeType;
+export type LegacyVFSNodeType = 'file' | 'directory' | 'symlink' | 'proc_file' | 'character_device';
+
+export interface LegacyVFSNode {
+  id: string;
+  name: string;
+  type: LegacyVFSNodeType;
+  parentId: string | null;
+  children: string[];
+  content: string;
+  permissions?: string;
+  owner?: string;
+  group?: string;
+  createdAt?: number;
+  modifiedAt?: number;
+  meta?: {
+    mimeType?: string;
+    extension?: string;
+    icon?: string;
+    isHidden?: boolean;
+    isSymlink?: boolean;
+    symlinkTarget?: string;
+    originalParentId?: string;
+    isStarred?: boolean;
+  };
+}
+
+export type NodeMap = Record<string, LegacyVFSNode>;
 
 export interface VFSNode {
   id: string;              // Unique identifier (UUID or inode equivalent)
@@ -33,26 +59,3 @@ export interface VFSNode {
   };
 }
 
-// For migration purposes
-export interface LegacyVFSNode {
-  id: string;              // uuid
-  name: string;            // "Documents"
-  type: VFSNodeType;
-  parentId: string | null; // null = root
-  children: string[];      // ordered child IDs (directories only)
-  content: string;         // file content (files only, empty string for dirs)
-  createdAt: number;       // epoch ms
-  modifiedAt: number;      // epoch ms
-  owner: string;           // e.g. "user", "root"
-  group: string;           // e.g. "user", "root"
-  permissions: string;     // e.g. "755", "644"
-  meta?: {
-    icon?: string;         // custom icon override
-    mimeType?: string;     // e.g. "text/plain"
-    extension?: string;    // e.g. "txt", "js"
-    originalParentId?: string; // stored when moved to trash
-    isStarred?: boolean;   // used for starred files
-  };
-}
-
-export type NodeMap = Record<string, LegacyVFSNode>;

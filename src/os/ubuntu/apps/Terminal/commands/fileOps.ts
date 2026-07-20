@@ -1,108 +1,113 @@
 import type { CommandHandler } from './types';
-import { useVFSStore } from '../../../store';
+// import removed: useVFSStore
 import { getAuthContext } from '../../../store/useUbuntuVFSStore';
 
 import { parseArgs } from '../commandParser';
-import { walkTree } from './utils';
 
-export const cat: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const cat: CommandHandler = async (args, env, streams) => {
   if (args.length === 0) {
-    const input = process.stdin.readAll();
-    input.split('\n').forEach((line: string) => process.stdout.writeLine(line));
-    return {};
+    const input = streams.stdin.readAll();
+    if (input) {
+      input.split('\n').forEach((line: string) => streams.stdout.writeLine(line));
+    }
+    return 0;
   }
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readFile } = await import('../../../fs/operations');
 
-  const cwdPath = await getAbsolutePathAsync(cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
   const targetNode = await resolveRelativePathAsync(cwdPath, args[0]);
 
   if (!targetNode) {
-    process.stderr.writeLine(`cat: ${args[0]}: No such file or directory`);
-    return {};
+    streams.stderr.writeLine(`cat: ${args[0]}: No such file or directory`);
+    return 1;
   }
   
   if (targetNode.type === 'directory') {
-    process.stderr.writeLine(`cat: ${args[0]}: Is a directory`);
-    return {};
+    streams.stderr.writeLine(`cat: ${args[0]}: Is a directory`);
+    return 1;
   }
   
   const targetAbsPath = await getAbsolutePathAsync(targetNode.id);
   try {
     const blob = await readFile(targetAbsPath);
     const text = await blob.text();
-    text.split('\n').forEach((line: string) => process.stdout.writeLine(line));
+    text.split('\n').forEach((line: string) => streams.stdout.writeLine(line));
   } catch (err: any) {
-    process.stderr.writeLine(`cat: ${args[0]}: ${err.message}`);
+    streams.stderr.writeLine(`cat: ${args[0]}: ${err.message}`);
+    return 1;
   }
-  return {};
+  return 0;
 };
 
-export const touch: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
-  if (args.length === 0) { ['touch: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+export const touch: CommandHandler = async (args, env, streams) => {
+  if (args.length === 0) { ['touch: missing file operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1; }
   
-  const store = useVFSStore.getState();
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { writeFile, readFile } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  
   const name = args[0];
-  const username = _appState?.effectiveUser || getAuthContext().username;
+  const node = await resolveRelativePathAsync(cwdPath, name);
   
-  let parentId = cwdId;
-  let fileName = name;
-  if (name.includes('/')) {
-    const parts = name.split('/');
-    fileName = parts.pop()!;
-    const parentPath = parts.join('/') || (name.startsWith('/') ? '/' : '.');
-    const parentNode = store.resolveRelativePath(cwdId, parentPath);
-    if (!parentNode) {
-      [`touch: cannot touch '${name}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-    }
-    if (parentNode.type !== 'directory') {
-      [`touch: cannot touch '${name}': Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-    }
-    parentId = parentNode.id;
-  }
-
-  const node = store.resolveRelativePath(cwdId, name);
   if (node) {
-    // If it exists, Unix touch updates timestamp. Since we don't display it yet, this is a no-op conceptually, 
-    // but we can just update content with its own content to trigger a modifiedAt update
-    store.updateContent(node!.id, node!.content ?? '', username);
-    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+    try {
+      const targetAbsPath = await getAbsolutePathAsync(node.id);
+      const blob = await readFile(targetAbsPath);
+      await writeFile(targetAbsPath, blob);
+    } catch(e) {}
+    return 0;
   }
 
-  const { error: err } = store.createNode(parentId, fileName, 'file', '', username);
-  if (err) { [`touch: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  const destParts = name.split('/');
+  const destName = destParts.pop()!;
+  const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
   
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath);
+  if (!parentNode) {
+    streams.stderr.writeLine(`touch: cannot touch '${name}': No such file or directory`); return 1;
+  }
+  
+  const parentAbsPath = await getAbsolutePathAsync(parentNode.id);
+  const newFilePath = parentAbsPath === '/' ? '/' + destName : parentAbsPath + '/' + destName;
+  
+  try {
+    await writeFile(newFilePath, new Blob([]));
+  } catch (err: any) {
+    streams.stderr.writeLine(`touch: ${err.message}`);
+    return 1;
+  }
+  return 0;
 };
 
-export const mkdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
-  if (args.length === 0) { ['mkdir: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+export const mkdir: CommandHandler = async (args, env, streams) => {
+  if (args.length === 0) { ['mkdir: missing operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1; }
   
-  const store = useVFSStore.getState();
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { mkdir: mkdirOp } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
   const name = args[0];
   
-  let parentId = cwdId;
-  let dirName = name;
-  if (name.includes('/')) {
-    const parts = name.split('/');
-    dirName = parts.pop()!;
-    const parentPath = parts.join('/') || (name.startsWith('/') ? '/' : '.');
-    const parentNode = store.resolveRelativePath(cwdId, parentPath);
-    if (!parentNode) {
-      [`mkdir: cannot create directory '${name}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-    }
-    if (parentNode.type !== 'directory') {
-      [`mkdir: cannot create directory '${name}': Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-    }
-    parentId = parentNode.id;
-  }
-
-  const username = _appState?.effectiveUser || getAuthContext().username;
-  const { error: err } = store.createNode(parentId, dirName, 'directory', undefined, username);
-  if (err) { [`mkdir: cannot create directory '${name}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  const destParts = name.split('/');
+  const destName = destParts.pop()!;
+  const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
   
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath);
+  if (!parentNode) {
+    streams.stderr.writeLine(`mkdir: cannot create directory '${name}': No such file or directory`); return 1;
+  }
+  
+  const parentAbsPath = await getAbsolutePathAsync(parentNode.id);
+  const newDirPath = parentAbsPath === '/' ? '/' + destName : parentAbsPath + '/' + destName;
+  
+  try {
+    await mkdirOp(newDirPath);
+  } catch (err: any) {
+    streams.stderr.writeLine(`mkdir: cannot create directory '${name}': ${err.message}`);
+    return 1;
+  }
+  return 0;
 };
 
 /**
@@ -117,96 +122,111 @@ export const mkdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
  *
  * Supports combined flags (-rf, -Rf) and multiple file operands.
  */
-export const rm: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const rm: CommandHandler = async (args, env, streams) => {
   const { flags, positional } = parseArgs(args);
   const recursive = flags.r || flags.R;
   const force = flags.f;
 
   if (positional.length === 0) {
-    if (force) { [].forEach((line: string) => process.stdout.writeLine(line)); return {}; } // rm -f with no args is silent
-    ['rm: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    if (force) return 0;
+    ['rm: missing operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
-  const store = useVFSStore.getState();
-  const username = _appState?.effectiveUser || getAuthContext().username;
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { unlink, rmdir } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
 
   for (const target of positional) {
-    const node = store.resolveRelativePath(cwdId, target);
+    const node = await resolveRelativePathAsync(cwdPath, target);
 
     if (!node) {
-      if (force) continue; // -f silences "not found"
-      [`rm: cannot remove '${target}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+      if (force) continue;
+      streams.stderr.writeLine(`rm: cannot remove '${target}': No such file or directory`); return 1;
     }
 
     if (node.type === 'directory' && !recursive) {
-      [`rm: cannot remove '${target}': Is a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+      streams.stderr.writeLine(`rm: cannot remove '${target}': Is a directory`); return 1;
     }
 
-    const err = store.deleteNode(node.id, username);
-    if (err) {
-      [`rm: cannot remove '${target}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    const absPath = await getAbsolutePathAsync(node.id);
+    try {
+      if (node.type === 'directory') {
+        await rmdir(absPath, { recursive: true });
+      } else {
+        await unlink(absPath);
+      }
+    } catch (err: any) {
+      streams.stderr.writeLine(`rm: cannot remove '${target}': ${err.message}`); return 1;
     }
   }
 
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  return 0;
 };
 
-export const chmod: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
-  if (args.length < 2) { ['chmod: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+export const chmod: CommandHandler = async (args, env, streams) => {
+  if (args.length < 2) { ['chmod: missing operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1; }
   
-  const permissions = args[0];
+  const permissions = parseInt(args[0], 8);
   const targetName = args[1];
   
-  if (!/^[0-7]{3}$/.test(permissions)) {
-    [`chmod: invalid mode: '${permissions}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  if (isNaN(permissions) || args[0].length !== 3) {
+    streams.stderr.writeLine(`chmod: invalid mode: '${args[0]}'`); return 1;
   }
 
-  const store = useVFSStore.getState();
-  const node = store.resolveRelativePath(cwdId, targetName);
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { chmod: chmodOp } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const node = await resolveRelativePathAsync(cwdPath, targetName);
   
   if (!node) {
-    [`chmod: cannot access '${targetName}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    streams.stderr.writeLine(`chmod: cannot access '${targetName}': No such file or directory`); return 1;
   }
   
-  const username = _appState?.effectiveUser || getAuthContext().username;
+  const username = env?.effectiveUser || getAuthContext().username;
 
-  // Only owner or root can chmod
-  if (username !== 'root' && username !== node!.owner) {
-    [`chmod: changing permissions of '${targetName}': Operation not permitted`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  if (username !== 'root' && username !== node.ownerId) {
+    streams.stderr.writeLine(`chmod: changing permissions of '${targetName}': Operation not permitted`); return 1;
   }
 
-  const err = store.updatePermissions(node!.id, permissions, username);
-  if (err) { [`chmod: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  try {
+    const absPath = await getAbsolutePathAsync(node.id);
+    await chmodOp(absPath, permissions);
+  } catch (err: any) {
+    streams.stderr.writeLine(`chmod: ${err.message}`); return 1;
+  }
   
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  return 0;
 };
 
-export const chown: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
-  if (args.length < 2) { ['chown: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-  
-  const username = _appState?.effectiveUser || getAuthContext().username;
+export const chown: CommandHandler = async (args, env, streams) => {
+  if (args.length < 2) { ['chown: missing operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1; }
+  const username = env?.effectiveUser || getAuthContext().username;
 
-  // chown requires root in real Linux (unless changing to own group only)
   if (username !== 'root') {
-    ['chown: changing ownership: Operation not permitted'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    ['chown: changing ownership: Operation not permitted'].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   const ownerGroup = args[0];
   const targetName = args[1];
-  
   const [owner, group] = ownerGroup.split(':');
   
-  const store = useVFSStore.getState();
-  const node = store.resolveRelativePath(cwdId, targetName);
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { chown: chownOp } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const node = await resolveRelativePathAsync(cwdPath, targetName);
   
   if (!node) {
-    [`chown: cannot access '${targetName}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    streams.stderr.writeLine(`chown: cannot access '${targetName}': No such file or directory`); return 1;
   }
   
-  const err = store.updateOwner(node!.id, owner || undefined, group || undefined, username);
-  if (err) { [`chown: ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  try {
+    const absPath = await getAbsolutePathAsync(node.id);
+    await chownOp(absPath, owner || node.ownerId, group || node.groupId);
+  } catch (err: any) {
+    streams.stderr.writeLine(`chown: ${err.message}`); return 1;
+  }
   
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  return 0;
 };
 
 /**
@@ -223,12 +243,12 @@ export const chown: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _a
  *   - Dir (-r): Deep copy using VFS duplicateNode
  *   - source === dest: Error
  */
-export const cp: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const cp: CommandHandler = async (args, env, streams) => {
   const { flags, positional } = parseArgs(args);
   const recursive = flags.r || flags.R;
 
   if (positional.length < 2) {
-    ['cp: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    ['cp: missing file operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   const sourcePath = positional[0];
@@ -237,17 +257,17 @@ export const cp: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
   const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
   const { readFile, writeFile, stat, readdir, mkdir } = await import('../../../fs/operations');
 
-  const cwdAbs = await getAbsolutePathAsync(cwdId);
+  const cwdAbs = await getAbsolutePathAsync(env.cwdId);
 
   // Resolve source
   const sourceNode = await resolveRelativePathAsync(cwdAbs, sourcePath);
   if (!sourceNode) {
-    [`cp: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    [`cp: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   // Check if source is a directory without -r
   if (sourceNode.type === 'directory' && !recursive) {
-    [`cp: -r not specified; omitting directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    [`cp: -r not specified; omitting directory '${sourcePath}'`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   const destNode = await resolveRelativePathAsync(cwdAbs, destPath);
@@ -270,7 +290,7 @@ export const cp: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
   try {
     if (destNode) {
       if (destNode.id === sourceNode.id) {
-        [`cp: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+        [`cp: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
       
       const destAbsPath = await getAbsolutePathAsync(destNode.id);
@@ -280,7 +300,7 @@ export const cp: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
         await copyRecursive(sourceAbsPath, finalDestPath);
       } else {
         if (sourceNode.type === 'directory') {
-          [`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+          [`cp: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
         }
         await copyRecursive(sourceAbsPath, destAbsPath);
       }
@@ -292,7 +312,7 @@ export const cp: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
       
       const destParentNode = await resolveRelativePathAsync(cwdAbs, destParentPath);
       if (!destParentNode || destParentNode.type !== 'directory') {
-        [`cp: cannot create '${destPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+        [`cp: cannot create '${destPath}': No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
       
       const destParentAbs = await getAbsolutePathAsync(destParentNode.id);
@@ -300,10 +320,10 @@ export const cp: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
       await copyRecursive(sourceAbsPath, finalDestPath);
     }
   } catch (err: any) {
-    [`cp: ${err.message}`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    [`cp: ${err.message}`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  return 0;
 };
 
 /**
@@ -319,25 +339,25 @@ export const cp: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
  *   - Works for both files and directories (VFS moveNode handles trees)
  *   - Circular-move protection is built into fs/operations.ts
  */
-export const mv: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const mv: CommandHandler = async (args, env, streams) => {
   const { positional } = parseArgs(args);
 
   if (positional.length < 2) {
-    ['mv: missing file operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    ['mv: missing file operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   const sourcePath = positional[0];
   const destPath = positional[1];
   
   const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
-  const { rename, stat } = await import('../../../fs/operations');
+  const { rename } = await import('../../../fs/operations');
 
-  const cwdAbs = await getAbsolutePathAsync(cwdId);
+  const cwdAbs = await getAbsolutePathAsync(env.cwdId);
 
   // Resolve source
   const sourceNode = await resolveRelativePathAsync(cwdAbs, sourcePath);
   if (!sourceNode) {
-    [`mv: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    [`mv: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   const destNode = await resolveRelativePathAsync(cwdAbs, destPath);
@@ -346,7 +366,7 @@ export const mv: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
   try {
     if (destNode) {
       if (destNode.id === sourceNode.id) {
-        [`mv: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+        [`mv: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
 
       const destAbsPath = await getAbsolutePathAsync(destNode.id);
@@ -356,7 +376,7 @@ export const mv: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
         await rename(sourceAbsPath, finalDestPath);
       } else {
         if (sourceNode.type === 'directory') {
-          [`mv: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+          [`mv: cannot overwrite non-directory '${destPath}' with directory '${sourcePath}'`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
         }
         await rename(sourceAbsPath, destAbsPath);
       }
@@ -368,7 +388,7 @@ export const mv: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
       
       const destParentNode = await resolveRelativePathAsync(cwdAbs, destParentPath);
       if (!destParentNode || destParentNode.type !== 'directory') {
-        [`mv: cannot move '${sourcePath}' to '${destPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+        [`mv: cannot move '${sourcePath}' to '${destPath}': No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
       
       const destParentAbs = await getAbsolutePathAsync(destParentNode.id);
@@ -376,10 +396,10 @@ export const mv: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
       await rename(sourceAbsPath, finalDestPath);
     }
   } catch (err: any) {
-    [`mv: ${err.message}`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    [`mv: ${err.message}`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  return 0;
 };
 
 /**
@@ -391,133 +411,412 @@ export const mv: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
  * Only removes directories that have no children.
  * For non-empty directories, use `rm -r` instead.
  */
-export const rmdir: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const rmdir: CommandHandler = async (args, env, streams) => {
   const { positional } = parseArgs(args);
-
   if (positional.length === 0) {
-    ['rmdir: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    ['rmdir: missing operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
-  const store = useVFSStore.getState();
-  const username = _appState?.effectiveUser || getAuthContext().username;
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { rmdir: rmdirOp } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
 
   for (const target of positional) {
-    const node = store.resolveRelativePath(cwdId, target);
-
+    const node = await resolveRelativePathAsync(cwdPath, target);
     if (!node) {
-      [`rmdir: failed to remove '${target}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+      streams.stderr.writeLine(`rmdir: failed to remove '${target}': No such file or directory`); return 1;
     }
     if (node.type !== 'directory') {
-      [`rmdir: failed to remove '${target}': Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+      streams.stderr.writeLine(`rmdir: failed to remove '${target}': Not a directory`); return 1;
     }
 
-    const children = store.getChildren(node.id, username);
-    if (children.length > 0) {
-      [`rmdir: failed to remove '${target}': Directory not empty`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    try {
+      const absPath = await getAbsolutePathAsync(node.id);
+      await rmdirOp(absPath, { recursive: false });
+    } catch (err: any) {
+      streams.stderr.writeLine(`rmdir: failed to remove '${target}': ${err.message}`); return 1;
     }
-
-    const err = store.deleteNode(node.id, username);
-    if (err) { [`rmdir: failed to remove '${target}': ${err}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
   }
-
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  return 0;
 };
 
-/**
- * find — Search for files in a directory hierarchy.
- *
- * Usage:
- *   find [path] [-name <pattern>] [-type f|d]
- *
- * Options:
- *   -name <pattern>   Filter by filename (supports * glob → regex)
- *   -type f|d         Filter by type: 'f' for files, 'd' for directories
- *
- * Default path is '.' (current directory).
- * Outputs one matched path per line.
- */
-export const find: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const find: CommandHandler = async (args, env, streams) => {
   const { options, positional } = parseArgs(args, ['name', 'type']);
-  const store = useVFSStore.getState();
-  const username = _appState?.effectiveUser || getAuthContext().username;
-
-  // Determine search root
   const searchPath = positional.length > 0 ? positional[0] : '.';
-  let startNode;
 
-  if (searchPath === '.') {
-    startNode = store.getNode(cwdId);
-  } else {
-    startNode = store.resolveRelativePath(cwdId, searchPath);
-  }
-
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const startNode = await resolveRelativePathAsync(cwdPath, searchPath);
+  
   if (!startNode) {
-    [`find: '${searchPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    streams.stderr.writeLine(`find: '${searchPath}': No such file or directory`); return 1;
   }
-
-  // Build name pattern (glob → regex)
+  
   let nameRegex: RegExp | null = null;
   if (options.name) {
-    // Convert glob pattern: * → .*, ? → ., escape rest
     const escaped = options.name
-      .replace(/[.+^${}()|[\]\\]/g, '\\$&')  // escape regex special chars (except * and ?)
+      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
       .replace(/\*/g, '.*')
       .replace(/\?/g, '.');
     nameRegex = new RegExp(`^${escaped}$`);
   }
 
-  // Type filter
-  const typeFilter = options.type; // 'f' or 'd' or undefined
-
-  // Collect matches
+  const typeFilter = options.type; 
   const matches: string[] = [];
+  const { stat, readdir } = await import('../../../fs/operations');
 
-  walkTree(startNode.id, searchPath, username || 'user', (node, path) => {
-    // Apply filters
-    if (typeFilter === 'f' && node.type !== 'file') return;
-    if (typeFilter === 'd' && node.type !== 'directory') return;
-    if (nameRegex && !nameRegex.test(node.name)) return;
+  async function walkAsync(nodeId: string, currentPath: string) {
+    const absPath = await getAbsolutePathAsync(nodeId);
+    const node = await stat(absPath);
+    
+    let match = true;
+    if (typeFilter === 'f' && node.type !== 'file') match = false;
+    if (typeFilter === 'd' && node.type !== 'directory') match = false;
+    if (nameRegex && !nameRegex.test(node.name)) match = false;
+    
+    if (match) matches.push(currentPath);
+    
+    if (node.type === 'directory') {
+      const children = await readdir(absPath);
+      for (const child of children) {
+        await walkAsync(child.id, currentPath === '/' || currentPath === '.' ? currentPath + '/' + child.name : currentPath + '/' + child.name);
+      }
+    }
+  }
 
-    matches.push(path);
-  });
-
-  matches.forEach((line: string) => process.stdout.writeLine(line)); return {};
+  await walkAsync(startNode.id, searchPath);
+  matches.forEach((line: string) => streams.stdout.writeLine(line)); return 0;
 };
 
-export const ln: CommandHandler = (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const ln: CommandHandler = async (args, env, streams) => {
   const { flags, positional } = parseArgs(args);
   const isSymlink = flags.s;
-  
-  if (positional.length < 2) { ['ln: missing operand'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+  if (positional.length < 2) { ['ln: missing operand'].forEach((line: string) => streams.stderr.writeLine(line)); return 1; }
   
   const targetPath = positional[0];
   const linkName = positional[1];
   
-  const store = useVFSStore.getState();
-  const username = _appState?.effectiveUser || getAuthContext().username;
-  
-  const linkSegments = linkName.split('/').filter(Boolean);
-  const name = linkSegments.pop();
-  if (!name) { ['ln: invalid link name'].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-  
-  const parentPath = linkSegments.length > 0 ? (linkName.startsWith('/') ? '/' + linkSegments.join('/') : linkSegments.join('/')) : '.';
-  const parentNode = store.resolveRelativePath(cwdId, parentPath);
-  
-  if (!parentNode || parentNode!.type !== 'directory') {
-    [`ln: cannot create link '${linkName}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
-  }
+  const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
+  const { symlink } = await import('../../../fs/operations');
   
   if (isSymlink) {
-    const { error } = store.createSymlink(parentNode!.id, name ?? '', targetPath, username);
-    if (error) { [`ln: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+    try {
+      const cwdPath = await getAbsolutePathAsync(env.cwdId);
+      const linkAbsPath = cwdPath === '/' ? '/' + linkName : cwdPath + '/' + linkName;
+      // Note: A true robust ln implementation resolves parents, but for now we simplify.
+      await symlink(targetPath, linkAbsPath);
+    } catch (err: any) {
+      streams.stderr.writeLine(`ln: ${err.message}`);
+    }
   } else {
-    const targetNode = store.resolveRelativePath(cwdId, targetPath);
-    if (!targetNode) { [`ln: failed to access '${targetPath}': No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
-    if (targetNode!.type === 'directory') { [`ln: ${targetPath}: hard link not allowed for directory`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+    streams.stderr.writeLine(`ln: hard links not currently supported`);
+    return 1;
+  }
+  return 0;
+};
+
+
+export const du: CommandHandler = async (args, env, streams) => {
+  const { flags, positional } = parseArgs(args);
+  
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { stat, readdir } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  
+  const targets = positional.length === 0 ? ['.'] : positional;
+  
+  const formatSize = (bytes: number) => {
+    if (!flags.h) return Math.ceil(bytes / 1024).toString(); // Default 1K blocks
+    if (bytes < 1024) return bytes + 'B';
+    const k = bytes / 1024;
+    if (k < 1024) return k.toFixed(1) + 'K';
+    const m = k / 1024;
+    if (m < 1024) return m.toFixed(1) + 'M';
+    const g = m / 1024;
+    return g.toFixed(1) + 'G';
+  };
+
+  const calculateSize = async (absPath: string, name: string): Promise<number> => {
+    try {
+      const nodeStat = await stat(absPath);
+      let totalSize = nodeStat.sizeBytes || 0;
+      
+      if (!flags.s) {
+        streams.stdout.writeLine(`${formatSize(totalSize)}\t${name}`);
+      }
+      
+      if (nodeStat.type === 'directory') {
+        const children = await readdir(absPath);
+        for (const child of children) {
+          const childPath = absPath === '/' ? '/' + child : absPath + '/' + child;
+          const childName = name === '.' ? './' + child : name + '/' + child;
+          totalSize += await calculateSize(childPath, childName);
+        }
+      }
+      
+      return totalSize;
+    } catch (err) {
+      streams.stderr.writeLine(`du: cannot access '${name}': No such file or directory`);
+      return 0;
+    }
+  };
+
+  for (const target of targets) {
+    const node = await resolveRelativePathAsync(cwdPath, target);
+    if (!node) {
+      streams.stderr.writeLine(`du: cannot access '${target}': No such file or directory`);
+      continue;
+    }
+    const absPath = await getAbsolutePathAsync(node.id);
     
-    const { error } = store.createLink(parentNode!.id, name ?? '', targetNode!.id, username);
-    if (error) { [`ln: ${error}`].forEach((line: string) => process.stderr.writeLine(line)); return {}; }
+    if (flags.s) {
+      // In summary mode we just calculate and print once at the root of the target
+      let totalSize = 0;
+      const getDirSize = async (p: string): Promise<number> => {
+        const s = await stat(p);
+        let size = s.sizeBytes || 0;
+        if (s.type === 'directory') {
+          const children = await readdir(p);
+          for (const c of children) {
+            size += await getDirSize(p === '/' ? '/' + c : p + '/' + c);
+          }
+        }
+        return size;
+      };
+      totalSize = await getDirSize(absPath);
+      streams.stdout.writeLine(`${formatSize(totalSize)}\t${target}`);
+    } else {
+      await calculateSize(absPath, target);
+    }
   }
   
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  return 0;
+};
+
+export const file: CommandHandler = async (args, env, streams) => {
+  const { positional } = parseArgs(args);
+  
+  if (positional.length === 0) {
+    streams.stderr.writeLine(`file: missing operand`);
+    return 1;
+  }
+  
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { readFile, stat } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  
+  for (const target of positional) {
+    const node = await resolveRelativePathAsync(cwdPath, target);
+    if (!node) {
+      streams.stderr.writeLine(`${target}: cannot open \`${target}' (No such file or directory)`);
+      continue;
+    }
+    
+    if (node.type === 'directory') {
+      streams.stdout.writeLine(`${target}: directory`);
+      continue;
+    }
+    
+    const absPath = await getAbsolutePathAsync(node.id);
+    const nodeStat = await stat(absPath);
+    
+    if (nodeStat.type === 'symlink') {
+      streams.stdout.writeLine(`${target}: symbolic link`);
+      continue;
+    }
+
+    try {
+      const blob = await readFile(absPath);
+      const ext = target.split('.').pop()?.toLowerCase();
+      
+      let typeStr = 'data';
+      if (['txt', 'md', 'js', 'ts', 'html', 'css', 'json', 'csv'].includes(ext || '')) {
+        typeStr = 'ASCII text';
+      } else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '')) {
+        typeStr = `${ext?.toUpperCase()} image data`;
+      } else if (['mp4', 'webm', 'ogg', 'avi'].includes(ext || '')) {
+        typeStr = `${ext?.toUpperCase()} video data`;
+      } else if (blob.size === 0) {
+        typeStr = 'empty';
+      } else {
+        // basic sniff
+        const text = await blob.text();
+        if (/^[\x20-\x7E\r\n\t]*$/.test(text.slice(0, 100))) {
+          typeStr = 'ASCII text';
+        }
+      }
+      
+      streams.stdout.writeLine(`${target}: ${typeStr}`);
+    } catch (err) {
+      streams.stderr.writeLine(`${target}: cannot open \`${target}'`);
+    }
+  }
+  
+  return 0;
+};
+
+export const statCmd: CommandHandler = async (args, env, streams) => {
+  const { positional } = parseArgs(args);
+  
+  if (positional.length === 0) {
+    streams.stderr.writeLine(`stat: missing operand`);
+    return 1;
+  }
+  
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { stat } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  
+  for (const target of positional) {
+    const node = await resolveRelativePathAsync(cwdPath, target);
+    if (!node) {
+      streams.stderr.writeLine(`stat: cannot stat '${target}': No such file or directory`);
+      continue;
+    }
+    
+    const absPath = await getAbsolutePathAsync(node.id);
+    const s = await stat(absPath);
+    
+    const typeStr = s.type === 'directory' ? 'directory' : s.type === 'symlink' ? 'symbolic link' : 'regular file';
+    const blocks = Math.ceil((s.sizeBytes || 0) / 512);
+    const ioBlock = 4096;
+    
+    // Convert permissions to octal
+    // This is a naive translation assuming standard unix bits, but VFS just stores uid/gid and basic perms in reality
+    // For now we mock the octal
+    const octal = s.type === 'directory' ? '0755' : '0644';
+    const rwx = s.type === 'directory' ? 'drwxr-xr-x' : '-rw-r--r--';
+    
+    const formatTime = (ts: number) => {
+      const d = new Date(ts);
+      return d.toISOString().replace('T', ' ').replace('Z', ' +0000');
+    };
+    
+    const timeStr = formatTime(s.modifiedAt || 0);
+    
+    streams.stdout.writeLine(`  File: ${target}`);
+    streams.stdout.writeLine(`  Size: ${(s.sizeBytes || 0).toString().padEnd(10, ' ')} Blocks: ${blocks.toString().padEnd(10, ' ')} IO Block: ${ioBlock}   ${typeStr}`);
+    streams.stdout.writeLine(`Access: (${octal}/${rwx})  Uid: (${s.ownerId || 1000}/ubuntu)   Gid: (${s.ownerId || 1000}/ubuntu)`);
+    streams.stdout.writeLine(`Access: ${timeStr}`);
+    streams.stdout.writeLine(`Modify: ${timeStr}`);
+    streams.stdout.writeLine(`Change: ${timeStr}`);
+  }
+  
+  return 0;
+};
+
+export const readlink: CommandHandler = async (args, env, streams) => {
+  const { flags, positional } = parseArgs(args);
+  
+  if (positional.length === 0) {
+    streams.stderr.writeLine(`readlink: missing operand`);
+    return 1;
+  }
+  
+  const target = positional[0];
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { readlink: vfsReadlink } = await import('../../../fs/operations');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  
+  const node = await resolveRelativePathAsync(cwdPath, target);
+  if (!node) {
+    return 1; // no output
+  }
+  
+  if (node.type !== 'symlink' && !flags.f) {
+    return 1;
+  }
+  
+  const absPath = await getAbsolutePathAsync(node.id);
+  
+  if (flags.f) {
+    // Canonicalize
+    // Actually our getAbsolutePathAsync already handles following symlinks if it resolves to it, wait, node.id is the resolved file
+    // The VFS architecture for symlinks isn't fully posix, but we can just output absPath.
+    streams.stdout.writeLine(absPath);
+    return 0;
+  }
+  
+  try {
+    const linkTarget = await vfsReadlink(absPath);
+    streams.stdout.writeLine(linkTarget);
+    return 0;
+  } catch (err) {
+    return 1;
+  }
+};
+
+export const basename: CommandHandler = async (args, _env, streams) => {
+  const { positional } = parseArgs(args);
+  
+  if (positional.length === 0) {
+    streams.stderr.writeLine(`basename: missing operand`);
+    return 1;
+  }
+  
+  let path = positional[0];
+  if (path.endsWith('/') && path.length > 1) {
+    path = path.slice(0, -1);
+  }
+  
+  const parts = path.split('/');
+  let base = parts.pop() || '';
+  if (base === '' && parts.length === 0) base = '/'; // It was just '/'
+  
+  const suffix = positional[1];
+  if (suffix && base.endsWith(suffix) && base !== suffix) {
+    base = base.slice(0, -suffix.length);
+  }
+  
+  streams.stdout.writeLine(base);
+  return 0;
+};
+
+export const dirname: CommandHandler = async (args, _env, streams) => {
+  const { positional } = parseArgs(args);
+  
+  if (positional.length === 0) {
+    streams.stderr.writeLine(`dirname: missing operand`);
+    return 1;
+  }
+  
+  let path = positional[0];
+  if (path.endsWith('/') && path.length > 1) {
+    path = path.replace(/\/+$/, '');
+  }
+  
+  const idx = path.lastIndexOf('/');
+  if (idx === -1) {
+    streams.stdout.writeLine('.');
+  } else if (idx === 0) {
+    streams.stdout.writeLine('/');
+  } else {
+    streams.stdout.writeLine(path.slice(0, idx));
+  }
+  
+  return 0;
+};
+
+export const realpath: CommandHandler = async (args, env, streams) => {
+  const { positional } = parseArgs(args);
+  
+  if (positional.length === 0) {
+    streams.stderr.writeLine(`realpath: missing operand`);
+    return 1;
+  }
+  
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  
+  for (const target of positional) {
+    const node = await resolveRelativePathAsync(cwdPath, target);
+    if (!node) {
+      streams.stderr.writeLine(`realpath: ${target}: No such file or directory`);
+      return 1;
+    }
+    const absPath = await getAbsolutePathAsync(node.id);
+    streams.stdout.writeLine(absPath);
+  }
+  
+  return 0;
 };

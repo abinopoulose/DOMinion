@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useWindowStore } from '../../store';
+import { useWindowAPI } from '../../hooks/useWindowAPI';
 import { BrowserTab } from './components/BrowserTab';
 import { BrowserContent } from './components/BrowserContent';
 import './Browser.css';
@@ -27,9 +28,8 @@ export const defaultBrowserAppState: BrowserAppState = {
 };
 
 export function BrowserHeaderControls({ windowId }: BrowserProps) {
-  const windowState = useWindowStore(useCallback((s) => s.windows.find((w) => w.id === windowId), [windowId]));
-  const updateAppState = useWindowStore((s) => s.updateAppState);
-  const appState = (windowState?.appState as BrowserAppState) || defaultBrowserAppState;
+  const { updateState: updateWindowState, getState } = useWindowAPI(windowId);
+  const appState = (getState<BrowserAppState>()) || defaultBrowserAppState;
   
   if (!appState.activeTabId && appState.tabs.length > 0) {
     appState.activeTabId = appState.tabs[0].id;
@@ -38,7 +38,7 @@ export function BrowserHeaderControls({ windowId }: BrowserProps) {
   const { tabs, activeTabId } = appState;
 
   const updateState = (updates: Partial<BrowserAppState>) => {
-    updateAppState(windowId, { ...appState, ...updates });
+    updateWindowState({ ...appState, ...updates });
   };
 
   const handleNewTab = (e: React.MouseEvent) => {
@@ -157,16 +157,14 @@ export function BrowserHeaderControls({ windowId }: BrowserProps) {
 }
 
 export function Browser({ windowId }: BrowserProps) {
-  const windowState = useWindowStore(useCallback((s) => s.windows.find((w) => w.id === windowId), [windowId]));
-  const updateAppState = useWindowStore((s) => s.updateAppState);
-  const updateWindowTitle = useWindowStore((s) => s.updateWindowTitle);
+  const { updateState: updateWindowState, getState, setTitle } = useWindowAPI(windowId);
 
   const [urlInputValue, setUrlInputValue] = useState('');
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   const defaultAppState = defaultBrowserAppState;
 
-  const appState = (windowState?.appState as BrowserAppState) || defaultAppState;
+  const appState = (getState<BrowserAppState>()) || defaultAppState;
 
   // Ensure there's an active tab
   if (!appState.activeTabId && appState.tabs.length > 0) {
@@ -178,11 +176,11 @@ export function Browser({ windowId }: BrowserProps) {
 
   useEffect(() => {
     setUrlInputValue(activeTab.url);
-    updateWindowTitle(windowId, activeTab.title ? `${activeTab.title} — Browser` : 'Browser');
-  }, [activeTabId, activeTab.url, activeTab.title, windowId, updateWindowTitle]);
+    setTitle(activeTab.title ? `${activeTab.title} — Browser` : 'Browser');
+  }, [activeTabId, activeTab.url, activeTab.title, windowId, setTitle]);
 
   const updateState = (updates: Partial<BrowserAppState>) => {
-    updateAppState(windowId, { ...appState, ...updates });
+    updateWindowState({ ...appState, ...updates });
   };
 
   const updateTab = (tabId: string, updates: Partial<TabState>) => {

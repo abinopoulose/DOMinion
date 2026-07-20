@@ -1,3 +1,8 @@
+export interface ChainedCommand {
+  pipeline: ParsedCommand[];
+  chainOp: ';' | '&&' | '||' | null;
+}
+
 export interface ParsedCommand {
   name: string;
   args: string[];

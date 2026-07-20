@@ -1,25 +1,42 @@
-import type { ParsedCommand } from './types';
+import type { ParsedCommand, ChainedCommand } from './types';
 
-export function parseCommand(input: string): ParsedCommand[] | null {
+export function parseCommand(input: string): ChainedCommand[] | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
-  const regex = /[^\s"']+|"([^"]*)"|'([^']*)'/g;
+  const regex = /(?:[^\s"']+|"[^"]*"|'[^']*')+/g;
   const tokens: string[] = [];
   let match;
 
   while ((match = regex.exec(trimmed)) !== null) {
-    if (match[1]) {
-      tokens.push(match[1]);
-    } else if (match[2]) {
-      tokens.push(match[2]);
-    } else {
-      tokens.push(match[0]);
-    }
+    tokens.push(match[0]);
   }
 
   if (tokens.length === 0) return null;
 
+  const chainedCommands: ChainedCommand[] = [];
+  let currentChainTokens: string[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === ';' || token === '&&' || token === '||') {
+      if (currentChainTokens.length > 0) {
+        chainedCommands.push(processChainSegment(currentChainTokens, token));
+        currentChainTokens = [];
+      }
+    } else {
+      currentChainTokens.push(token);
+    }
+  }
+
+  if (currentChainTokens.length > 0) {
+    chainedCommands.push(processChainSegment(currentChainTokens, null));
+  }
+
+  return chainedCommands.length > 0 ? chainedCommands : null;
+}
+
+function processChainSegment(tokens: string[], chainOp: ';' | '&&' | '||' | null): ChainedCommand {
   const pipelines: string[][] = [[]];
   for (const token of tokens) {
     if (token === '|') {
@@ -57,11 +74,14 @@ export function parseCommand(input: string): ParsedCommand[] | null {
       parsedCommands.push({
         name: finalArgs[0],
         args: finalArgs.slice(1),
-        raw: pipeTokens.join(' '), // Approximate raw for each piped segment
+        raw: pipeTokens.join(' '),
         redirections,
       });
     }
   }
 
-  return parsedCommands.length > 0 ? parsedCommands : null;
+  return {
+    pipeline: parsedCommands,
+    chainOp
+  };
 }

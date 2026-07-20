@@ -1,5 +1,6 @@
 import { getDB } from './db';
 import type { LegacyVFSNode, VFSNode } from './types';
+import { primePathCache } from './pathResolver';
 
 function legacyToVFSNode(legacy: LegacyVFSNode): VFSNode {
   const permissions = typeof legacy.permissions === 'string'
@@ -31,19 +32,21 @@ function legacyToVFSNode(legacy: LegacyVFSNode): VFSNode {
 export async function seedVfsFromSnapshot() {
   const db = await getDB();
 
-  // Check if root already exists — DB is already seeded
+  // Check if fully seeded
+  const isFullySeeded = localStorage.getItem('vfs_fully_seeded') === 'true';
   const rootExists = await db.get('inodes', 'root');
-  if (rootExists) {
-    console.log('[VFS Seed] Database already seeded. Skipping.');
+  
+  if (isFullySeeded && rootExists) {
+    console.log('[VFS Seed] Database already fully seeded. Skipping.');
     return;
   }
 
-  console.log('[VFS Seed] Root node missing. Seeding base OS tree...');
+  if (!rootExists) {
+    console.log('[VFS Seed] Root node missing. Seeding base OS tree...');
 
   // Seed base OS structure from seedNodeMap() — fast, ~38 nodes
   const { seedNodeMap } = await import('./seed');
   const baseMap = seedNodeMap();
-  const baseNodeCount = Object.keys(baseMap).length;
 
   const baseTx = db.transaction(['inodes', 'file_data'], 'readwrite');
   for (const id in baseMap) {
@@ -55,9 +58,23 @@ export async function seedVfsFromSnapshot() {
     }
   }
   await baseTx.done;
-  console.log(`[VFS Seed] ✅ Base OS tree ready (${baseNodeCount} nodes). UI can boot now.`);
+  }
+  console.log(`[VFS Seed] ✅ Base OS tree ready. UI can boot now.`);
 
-  // Seed Resume.pdf to user desktops
+  // Pre-warm pathResolver cache for critical login paths so the
+  // first password check doesn't trigger slow IDB traversals.
+  primePathCache('/etc', 'sys-etc');
+  primePathCache('/etc/shadow', 'sys-etc-shadow');
+  primePathCache('/etc/passwd', 'sys-etc-passwd');
+
+  // Fire-and-forget: seed Resume.pdf and the full 26K-node snapshot in the background.
+  // These do NOT block the login screen from rendering.
+  seedResumePdfInBackground(db);
+  seedSnapshotInBackground();
+}
+
+/** Seeds Resume.pdf to user desktops without blocking boot */
+async function seedResumePdfInBackground(db: Awaited<ReturnType<typeof getDB>>) {
   try {
     const resumeRes = await fetch('/Resume.pdf');
     if (resumeRes.ok) {
@@ -91,9 +108,6 @@ export async function seedVfsFromSnapshot() {
   } catch (e) {
     console.warn(`[VFS Seed] Failed to seed Resume.pdf:`, e);
   }
-
-  // Fire-and-forget: load the full snapshot in the background
-  seedSnapshotInBackground();
 }
 
 /** Loads vfs_seed.json in the background without blocking the UI */
@@ -160,6 +174,7 @@ async function seedSnapshotInBackground() {
     }
 
     console.log(`[VFS Seed BG] ✅ Background seeding complete. Written: ${written}, Skipped (deduped): ${skipped}.`);
+    localStorage.setItem('vfs_fully_seeded', 'true');
   } catch (err) {
     console.warn('[VFS Seed BG] Background seeding failed (non-critical):', err);
   }

@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { WindowState, AppId } from '../types';
 import { ubuntuIdbStorage } from './persistence';
 import { useWorkspaceStore } from './useWorkspaceStore';
+import { useProcessManager } from '../services/ProcessManager';
 
 interface WindowStore {
   windows: WindowState[];
@@ -42,6 +43,7 @@ const DEFAULT_SIZES: Record<AppId, { width: number; height: number }> = {
   'disk-usage-analyzer': { width: 500, height: 400 },
   welcome: { width: 740, height: 520 },
   'error-reporter': { width: 550, height: 450 },
+  'system-monitor': { width: 650, height: 500 },
 };
 
 const APP_TITLES: Record<AppId, string> = {
@@ -58,6 +60,7 @@ const APP_TITLES: Record<AppId, string> = {
   'disk-usage-analyzer': 'Disk Usage Analyzer',
   welcome: 'Welcome to Ubuntu',
   'error-reporter': 'System Error',
+  'system-monitor': 'System Monitor',
 };
 
 export const useWindowStore = create<WindowStore>()(
@@ -111,6 +114,9 @@ export const useWindowStore = create<WindowStore>()(
           appState: initialAppState,
         };
 
+        // Spawn a process for this window
+        useProcessManager.getState().spawn(appId, 3, 'user', id);
+
         set((state) => ({
           windows: [...state.windows.map(w => ({ ...w, isFocused: false })), newWindow],
           nextZIndex: state.nextZIndex + 1,
@@ -121,6 +127,9 @@ export const useWindowStore = create<WindowStore>()(
 
       closeWindow: (id: string) => {
         console.log(`[WindowStore] Closing window: ${id}`);
+        // Kill the associated process
+        useProcessManager.getState().killByWindowId(id);
+        
         set((state) => ({
           windows: state.windows.filter((w) => w.id !== id),
         }));
@@ -260,7 +269,10 @@ export const useWindowStore = create<WindowStore>()(
     {
       name: 'ubuntu-window-state',
       storage: createJSONStorage(() => ubuntuIdbStorage),
-      partialize: (state) => ({ windows: state.windows, nextZIndex: state.nextZIndex }), // store whole window state
+      partialize: (state) => ({ 
+        windows: state.windows.map(({ appState, ...rest }) => rest), 
+        nextZIndex: state.nextZIndex 
+      }), // Omit appState to reduce serialization overhead
       merge: (persistedState: any, currentState) => {
         if (!persistedState || !persistedState.windows) {
           return { ...currentState, ...persistedState };

@@ -1,4 +1,4 @@
-import type { NodeMap } from './types';
+// NodeMap no longer needed
 import type { Inode } from './inode';
 
 export const R_OK = 4;
@@ -46,35 +46,24 @@ function getUidForUser(username: string): number {
   return 9999;
 }
 
+import type { VFSNode } from './types';
+
 // Backwards compatibility layer for string-based checks
 export function hasPermission(
-  map: NodeMap,
-  nodeId: string,
+  node: VFSNode,
   operationType: 'read' | 'write' | 'execute',
-  executionUser: string,
-  _role?: string,
-  nodeOverride?: any
+  executionUser: string
 ): boolean {
   if (executionUser === 'root') return true;
-  
-  const node = nodeOverride || map[nodeId];
   if (!node) return false;
 
   const euid = getUidForUser(executionUser);
   const egid = euid;
   
-  let mode: number;
-  if (typeof node.permissions === 'number') {
-    mode = node.permissions;
-  } else if (typeof node.permissions === 'string') {
-    mode = parseInt(node.permissions, 8);
-  } else {
-    mode = node.type === 'directory' ? 0o755 : 0o644;
-  }
-  const ownerName = (node as any).ownerId || node.owner || 'user';
-  const groupName = (node as any).groupId || node.group || 'user';
-  const uid = getUidForUser(ownerName);
-  const gid = getUidForUser(groupName);
+  const parsedPermissions = typeof node.permissions === 'string' ? parseInt(node.permissions, 8) : node.permissions;
+  let mode: number = typeof parsedPermissions === 'number' ? parsedPermissions : (node.type === 'directory' ? 0o755 : 0o644);
+  const uid = getUidForUser(node.ownerId || (node as any).owner || 'user');
+  const gid = getUidForUser(node.groupId || (node as any).group || 'user');
 
   // Fake an inode for the check
   const fakeInode: Inode = {

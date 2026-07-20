@@ -25,10 +25,8 @@
   outline: none;
 }
 
-/* Dark mode overrides (optional since window is dark but textarea is usually white like gedit) */
-@media (prefers-color-scheme: dark) {
-  .text-editor-textarea {
-    background-color: #1e1e1e;
-    color: #d4d4d4;
-  }
+/* Dark mode overrides tied to the OS simulation theme, not the host browser */
+.theme-dark .text-editor-textarea {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
 }

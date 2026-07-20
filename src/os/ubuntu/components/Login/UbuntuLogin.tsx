@@ -5,11 +5,10 @@ import { UBUNTU_ACCOUNTS } from '../../../../config/accounts';
 import { TopBar } from '../TopBar/TopBar';
 import { SystemDialog } from '../SystemDialog/SystemDialog';
 import { verifyPassword } from '../../utils/passwordHasher';
-import { useUbuntuVFSStore } from '../../store';
+import * as fs from '../../fs/operations';
 import './UbuntuLogin.css';
 
 export function UbuntuLogin() {
-  const [isBooting, setIsBooting] = useState(true);
   const [selectedUser, setSelectedUser] = useState<string | null>(
     UBUNTU_ACCOUNTS.length === 1 ? UBUNTU_ACCOUNTS[0].username : null
   );
@@ -17,6 +16,7 @@ export function UbuntuLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [shadowContent, setShadowContent] = useState<string | null>(null);
   
   const authStore = useUbuntuAuthStore();
 
@@ -25,17 +25,31 @@ export function UbuntuLogin() {
     if (!selectedUser) return;
     
     // Read /etc/shadow from VFS for the selected user
-    const store = useUbuntuVFSStore.getState();
-    const shadowNode = store.resolvePath('/etc/shadow');
-
     let isValid = false;
+    let hasShadow = false;
 
-    if (shadowNode && shadowNode.type === 'file') {
-      const lines = shadowNode.content.split('\n');
+    if (shadowContent) {
+      hasShadow = true;
+      const lines = shadowContent.split('\n');
       const userLine = lines.find(l => l.startsWith(selectedUser + ':'));
       if (userLine) {
         const hash = userLine.split(':')[1];
         isValid = await verifyPassword(password, hash);
+      }
+    } else {
+      try {
+        const blob = await fs.readFile('/etc/shadow');
+        const content = await blob.text();
+        hasShadow = true;
+        
+        const lines = content.split('\n');
+        const userLine = lines.find(l => l.startsWith(selectedUser + ':'));
+        if (userLine) {
+          const hash = userLine.split(':')[1];
+          isValid = await verifyPassword(password, hash);
+        }
+      } catch (err) {
+        // Ignore errors, such as /etc/shadow not existing during initial migration
       }
     }
 
@@ -46,7 +60,7 @@ export function UbuntuLogin() {
       isValid = true;
     } else {
       // Fallback to config/accounts.ts if VFS shadow doesn't exist yet (migration)
-      if (!isValid && !shadowNode) {
+      if (!isValid && !hasShadow) {
         isValid = !!(selectedAccount && selectedAccount.password === password);
       }
     }
@@ -67,12 +81,29 @@ export function UbuntuLogin() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsBooting(false), 2000);
-    return () => clearTimeout(timer);
+    let isMounted = true;
+    
+    // Pre-fetch /etc/shadow to avoid IDB contention during login.
+    // Background seeding uses heavy readwrite transactions which can block readonly reads.
+    const fetchShadow = async () => {
+      try {
+        const blob = await fs.readFile('/etc/shadow');
+        const text = await blob.text();
+        if (isMounted) setShadowContent(text);
+      } catch (e) {
+        // ignore
+      }
+    };
+    
+    fetchShadow();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (selectedUser || isBooting) return;
+    if (selectedUser) return;
     
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
@@ -94,22 +125,7 @@ export function UbuntuLogin() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedUser, highlightedIndex, isBooting]);
-
-  if (isBooting) {
-    return (
-      <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-        <svg viewBox="0 0 24 24" width="100" height="100" fill="var(--color-accent, #E95420)">
-          <path d="M17.61.455a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zM12.92.8C8.923.777 5.137 2.941 3.148 6.451a4.5 4.5 0 0 1 .26-.007 4.92 4.92 0 0 1 2.585.737A8.316 8.316 0 0 1 12.688 3.6 4.944 4.944 0 0 1 13.723.834 11.008 11.008 0 0 0 12.92.8zm9.226 4.994a4.915 4.915 0 0 1-1.918 2.246 8.36 8.36 0 0 1-.273 8.303 4.89 4.89 0 0 1 1.632 2.54 11.156 11.156 0 0 0 .559-13.089zM3.41 7.932A3.41 3.41 0 0 0 0 11.342a3.41 3.41 0 0 0 3.41 3.409 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zm2.027 7.866a4.908 4.908 0 0 1-2.915.358 11.1 11.1 0 0 0 7.991 6.698 11.234 11.234 0 0 0 2.422.249 4.879 4.879 0 0 1-.999-2.85 8.484 8.484 0 0 1-.836-.136 8.304 8.304 0 0 1-5.663-4.32zm11.405.928a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41z"/>
-        </svg>
-        <div style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px' }}>
-          <div style={{ width: '32px', height: '32px', border: '3px solid transparent', borderTop: '3px solid #fff', borderRight: '3px solid #fff', borderRadius: '50%', animation: 'plymouth-spin 1s linear infinite' }}></div>
-          <h1 style={{ color: 'white', fontFamily: 'Ubuntu, sans-serif', fontSize: '32px', fontWeight: 'bold', margin: 0, letterSpacing: '-1px' }}>ubuntu</h1>
-        </div>
-        <style>{`@keyframes plymouth-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
+  }, [selectedUser, highlightedIndex]);
 
   return (
     <div className="ubuntu-login-container">

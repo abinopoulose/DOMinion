@@ -1,5 +1,4 @@
-import type { TerminalAppState } from './types';
-import type { CommandResult } from '../commandParser/types';
+import type { CommandHandler } from './types';
 import { commandRegistry } from './index';
 import { parseArgs } from '../commandParser';
 import {
@@ -9,85 +8,36 @@ import {
 } from '../../../services/sudoService';
 import { useUbuntuAuthStore } from '../../../store/useUbuntuAuthStore';
 
-/**
- * sudo — Execute a command as another user.
- *
- * Usage:
- *   sudo [options] command [args...]
- *
- * Options:
- *   -u <user>   Run the command as the specified user (default: root)
- *   -S          Read password from standard input (not implemented in terminal,
- *               but recognized for educational display)
- *   -k          Invalidate the user's cached credentials
- *   -K          Remove the user's cached credentials entirely
- *   -l          List the allowed (and forbidden) commands for the invoking user
- *   -i          Run a login shell as the target user
- *
- * This handler is called by Terminal.tsx for commands that start with 'sudo'.
- * If the user's credentials are NOT cached, the handler returns a special
- * result that tells Terminal.tsx to enter password-prompt mode.
- * Terminal.tsx then calls `verifySudoPassword()` from SudoService.
- */
-export interface SudoCommandResult extends CommandResult {
-  /** If true, Terminal.tsx should enter password prompt mode */
-  needsPassword?: boolean;
-  /** The command to execute after password is verified */
-  pendingCommand?: string;
-  /** The target user for the sudo session */
-  targetUser?: string;
-}
-
-export async function handleSudo(
-  args: string[],
-  cwdId: string,
-  updateCwd: (id: string) => void,
-  clearHistory: () => void,
-  appState: TerminalAppState | undefined,
-  windowId: string,
-  currentUser: string,
-  process: any
-): Promise<SudoCommandResult> {
-  // Parse sudo-specific flags
+export const sudo: CommandHandler = async (args, env, streams) => {
   const { flags, options, positional } = parseArgs(args, ['u']);
   const targetUser = options.u || 'root';
+  const currentUser = env.effectiveUser;
 
-  // Handle -k: invalidate cached credentials
   if (flags.k) {
-    useUbuntuAuthStore.getState().revokeSudoAccess(windowId);
-    if (positional.length === 0) {
-      return { output: [] }; // sudo -k with no command just invalidates
-    }
+    useUbuntuAuthStore.getState().revokeSudoAccess('global-window');
+    if (positional.length === 0) return 0;
   }
 
-  // Handle -K: remove cached credentials entirely (same as -k in our simulation)
   if (flags.K) {
-    useUbuntuAuthStore.getState().revokeSudoAccess(windowId);
-    return { output: [] };
+    useUbuntuAuthStore.getState().revokeSudoAccess('global-window');
+    return 0;
   }
 
-  // Handle -l: list allowed commands
   if (flags.l) {
-    return handleSudoList(currentUser);
+    return await handleSudoList(currentUser, streams);
   }
 
-  // No command specified
   if (positional.length === 0 && !flags.i) {
-    if (process) {
-      ['usage: sudo [-u user] [-k] [-l] command [args...]'].forEach(l => process.stderr.writeLine(l));
-      return { output: [], isError: true };
-    }
-    return { output: ['usage: sudo [-u user] [-k] [-l] command [args...]'], isError: true };
+    streams.stderr.writeLine('usage: sudo [-u user] [-k] [-l] command [args...]');
+    return 1;
   }
 
-  // Handle -i: login shell as target user
   if (flags.i) {
-    return handleSudoShell(currentUser, targetUser, windowId);
+    return await handleSudoShell(currentUser, targetUser, env, streams);
   }
 
-  // Check authorization via SudoService
   const commandName = positional[0];
-  const authResult = checkSudoAuthorization({
+  const authResult = await checkSudoAuthorization({
     requestingUser: currentUser,
     targetUser,
     command: commandName,
@@ -95,41 +45,22 @@ export async function handleSudo(
 
   if (!authResult.authorized) {
     const errStr = authResult.error || `${currentUser} is not in the sudoers file. This incident will be reported.`;
-    if (process) {
-      [errStr].forEach(l => process.stderr.writeLine(l));
-      return { output: [], isError: true };
-    }
-    return { output: [errStr], isError: true };
+    streams.stderr.writeLine(errStr);
+    return 1;
   }
 
-  // Check if credentials are cached
-  if (authResult.requiresPassword && !isSudoCached(windowId)) {
-    // Return a special result telling Terminal.tsx to enter password mode
-    return {
-      output: [],
-      needsPassword: true,
-      pendingCommand: positional.join(' '),
-      targetUser,
-    };
+  if (authResult.requiresPassword && !isSudoCached('global-window')) {
+    streams.stdout.writeLine(`[sudo] password for ${currentUser}: `);
   }
 
-  // Credentials cached or no password required — execute immediately
-  return await executeSudoCommand(positional, cwdId, updateCwd, clearHistory, appState, targetUser, process);
-}
+  return await executeSudoCommand(positional, env, streams);
+};
 
-/**
- * Execute the actual command with elevated privileges.
- * Called after password verification (or when credentials are cached).
- */
 export async function executeSudoCommand(
   commandParts: string[],
-  cwdId: string,
-  updateCwd: (id: string) => void,
-  clearHistory: () => void,
-  appState: TerminalAppState | undefined,
-  _targetUser: string = 'root',
-  process: any
-): Promise<Partial<CommandResult>> {
+  env: any,
+  streams: any
+): Promise<number> {
   const commandName = commandParts[0];
   const commandArgs = commandParts.slice(1);
 
@@ -138,83 +69,43 @@ export async function executeSudoCommand(
     const lines = [
       `sudo: ${commandName}: command not found`,
       `sudo: "${commandName}" is a shell built-in command, it cannot be run directly.`,
-      `sudo: the -s option may be used to run a privileged shell.`,
-      `sudo: the -D option may be used to run a command in a specific directory.`,
     ];
-    if (process) {
-      lines.forEach(l => process.stderr.writeLine(l));
-      return { output: [], isError: true };
-    }
-    return { output: lines, isError: true };
+    lines.forEach(l => streams.stderr.writeLine(l));
+    return 1;
   }
 
   const handler = commandRegistry[commandName];
   if (!handler) {
-    if (process) {
-      [`sudo: ${commandName}: command not found`].forEach(l => process.stderr.writeLine(l));
-      return { output: [], isError: true };
-    }
-    return { output: [`sudo: ${commandName}: command not found`], isError: true };
+    streams.stderr.writeLine(`sudo: ${commandName}: command not found`);
+    return 1;
   }
 
-  // Execute with elevated privileges
-  return await withElevation(async () => await handler(commandArgs, cwdId, updateCwd, clearHistory, appState as any, process));
+  return await withElevation(async () => await handler(commandArgs, env, streams)) ?? 0;
 }
 
-/**
- * Handle `sudo -l` — list allowed commands for the current user.
- */
-function handleSudoList(username: string): SudoCommandResult {
-  const authResult = checkSudoAuthorization({
-    requestingUser: username,
-  });
-
+async function handleSudoList(username: string, streams: any): Promise<number> {
+  const authResult = await checkSudoAuthorization({ requestingUser: username });
   if (!authResult.authorized) {
-    return { output: [`Sorry, user ${username} may not run sudo on ubuntu-web.`], isError: true };
+    streams.stderr.writeLine(`Sorry, user ${username} may not run sudo on ubuntu-web.`);
+    return 1;
   }
 
-  return {
-    output: [
-      `Matching Defaults entries for ${username} on ubuntu-web:`,
-      '    env_reset, mail_badpass,',
-      '    secure_path=/usr/local/sbin\\:/usr/local/bin\\:/usr/sbin\\:/usr/bin\\:/sbin\\:/bin',
-      '',
-      `User ${username} may run the following commands on ubuntu-web:`,
-      '    (ALL : ALL) ALL',
-    ],
-  };
+  streams.stdout.writeLine(`Matching Defaults entries for ${username} on ubuntu-web:`);
+  streams.stdout.writeLine('    env_reset, mail_badpass,');
+  streams.stdout.writeLine('    secure_path=/usr/local/sbin\\:/usr/local/bin\\:/usr/sbin\\:/usr/bin\\:/sbin\\:/bin');
+  streams.stdout.writeLine('');
+  streams.stdout.writeLine(`User ${username} may run the following commands on ubuntu-web:`);
+  streams.stdout.writeLine('    (ALL : ALL) ALL');
+  return 0;
 }
 
-/**
- * Handle `sudo -i` — open a login shell as root (or target user).
- * In our simulation, this changes the effective user for the terminal session.
- */
-function handleSudoShell(
-  currentUser: string,
-  targetUser: string,
-  windowId: string,
-): SudoCommandResult {
-  const authResult = checkSudoAuthorization({
-    requestingUser: currentUser,
-    targetUser,
-  });
-
+async function handleSudoShell(currentUser: string, targetUser: string, env: any, streams: any): Promise<number> {
+  const authResult = await checkSudoAuthorization({ requestingUser: currentUser, targetUser });
   if (!authResult.authorized) {
-    return { output: [authResult.error || `${currentUser} is not in the sudoers file.`], isError: true };
+    streams.stderr.writeLine(authResult.error || `${currentUser} is not in the sudoers file.`);
+    return 1;
   }
-
-  if (authResult.requiresPassword && !isSudoCached(windowId)) {
-    return {
-      output: [],
-      needsPassword: true,
-      pendingCommand: '__sudo_shell__',
-      targetUser,
-    };
-  }
-
-  // Terminal.tsx handles the actual user switch by setting effectiveUser in appState
-  return {
-    output: [],
-    pendingCommand: '__sudo_shell_authorized__', // Used to signal success
-  };
+  
+  env.pushUser(targetUser);
+  return 0;
 }

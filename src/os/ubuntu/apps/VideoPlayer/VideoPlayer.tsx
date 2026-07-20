@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useFileUrl } from '../../hooks/useFileUrl';
-import { useWindowStore } from '../../store';
+import { useWindowAPI } from '../../hooks/useWindowAPI';
 import './VideoPlayer.css';
 
 interface VideoPlayerProps {
@@ -8,9 +8,30 @@ interface VideoPlayerProps {
 }
 
 export function VideoPlayer({ windowId }: VideoPlayerProps) {
-  const win = useWindowStore((s: any) => s.windows.find((w: any) => w.id === windowId));
+  const { getState, updateState } = useWindowAPI(windowId);
+  const win = { appState: getState<any>() };
   const fileId = (win?.appState as any)?.fileId;
   const { url, loading, error, mimeType } = useFileUrl(fileId);
+  const [unsupported, setUnsupported] = useState(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUnsupported(false);
+    const draggedId = e.dataTransfer.getData('application/x-vfs-node');
+    if (draggedId) {
+      const ext = draggedId.toLowerCase().split('.').pop() || '';
+      const supported = ['mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac', 'aac', 'm4a', 'mkv', 'avi'].includes(ext);
+      if (supported) {
+        updateState({ fileId: draggedId });
+      } else {
+        setUnsupported(true);
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
 
   const mediaRef = useRef<HTMLVideoElement & HTMLAudioElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,16 +114,18 @@ export function VideoPlayer({ windowId }: VideoPlayerProps) {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#fff', background: '#000' }}>Loading media...</div>;
-  if (error) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#ff5555', background: '#000' }}>Failed to load media.</div>;
-  if (!url) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#aaa', background: '#000' }}>No media selected</div>;
+  const renderContent = () => {
+    if (unsupported) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#ff5555', background: '#000', fontWeight: 'bold' }}>Unsupported format. Please drop a valid media file.</div>;
+    if (loading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#fff', background: '#000' }}>Loading media...</div>;
+    if (error) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#ff5555', background: '#000' }}>Failed to load media.</div>;
+    if (!url) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#aaa', background: '#000' }}>Drop a video or audio file here to play</div>;
 
-  const ext = fileId.split('.').pop()?.toLowerCase() || '';
-  const isAudio = mimeType?.startsWith('audio/') || ['mp3', 'wav', 'flac', 'aac', 'm4a', 'ogg'].includes(ext);
+    const ext = fileId?.split('.').pop()?.toLowerCase() || '';
+    const isAudio = mimeType?.startsWith('audio/') || ['mp3', 'wav', 'flac', 'aac', 'm4a', 'ogg'].includes(ext);
 
-  return (
-    <div className={`vlc-container ${isFullscreen ? 'vlc-fullscreen' : ''}`} ref={containerRef}>
-      <div className="vlc-media-area" onClick={togglePlay}>
+    return (
+      <div className={`vlc-container ${isFullscreen ? 'vlc-fullscreen' : ''}`} ref={containerRef}>
+        <div className="vlc-media-area" onClick={togglePlay}>
         {isAudio ? (
           <div className="vlc-cone-container">
             <svg width="150" height="150" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -208,7 +231,14 @@ export function VideoPlayer({ windowId }: VideoPlayerProps) {
             />
           </div>
         </div>
+        </div>
       </div>
+    );
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: '#000' }} onDragOver={handleDragOver} onDrop={handleDrop}>
+      {renderContent()}
     </div>
   );
 }

@@ -1,0 +1,73 @@
+.system-monitor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--color-bg-primary, #ffffff);
+  color: var(--color-text-primary, #1a1a1a);
+  font-family: 'Ubuntu', sans-serif;
+}
+
+.system-monitor-header {
+  padding: 12px 16px;
+  background: var(--color-bg-secondary, #f0f0f0);
+  border-bottom: 1px solid var(--color-border, #ddd);
+}
+
+.system-monitor-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.system-monitor-table-container {
+  flex: 1;
+  overflow: auto;
+}
+
+.system-monitor-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.system-monitor-table th, .system-monitor-table td {
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border, #eee);
+}
+
+.system-monitor-table th {
+  background: var(--color-bg-secondary, #f0f0f0);
+  font-weight: 500;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.state-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.state-running { background: #e6f4ea; color: #137333; }
+.state-sleeping { background: #fce8e6; color: #c5221f; }
+
+.btn-kill {
+  background: #E95420;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-kill:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.btn-kill:hover:not(:disabled) {
+  background: #c54316;
+}

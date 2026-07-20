@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { UBUNTU_ACCOUNTS, updateUbuntuAccount } from '../../../../../../config/accounts';
 import { useUbuntuAuthStore } from '../../../../store/useUbuntuAuthStore';
 import { useSystemDialogStore } from '../../../../store/useSystemDialogStore';
-import { useUbuntuVFSStore } from '../../../../store';
+// useUbuntuVFSStore removed
 import { hashPassword } from '../../../../utils/passwordHasher';
 
 export function UsersPage() {
@@ -50,21 +50,33 @@ export function UsersPage() {
         
         // Critically, we must also update the Virtual File System's shadow file, 
         // as the Login and Sudo services prioritize reading from /etc/shadow!
-        const store = useUbuntuVFSStore.getState();
-        const shadowNode = store.resolvePath('/etc/shadow');
-        if (shadowNode && shadowNode.type === 'file') {
-          const newHash = await hashPassword(newPassword);
-          const lines = shadowNode.content.split('\n');
-          const newLines = lines.map(line => {
-            if (line.startsWith(currentUser + ':')) {
-              const parts = line.split(':');
-              parts[1] = newHash;
-              return parts.join(':');
+        (async () => {
+          try {
+            const { getAbsolutePathAsync } = await import('../../../../fs/pathResolver');
+            const { readFile, writeFile } = await import('../../../../fs/operations');
+            const path = await getAbsolutePathAsync('/etc/shadow');
+            const contentBlob = await readFile(path);
+            let content = '';
+            if (contentBlob instanceof Blob) {
+              content = await contentBlob.text();
+            } else {
+              content = contentBlob as string;
             }
-            return line;
-          });
-          store.updateContent(shadowNode.id, newLines.join('\n'), 'root');
-        }
+            const newHash = await hashPassword(newPassword);
+            const lines = content.split('\n');
+            const newLines = lines.map((line: string) => {
+              if (line.startsWith(currentUser + ':')) {
+                const parts = line.split(':');
+                parts[1] = newHash;
+                return parts.join(':');
+              }
+              return line;
+            });
+            await writeFile(path, newLines.join('\n'));
+          } catch (e) {
+            console.error('Failed to update /etc/shadow', e);
+          }
+        })();
       }
       
       setShowPasswordModal(false);

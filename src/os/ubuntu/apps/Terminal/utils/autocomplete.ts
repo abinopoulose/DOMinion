@@ -1,6 +1,6 @@
-import { useVFSStore } from '../../../store';
 import { commandRegistry } from '../commands';
-import { getAuthContext } from '../../../store/useUbuntuVFSStore';
+import { getDB } from '../../../fs/db';
+import { resolveRelativePathAsync } from '../../../fs/pathResolver';
 
 export interface AutocompleteResult {
   completion?: string;
@@ -44,7 +44,7 @@ export function formatAsColumns(items: string[], terminalWidth = 100): string[] 
   return lines;
 }
 
-export function handleAutocomplete(currentInput: string, cwdId: string): AutocompleteResult {
+export async function handleAutocomplete(currentInput: string, cwdPath: string): Promise<AutocompleteResult> {
   if (!currentInput) return {};
 
   const words = currentInput.split(' ');
@@ -67,9 +67,6 @@ export function handleAutocomplete(currentInput: string, cwdId: string): Autocom
     }
     return {};
   } else {
-    const store = useVFSStore.getState();
-    const username = getAuthContext().username;
-
     const lastSlashIndex = lastWord.lastIndexOf('/');
     let dirPath = '';
     let partialName = lastWord;
@@ -79,13 +76,17 @@ export function handleAutocomplete(currentInput: string, cwdId: string): Autocom
       partialName = lastWord.substring(lastSlashIndex + 1);
     }
 
-    let targetDirId = cwdId;
+    let targetDirId = 'root'; // fallback
+    const db = await getDB();
     
     if (dirPath === '/') {
-      targetDirId = store.rootIno ? store.inoToId[store.rootIno] : cwdId;
-    } else if (dirPath !== '') {
+      targetDirId = 'root';
+    } else if (dirPath === '') {
+      const node = await resolveRelativePathAsync(cwdPath, '.');
+      if (node) targetDirId = node.id;
+    } else {
       const resolvePath = dirPath.endsWith('/') && dirPath.length > 1 ? dirPath.slice(0, -1) : dirPath;
-      const node = store.resolveRelativePath(cwdId, resolvePath);
+      const node = await resolveRelativePathAsync(cwdPath, resolvePath);
       if (node && node.type === 'directory') {
         targetDirId = node.id;
       } else {
@@ -93,7 +94,7 @@ export function handleAutocomplete(currentInput: string, cwdId: string): Autocom
       }
     }
 
-    const children = store.getChildren(targetDirId, username);
+    const children = await db.getAllFromIndex('inodes', 'by-parent', targetDirId);
     const matches = children
       .map(c => {
         const name = c.name + (c.type === 'directory' ? '/' : '');

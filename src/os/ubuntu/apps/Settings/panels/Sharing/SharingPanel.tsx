@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { SettingsPanelWrapper } from '../../components/SettingsPanelWrapper';
-import { useUbuntuVFSStore } from '../../../../store/useUbuntuVFSStore';
+// useUbuntuVFSStore removed
 
 export function SharingPanel() {
-  const vfsStore = useUbuntuVFSStore();
   const [hostname, setHostname] = useState(() => {
     return localStorage.getItem('ubuntu-hostname') || 'envyy';
   });
@@ -12,10 +11,17 @@ export function SharingPanel() {
     const newName = e.target.value;
     setHostname(newName);
     localStorage.setItem('ubuntu-hostname', newName);
-    const node = vfsStore.resolvePath('/etc/hostname');
-    if (node && node.type === 'file') {
-      vfsStore.updateContent(node.id, newName + '\n', 'root');
-    }
+    
+    (async () => {
+      try {
+        const { getAbsolutePathAsync } = await import('../../../../fs/pathResolver');
+        const { writeFile } = await import('../../../../fs/operations');
+        const path = await getAbsolutePathAsync('/etc/hostname');
+        await writeFile(path, newName + '\n');
+      } catch (err) {
+        console.error('Failed to save hostname to VFS', err);
+      }
+    })();
   };
 
   return (

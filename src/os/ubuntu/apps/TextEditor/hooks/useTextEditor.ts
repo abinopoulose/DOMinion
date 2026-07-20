@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { create } from 'zustand';
-import { useWindowStore, useVFSStore } from '../../../store';
+import { useWindowStore } from '../../../store';
+import { useWindowAPI } from '../../../hooks/useWindowAPI';
 import { getDesktopId } from '../../../fs/seed';
 import { useUbuntuAuthStore } from '../../../store/useUbuntuAuthStore';
 
@@ -32,12 +33,10 @@ const useEditorStore = create<TextEditorState>((set) => ({
 }));
 
 export function useTextEditor(windowId: string) {
-  const windowState = useWindowStore(useCallback((s) => s.windows.find(w => w.id === windowId), [windowId]));
+  const { updateState: updateWindowState, getState } = useWindowAPI(windowId);
   const closeWindow = useWindowStore((s) => s.closeWindow);
-  const updateAppState = useWindowStore((s) => s.updateAppState);
-  const vfsStore = useVFSStore();
 
-  const appState = (windowState?.appState as { fileId?: string }) || {};
+  const appState = (getState<{ fileId?: string }>()) || {};
   const { fileId } = appState;
 
   const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
@@ -55,7 +54,6 @@ export function useTextEditor(windowId: string) {
   // Clean up session when window is closed (or component is unmounted and window doesn't exist)
   useEffect(() => {
     return () => {
-      // Small timeout to allow check if window was actually closed
       setTimeout(() => {
         const stillExists = useWindowStore.getState().windows.find(w => w.id === windowId);
         if (!stillExists) {
@@ -66,59 +64,90 @@ export function useTextEditor(windowId: string) {
   }, [windowId, removeSession]);
 
   useEffect(() => {
-    if (fileId) {
-      const node = vfsStore.getNode(fileId);
-      if (node && node.type === 'file') {
-        const absolutePath = vfsStore.getAbsolutePath(fileId);
-        const loc = absolutePath.substring(0, absolutePath.lastIndexOf('/')) || '/';
+    let mounted = true;
+    const loadFile = async () => {
+      try {
+        const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
         
-        // Only load if not already loaded to prevent overriding user edits if re-rendered
-        if (session.fileName === 'Untitled Document' && session.content === '') {
-          setSession(windowId, {
-            content: node.content,
-            originalContent: node.content,
-            fileName: node.name,
-            fileLocation: loc
-          });
+        if (fileId) {
+          const { stat, readFile } = await import('../../../fs/operations');
+          const absolutePath = await getAbsolutePathAsync(fileId);
+          const node = await stat(absolutePath);
+          
+          if (node && node.type === 'file') {
+            const loc = absolutePath.substring(0, absolutePath.lastIndexOf('/')) || '/';
+            const blob = await readFile(absolutePath);
+            const content = await blob.text();
+            
+            if (mounted && session.fileName === 'Untitled Document' && session.content === '') {
+              setSession(windowId, {
+                content,
+                originalContent: content,
+                fileName: node.name,
+                fileLocation: loc
+              });
+            }
+          }
+        } else {
+          if (mounted && session.fileLocation === '') {
+            const desktopAbsPath = await getAbsolutePathAsync(DESKTOP_ID);
+            setSession(windowId, {
+              fileLocation: desktopAbsPath
+            });
+          }
         }
+      } catch (e) {
+        console.error("Error loading file in TextEditor:", e);
       }
-    } else {
-      if (session.fileLocation === '') {
-        setSession(windowId, {
-          fileLocation: vfsStore.getAbsolutePath(DESKTOP_ID)
-        });
-      }
-    }
-  }, [fileId, vfsStore, DESKTOP_ID, windowId, setSession, session.fileName, session.content, session.fileLocation]);
+    };
+    
+    loadFile();
+    
+    return () => { mounted = false; };
+  }, [fileId, DESKTOP_ID, windowId, setSession, session.fileName, session.content, session.fileLocation]);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
+    const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
+    const { writeFile, stat } = await import('../../../fs/operations');
+
     if (fileId) {
-      const err = vfsStore.updateContent(fileId, session.content);
-      if (!err) {
+      try {
+        const absolutePath = await getAbsolutePathAsync(fileId);
+        await writeFile(absolutePath, new Blob([session.content]));
         setSession(windowId, { originalContent: session.content });
-      } else {
-        alert(`Failed to save: ${err}`);
+      } catch (err: any) {
+        alert(`Failed to save: ${err.message}`);
       }
     } else {
       const name = prompt('Enter file name to save to Desktop:', 'new_file.txt');
       if (name) {
-        if (vfsStore.exists(DESKTOP_ID, name)) {
-          alert('A file with this name already exists.');
-          return;
-        }
-        const { error: err } = vfsStore.createNode(DESKTOP_ID, name, 'file', session.content);
-        if (err) {
-          alert(`Failed to create file: ${err}`);
-        } else {
-          const newNode = vfsStore.getChildren(DESKTOP_ID).find(c => c.name === name);
+        try {
+          const desktopAbsPath = await getAbsolutePathAsync(DESKTOP_ID);
+          const newFilePath = desktopAbsPath === '/' ? '/' + name : desktopAbsPath + '/' + name;
+          
+          let exists = true;
+          try {
+             await stat(newFilePath);
+          } catch(e) { exists = false; }
+          
+          if (exists) {
+            alert('A file with this name already exists.');
+            return;
+          }
+          
+          await writeFile(newFilePath, new Blob([session.content]));
+          const newNode = await stat(newFilePath);
+          
           if (newNode) {
-            updateAppState(windowId, { fileId: newNode.id });
+            updateWindowState({ fileId: newNode.id });
             setSession(windowId, { originalContent: session.content, fileName: name });
           }
+        } catch (err: any) {
+          alert(`Failed to create file: ${err.message}`);
         }
       }
     }
-  }, [fileId, session.content, vfsStore, DESKTOP_ID, windowId, updateAppState, setSession]);
+  }, [fileId, session.content, DESKTOP_ID, windowId, updateWindowState, setSession]);
 
   const handleClose = useCallback(() => {
     if (session.content !== session.originalContent) {

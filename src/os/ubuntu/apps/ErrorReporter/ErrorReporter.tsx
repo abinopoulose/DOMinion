@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useWindowStore } from '../../store';
+import { useWindowAPI } from '../../hooks/useWindowAPI';
 import { BRANDING } from '../../../../config/branding';
 import './ErrorReporter.css';
 
@@ -8,7 +9,8 @@ interface ErrorReporterProps {
 }
 
 export function ErrorReporter({ windowId }: ErrorReporterProps) {
-  const windowState = useWindowStore((s: any) => s.windows.find((w: any) => w.id === windowId));
+  const { getState } = useWindowAPI(windowId);
+  const windowState = { appState: getState<any>() };
   const closeWindow = useWindowStore((s: any) => s.closeWindow);
   const [showDetails, setShowDetails] = useState(false);
   
@@ -18,7 +20,9 @@ export function ErrorReporter({ windowId }: ErrorReporterProps) {
   const componentStack = appState.componentStack || '';
 
   const handleSend = () => {
-    const errorDetails = `Error: ${errorMessage}\n\nStack Trace:\n${errorStack}\n\nComponent Stack:\n${componentStack}`;
+    const systemInfo = `Timestamp: ${new Date().toISOString()}\nUser Agent: ${navigator.userAgent}\nPlatform: ${navigator.platform || 'Unknown'}\nScreen: ${window.screen.width}x${window.screen.height}\nLanguage: ${navigator.language}\nHardware Concurrency: ${navigator.hardwareConcurrency || 'Unknown'}\nDevice Memory: ${(navigator as any).deviceMemory || 'Unknown'}GB`;
+    
+    const errorDetails = `Error: ${errorMessage}\n\nStack Trace:\n${errorStack}\n\nComponent Stack:\n${componentStack}\n\n--- System Info ---\n${systemInfo}`;
     const subject = encodeURIComponent("DOMinion Error");
     const body = encodeURIComponent(`Please describe what you were doing when this error occurred:\n\n\n--- Error Details ---\n${errorDetails}`);
     

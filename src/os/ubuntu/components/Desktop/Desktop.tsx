@@ -12,6 +12,8 @@ import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
 import { getIconForFile, getSpecialFolderIconUrl } from '../../utils/iconResolver';
 import type { LegacyVFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
+import { moveNode, duplicateNode } from '../../fs/operations';
+import { useSystemDialogStore } from '../../store/useSystemDialogStore';
 import { useSelectionBox } from '../../hooks/useSelectionBox';
 import { TrashConfirmDialog } from '../TrashConfirmDialog/TrashConfirmDialog';
 import { initDynamicDrag, updateDynamicDrag, cleanupDynamicDrag } from '../../utils/dragGhost';
@@ -25,6 +27,14 @@ const DESKTOP_ICONS = [
   { id: 'trash', label: 'Trash', icon: trashIcon },
 ];
 
+async function attemptWithPolkitAsync(_username: string, actionDesc: string, fn: () => Promise<void>) {
+  useSystemDialogStore.getState().openPolkitDialog({
+    message: `Authentication is needed to ${actionDesc}.`,
+    actionId: 'org.freedesktop.filemanager.' + actionDesc.toLowerCase().replace(/\s/g, '-'),
+    icon: 'folder',
+    onSuccess: () => { fn().catch(console.error); },
+  });
+}
 
 
 interface DesktopProps {
@@ -40,9 +50,6 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const showDesktopIcons = useSettingsStore((s: any) => s.showDesktopIcons);
   const settingsWallpaper = useSettingsStore((s: any) => s.wallpaper);
   const openWindow = useWindowStore((state) => state.openWindow);
-  const vfsStore = useVFSStore();
-  // Explicitly subscribe to map changes
-  useVFSStore((s) => s.map); 
   const username = useUbuntuAuthStore((s) => s.currentUser) || 'peasant';
   const DESKTOP_ID = getDesktopId(username);
   const HOME_ID = getHomeId(username);
@@ -51,6 +58,17 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const desktopPath = `/home/${username}/Desktop`;
   const { nodes: fsNodes } = useFileSystem(desktopPath);
   const desktopFiles = fsNodes as any[];
+
+  const [desktopNode, setDesktopNode] = useState<any>(null);
+  useEffect(() => {
+    let active = true;
+    import('../../fs/db').then(({ getDB }) => {
+      getDB().then(db => db.get('inodes', DESKTOP_ID)).then(node => {
+        if (active) setDesktopNode(node);
+      });
+    });
+    return () => { active = false; };
+  }, [DESKTOP_ID]);
 
   // Fallback to default wallpaper if not set in store
   const activeWallpaper = settingsWallpaper || wallpaper;
@@ -68,7 +86,9 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const dockIconSize = useSettingsStore((s: any) => s.dockIconSize);
   const dockAutoHide = useSettingsStore((s: any) => s.dockAutoHide);
 
-  const isTrashFull = vfsStore.getChildren(TRASH_ID).length > 0;
+  const trashPath = `/home/${username}/.local/share/Trash`;
+  const { nodes: trashNodes } = useFileSystem(trashPath);
+  const isTrashFull = trashNodes.length > 0;
   const currentTrashIcon = isTrashFull ? '/ubuntu/icons/user-trash-full.png' : '/ubuntu/icons/user-trash.png';
 
   useEffect(() => {
@@ -330,8 +350,8 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const clipboard = useVFSStore((s) => s.clipboard);
 
   // Determine what menu items to show based on what was right-clicked
-  const canWriteDesktop = hasPermission(vfsStore.map, DESKTOP_ID, 'write', username);
-  const canWriteNode = contextNode ? ((contextNode as any).ownerId === username || hasPermission(vfsStore.map, contextNode.id, 'write', username)) : false;
+  const canWriteDesktop = desktopNode ? hasPermission(desktopNode, 'write', username) : true;
+  const canWriteNode = contextNode ? ((contextNode as any).ownerId === username || hasPermission(contextNode as any, 'write', username)) : false;
 
   const menuItems = contextNode ? [
     {
@@ -384,7 +404,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
         : (contextNode.type === 'directory' ? 'Download Folder (ZIP)' : 'Download'),
       onClick: () => {
         const ids = selectedIds.size > 1 && selectedIds.has(contextNode.id) ? Array.from(selectedIds) : [contextNode.id];
-        if (ids.length > 1 || (ids.length === 1 && useVFSStore.getState().map[ids[0]]?.type === 'directory')) {
+        if (ids.length > 1 || contextNode.type === 'directory') {
           import('../../utils/hostInterop').then(({ downloadFilesAsZip }) => downloadFilesAsZip(ids, 'archive.zip'));
         } else {
           import('../../utils/hostInterop').then(({ downloadFile }) => downloadFile(ids[0]));
@@ -425,16 +445,36 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
       id: 'paste',
       label: 'Paste',
       disabled: !clipboard.nodeIds || clipboard.nodeIds.length === 0 || !canWriteDesktop,
-      onClick: () => {
+      onClick: async () => {
         const store = useVFSStore.getState();
         const { action, nodeIds } = store.clipboard;
         if (!nodeIds || nodeIds.length === 0) return;
         
-        if (action === 'cut') {
-          nodeIds.forEach(id => store.moveNode(id, DESKTOP_ID));
-          store.setClipboard(null, []); // Clear clipboard after cut
-        } else if (action === 'copy') {
-          nodeIds.forEach(id => store.duplicateNode(id, DESKTOP_ID));
+        switch (action) {
+          case 'cut':
+            try {
+              for (const id of nodeIds) await moveNode(id, DESKTOP_ID);
+              store.setClipboard(null, []);
+            } catch (e: any) {
+              if (e.message?.includes('Permission denied')) {
+                await attemptWithPolkitAsync(username, 'Move File', async () => {
+                  for (const id of nodeIds) await moveNode(id, DESKTOP_ID);
+                  store.setClipboard(null, []);
+                });
+              }
+            }
+            break;
+          case 'copy':
+            try {
+              for (const id of nodeIds) await duplicateNode(id, DESKTOP_ID);
+            } catch (e: any) {
+              if (e.message?.includes('Permission denied')) {
+                await attemptWithPolkitAsync(username, 'Copy File', async () => {
+                  for (const id of nodeIds) await duplicateNode(id, DESKTOP_ID);
+                });
+              }
+            }
+            break;
         }
         hideContextMenu();
       }
@@ -451,7 +491,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
       style={{ backgroundImage: `url(${activeWallpaper})`, outline: 'none' }}
       onClick={handleDesktopClick}
       onContextMenu={handleContextMenu}
-      onKeyDown={(e) => {
+      onKeyDown={async (e) => {
         if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
 
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
@@ -470,12 +510,32 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
           const store = useVFSStore.getState();
           const { action, nodeIds } = store.clipboard;
-          if (action && nodeIds && nodeIds.length > 0 && hasPermission(store.map, DESKTOP_ID, 'write', username)) {
-            if (action === 'cut') {
-              nodeIds.forEach(id => store.moveNode(id, DESKTOP_ID));
-              store.setClipboard(null, []);
-            } else if (action === 'copy') {
-              nodeIds.forEach(id => store.duplicateNode(id, DESKTOP_ID));
+          if (action && nodeIds && nodeIds.length > 0 && canWriteDesktop) {
+            switch (action) {
+              case 'cut':
+                try {
+                  for (const id of nodeIds) await moveNode(id, DESKTOP_ID);
+                  store.setClipboard(null, []);
+                } catch (e: any) {
+                  if (e.message?.includes('Permission denied')) {
+                    await attemptWithPolkitAsync(username, 'Move File', async () => {
+                      for (const id of nodeIds) await moveNode(id, DESKTOP_ID);
+                      store.setClipboard(null, []);
+                    });
+                  }
+                }
+                break;
+              case 'copy':
+                try {
+                  for (const id of nodeIds) await duplicateNode(id, DESKTOP_ID);
+                } catch (e: any) {
+                  if (e.message?.includes('Permission denied')) {
+                    await attemptWithPolkitAsync(username, 'Copy File', async () => {
+                      for (const id of nodeIds) await duplicateNode(id, DESKTOP_ID);
+                    });
+                  }
+                }
+                break;
             }
           }
         } else if (e.key === 'Delete' && selectedIds.size > 0 && !editingId) {
@@ -580,17 +640,16 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
         }
         
         const handleDropMove = async (ids: string[], targetId: string) => {
-          const { rename } = await import('../../fs/operations');
-          const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
-          const targetPath = await getAbsolutePathAsync(targetId);
           for (const id of ids) {
             if (id === targetId) continue;
             try {
-              const oldPath = await getAbsolutePathAsync(id);
-              const name = oldPath.split('/').pop();
-              if (name) await rename(oldPath, `${targetPath}/${name}`);
-            } catch (err) {
-              console.error(err);
+              await moveNode(id, targetId);
+            } catch (e: any) {
+              if (e.message?.includes('Permission denied')) {
+                await attemptWithPolkitAsync(username, 'Move File', async () => {
+                  await moveNode(id, targetId);
+                });
+              }
             }
           }
         };
@@ -863,8 +922,8 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
               <strong style={{ color: 'var(--color-text-secondary)' }}>Owner:</strong> <span>{propertiesNode.owner}</span>
               <strong style={{ color: 'var(--color-text-secondary)' }}>Group:</strong> <span>{propertiesNode.group}</span>
               <strong style={{ color: 'var(--color-text-secondary)' }}>Permissions:</strong> <span>{propertiesNode.permissions}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Created:</strong> <span>{new Date(propertiesNode.createdAt).toLocaleString()}</span>
-              <strong style={{ color: 'var(--color-text-secondary)' }}>Modified:</strong> <span>{new Date(propertiesNode.modifiedAt).toLocaleString()}</span>
+              <strong style={{ color: 'var(--color-text-secondary)' }}>Created:</strong> <span>{new Date(propertiesNode.createdAt || 0).toLocaleString()}</span>
+              <strong style={{ color: 'var(--color-text-secondary)' }}>Modified:</strong> <span>{new Date(propertiesNode.modifiedAt || 0).toLocaleString()}</span>
             </div>
             <div style={{ marginTop: '20px', textAlign: 'right' }}>
               <button 

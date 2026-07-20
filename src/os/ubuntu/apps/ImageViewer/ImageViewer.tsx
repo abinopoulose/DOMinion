@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useWindowStore } from '../../store';
+import { useWindowAPI } from '../../hooks/useWindowAPI';
 import { useFileUrl } from '../../hooks/useFileUrl';
 import './ImageViewer.css';
 
@@ -8,9 +8,30 @@ interface ImageViewerProps {
 }
 
 export function ImageViewer({ windowId }: ImageViewerProps) {
-  const win = useWindowStore(useCallback((s) => s.windows.find((w) => w.id === windowId), [windowId]));
+  const { getState, updateState } = useWindowAPI(windowId);
+  const win = { appState: getState<any>() };
   const fileId = (win?.appState as any)?.fileId;
   const { url, loading, error } = useFileUrl(fileId);
+  const [unsupported, setUnsupported] = useState(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUnsupported(false);
+    const draggedId = e.dataTransfer.getData('application/x-vfs-node');
+    if (draggedId) {
+      const ext = draggedId.toLowerCase().split('.').pop() || '';
+      const supported = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
+      if (supported) {
+        updateState({ fileId: draggedId });
+      } else {
+        setUnsupported(true);
+      }
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -117,15 +138,30 @@ export function ImageViewer({ windowId }: ImageViewerProps) {
     setPan({ x: 0, y: 0 });
   };
 
-  if (error) {
-    return (
-      <div className="loupe-viewer">
-        <div className="loupe-loading" style={{color: '#ff5555'}}>Failed to load image</div>
-      </div>
-    );
-  }
+  const renderContent = () => {
+    if (unsupported) {
+      return (
+        <div className="loupe-viewer">
+          <div className="loupe-loading" style={{color: '#ff5555', fontWeight: 'bold'}}>Unsupported format. Please drop a valid image file.</div>
+        </div>
+      );
+    }
+    if (error) {
+      return (
+        <div className="loupe-viewer">
+          <div className="loupe-loading" style={{color: '#ff5555'}}>Failed to load image</div>
+        </div>
+      );
+    }
+    if (!url && !loading) {
+      return (
+        <div className="loupe-viewer">
+          <div className="loupe-loading" style={{color: '#aaa'}}>Drop an image here to view</div>
+        </div>
+      );
+    }
 
-  return (
+    return (
     <div className="loupe-viewer">
       <div 
         className={`loupe-canvas ${isDragging ? 'grabbing' : 'grab'}`}
@@ -171,6 +207,13 @@ export function ImageViewer({ windowId }: ImageViewerProps) {
           </button>
         </div>
       </div>
+    </div>
+    );
+  };
+
+  return (
+    <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column' }} onDragOver={handleDragOver} onDrop={handleDrop}>
+      {renderContent()}
     </div>
   );
 }

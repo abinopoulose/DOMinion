@@ -190,6 +190,21 @@ export function seedUserHome(map: NodeMap, username: string, homeParentId: strin
   map[trashId] = createNode(trashId, '.Trash', 'directory', homeId, '', username, username);
   map[homeId].children.push(trashId);
 
+  // Create /home/<username>/.local
+  const localId = `home-${username}-local`;
+  map[localId] = createNode(localId, '.local', 'directory', homeId, '', username, username);
+  map[homeId].children.push(localId);
+
+  // Create /home/<username>/.local/share
+  const localShareId = `home-${username}-local-share`;
+  map[localShareId] = createNode(localShareId, 'share', 'directory', localId, '', username, username);
+  map[localId].children.push(localShareId);
+
+  // Create /home/<username>/.local/share/Trash
+  const localShareTrashId = `home-${username}-local-share-trash`;
+  map[localShareTrashId] = createNode(localShareTrashId, 'Trash', 'directory', localShareId, '', username, username);
+  map[localShareId].children.push(localShareTrashId);
+
   // Create /home/<username>/Documents
   const docsId = `home-${username}-documents`;
   map[docsId] = createNode(docsId, 'Documents', 'directory', homeId, '', username, username);
@@ -211,7 +226,36 @@ export function seedUserHome(map: NodeMap, username: string, homeParentId: strin
   map[homeId].children.push(picsId);
 
   // Create /home/<username>/.bashrc
+  const bashrcContent = `# ~/.bashrc: executed by bash for non-login shells.
+
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+
+# History settings
+HISTSIZE=1000
+HISTFILESIZE=2000
+
+# Aliases
+alias ll='ls -la'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias cls='clear'
+alias grep='grep --color=auto'
+
+# Custom prompt
+PS1='\\[\\e[32m\\]\\u@\\h\\[\\e[0m\\]:\\[\\e[34m\\]\\w\\[\\e[0m\\]\\$ '
+
+# Source bash_aliases if exists
+if [ -f ~/.bash_aliases ]; then
+    . ~/.bash_aliases
+fi
+`;
   const bashrcId = `home-${username}-bashrc`;
-  map[bashrcId] = createNode(bashrcId, '.bashrc', 'file', homeId, '# .bashrc\nalias ll="ls -alF"\n', username, username);
+  map[bashrcId] = createNode(bashrcId, '.bashrc', 'file', homeId, bashrcContent, username, username);
   map[homeId].children.push(bashrcId);
 }

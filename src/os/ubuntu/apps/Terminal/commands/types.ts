@@ -1,4 +1,3 @@
-import type { CommandResult } from '../commandParser/types';
 
 /**
  * Terminal application state shape.
@@ -36,18 +35,11 @@ export interface TerminalAppState {
   fontSize?: number;
 }
 
-/**
- * Signature for all terminal command handlers.
- *
- * The optional 5th parameter `appState` gives commands like `history`
- * read access to the terminal's internal state. This is backward-compatible —
- * existing handlers simply ignore the extra parameter.
- */
+import type { ShellEnvironment } from '../engine/ShellEnvironment';
+import type { StandardStreams } from '../engine/Streams';
+
 export type CommandHandler = (
   args: string[],
-  cwdId: string,
-  updateCwd: (newCwdId: string) => void,
-  clearHistory: () => void,
-  appState: TerminalAppState,
-  process: import('../../../fs/fd').ProcessState
-) => Partial<CommandResult> | Promise<Partial<CommandResult>>;
+  env: ShellEnvironment,
+  streams: StandardStreams
+) => Promise<number> | number;

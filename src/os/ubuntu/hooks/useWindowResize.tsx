@@ -24,7 +24,7 @@ interface UseWindowResizeOptions {
 const MIN_DEFAULT = { width: 400, height: 300 };
 
 /**
- * Custom hook for pointer-based window resizing.
+ * Custom hook for pointer-based window resizing using direct DOM manipulation.
  * Supports 8 edge/corner handles. Disabled when maximized.
  */
 export function useWindowResize({
@@ -36,10 +36,10 @@ export function useWindowResize({
   onPositionChange,
 }: UseWindowResizeOptions) {
   const resizeRef = useRef<ResizeState | null>(null);
-  const posRef = useRef(position);
-  const sizeRef = useRef(size);
-  posRef.current = position;
-  sizeRef.current = size;
+  
+  // Track current values to commit on pointer up
+  const currentSize = useRef({ ...size });
+  const currentPos = useRef({ ...position });
 
   const handleResizeStart = useCallback((edge: ResizeEdge, e: React.PointerEvent<HTMLDivElement>) => {
     if (isMaximized) return;
@@ -47,19 +47,28 @@ export function useWindowResize({
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
     
-    const windowEl = e.currentTarget.closest('.window');
-    if (windowEl) windowEl.classList.add('window--resizing');
+    const windowEl = e.currentTarget.closest('.window') as HTMLElement;
+    if (windowEl) {
+      windowEl.classList.add('window--resizing');
+      windowEl.style.transition = 'none'; // Prevent CSS transitions during active resize
+      
+      const rect = windowEl.getBoundingClientRect();
+      const currentX = rect.x !== undefined ? rect.x : position.x;
+      const currentY = rect.y !== undefined ? rect.y : position.y;
+      const currentW = rect.width !== undefined ? rect.width : size.width;
+      const currentH = rect.height !== undefined ? rect.height : size.height;
 
-    resizeRef.current = {
-      edge,
-      startX: e.clientX,
-      startY: e.clientY,
-      startWidth: sizeRef.current.width,
-      startHeight: sizeRef.current.height,
-      startPosX: posRef.current.x,
-      startPosY: posRef.current.y,
-    };
-  }, [isMaximized]);
+      resizeRef.current = {
+        edge,
+        startX: e.clientX,
+        startY: e.clientY,
+        startWidth: currentW,
+        startHeight: currentH,
+        startPosX: currentX,
+        startPosY: currentY,
+      };
+    }
+  }, [isMaximized, position, size]);
 
   const handleResizeMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     const r = resizeRef.current;
@@ -99,18 +108,36 @@ export function useWindowResize({
       }
     }
 
-    onSizeChange({ width: newW, height: newH });
-    onPositionChange({ x: newX, y: newY });
-  }, [minSize, onSizeChange, onPositionChange]);
+    currentSize.current = { width: newW, height: newH };
+    currentPos.current = { x: newX, y: newY };
+
+    // Direct DOM manipulation
+    const windowEl = e.currentTarget.closest('.window') as HTMLElement;
+    if (windowEl) {
+      windowEl.style.width = `${newW}px`;
+      windowEl.style.height = `${newH}px`;
+      windowEl.style.left = `${newX}px`;
+      windowEl.style.top = `${newY}px`;
+    }
+  }, [minSize]);
 
   const handleResizeEnd = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (!resizeRef.current) return;
     resizeRef.current = null;
     e.currentTarget.releasePointerCapture(e.pointerId);
     
-    const windowEl = e.currentTarget.closest('.window');
-    if (windowEl) windowEl.classList.remove('window--resizing');
-  }, []);
+    const windowEl = e.currentTarget.closest('.window') as HTMLElement;
+    if (windowEl) {
+      windowEl.classList.remove('window--resizing');
+      windowEl.style.transition = ''; // Restore transitions
+    }
+
+    // Commit state
+    onSizeChange(currentSize.current);
+    if (currentPos.current.x !== position.x || currentPos.current.y !== position.y) {
+      onPositionChange(currentPos.current);
+    }
+  }, [onSizeChange, onPositionChange, position]);
 
   // Clean up on unmount
   useEffect(() => {

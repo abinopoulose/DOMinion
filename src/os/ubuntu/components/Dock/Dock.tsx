@@ -7,14 +7,16 @@ const textIcon = '/ubuntu/icons/text-editor.png';
 const clockIcon = '/ubuntu/icons/clock-app.png';
 import { getTrashId } from '../../fs/seed';
 import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
-import { useVFSStore, useWindowStore } from '../../store';
+import { useWindowStore } from '../../store';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useContextMenu } from '../../hooks/useContextMenu';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { useMemo, useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useDockScroll } from '../../hooks/useDockScroll';
 import { getFolderIconUrl } from '../../utils/iconResolver';
+import { useFileSystem } from '../../hooks/useFileSystem';
 import './Dock.css';
 
 function WindowSnapshot({ windowId }: { windowId: string }) {
@@ -85,10 +87,11 @@ const APP_META: Record<string, { label: string; icon: string }> = {
 export function Dock() {
   const dockScrollRef = useDockScroll();
   const openWindow = useWindowStore(s => s.openWindow);
-  const windows = useWindowStore(s => s.windows) || [];
+  const windows = useWindowStore(useShallow(s => s.windows || []));
   const activeWorkspace = useWorkspaceStore(s => s.activeWorkspace);
-  const vfsStore = useVFSStore();
-  useVFSStore(s => s.map); // Subscribe to map changes for dynamic trash icon
+  // const vfsStore = useVFSStore();
+  const username = useUbuntuAuthStore(s => s.currentUser) || 'peasant';
+  const { nodes: trashNodes } = useFileSystem(`/home/${username}/.Trash`);
   
   // Only show indicators for windows on the current workspace
   const currentWorkspaceWindows = windows.filter(w => w.workspaceId === activeWorkspace);
@@ -481,7 +484,7 @@ export function Dock() {
             <DockIcon
               id="trash"
               label="Trash"
-              icon={vfsStore.getChildren(getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')).length > 0 ? '/ubuntu/icons/user-trash-full.png' : '/ubuntu/icons/user-trash.png'}
+              icon={trashNodes.length > 0 ? '/ubuntu/icons/user-trash-full.png' : '/ubuntu/icons/user-trash.png'}
               isActive={windows.some(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant'))}
               isFocused={focusedAppId === 'file-manager' && (windows.find(w => w.isFocused)?.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')}
               size={dockIconSize}

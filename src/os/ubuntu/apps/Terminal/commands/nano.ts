@@ -1,4 +1,4 @@
-import { useVFSStore } from '../../../store';
+// import removed: useVFSStore
 
 /**
  * Result of attempting to open nano/vi on a file.
@@ -22,9 +22,9 @@ export interface NanoOpenResult {
  *
  * @param commandName - 'nano' or 'vi' (for error messages)
  * @param args - Command arguments (expected: exactly one filename)
- * @param cwdId - Current working directory ID
+ * @param env.cwdId - Current working directory ID
  */
-export function handleNano(commandName: string, args: string[], cwdId: string): NanoOpenResult {
+export async function handleNano(commandName: string, args: string[], cwdId: string): Promise<NanoOpenResult> {
   if (args.length === 0) {
     return {
       error: { output: [`${commandName}: missing filename`], isError: true },
@@ -32,34 +32,40 @@ export function handleNano(commandName: string, args: string[], cwdId: string): 
   }
 
   const targetName = args[0];
-  const store = useVFSStore.getState();
-  let node = store.resolveRelativePath(cwdId, targetName);
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const { writeFile } = await import('../../../fs/operations');
+  
+  const cwdPath = await getAbsolutePathAsync(cwdId);
+  let node = await resolveRelativePathAsync(cwdPath, targetName);
 
   if (!node) {
-    let parentId = cwdId;
-    let fileName = targetName;
+    let destName = targetName;
+    let destParentPath = '.';
     if (targetName.includes('/')) {
       const parts = targetName.split('/');
-      fileName = parts.pop()!;
-      const parentPath = parts.join('/') || (targetName.startsWith('/') ? '/' : '.');
-      const parentNode = store.resolveRelativePath(cwdId, parentPath);
-      if (!parentNode) {
-        return { error: { output: [`${commandName}: cannot create '${targetName}': No such file or directory`], isError: true } };
-      }
-      if (parentNode.type !== 'directory') {
-        return { error: { output: [`${commandName}: cannot create '${targetName}': Not a directory`], isError: true } };
-      }
-      parentId = parentNode.id;
+      destName = parts.pop()!;
+      destParentPath = parts.join('/') || (targetName.startsWith('/') ? '/' : '.');
     }
 
-    // Create the file
-    const { error: err } = store.createNode(parentId, fileName, 'file');
-    if (err) {
+    const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath);
+    if (!parentNode) {
+      return { error: { output: [`${commandName}: cannot create '${targetName}': No such file or directory`], isError: true } };
+    }
+    if (parentNode.type !== 'directory') {
+      return { error: { output: [`${commandName}: cannot create '${targetName}': Not a directory`], isError: true } };
+    }
+
+    const parentAbsPath = await getAbsolutePathAsync(parentNode.id);
+    const newFilePath = parentAbsPath === '/' ? '/' + destName : parentAbsPath + '/' + destName;
+
+    try {
+      await writeFile(newFilePath, new Blob([]));
+      node = await resolveRelativePathAsync(cwdPath, targetName);
+    } catch (err: any) {
       return {
-        error: { output: [`${commandName}: ${err}`], isError: true },
+        error: { output: [`${commandName}: ${err.message}`], isError: true },
       };
     }
-    node = store.resolveRelativePath(cwdId, targetName);
   }
 
   if (!node) {

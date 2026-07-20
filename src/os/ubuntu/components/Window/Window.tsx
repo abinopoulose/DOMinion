@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useLayoutEffect, type ReactNode } from 'react';
+import React, { useState, useCallback, useRef, useLayoutEffect, type ReactNode } from 'react';
 import { TitleBar } from './TitleBar';
-import { UbuntuErrorBoundary } from '../ErrorBoundary/UbuntuErrorBoundary';
+import { AppErrorBoundary } from '../AppErrorBoundary/AppErrorBoundary';
 import { useWindowDrag } from '../../hooks/useWindowDrag';
 import { useWindowResize } from '../../hooks/useWindowResize';
 import { useWindowStore } from '../../store';
@@ -15,7 +15,7 @@ export interface WindowProps {
   children: ReactNode;
 }
 
-export function Window({
+export const Window = React.memo(function Window({
   id,
   icon,
   headerControls,
@@ -156,9 +156,6 @@ export function Window({
     isMinimized = false;
   }
 
-  // Don't render if minimized (and not animating out)
-  if (isMinimized && animState !== 'minimizing') return null;
-  
   // Calculate workspace boundaries dynamically
   const dockSize = dockAutoHide ? 0 : dockIconSize + 12;
   const topbarHeight = 28;
@@ -223,7 +220,9 @@ export function Window({
           zIndex,
         };
 
-  if (animState === 'minimizing' || animState === 'restoring') {
+  if (isMinimized && animState !== 'minimizing') {
+    style.display = 'none';
+  } else if (animState === 'minimizing' || animState === 'restoring') {
     style.transform = dockTransform;
     style.opacity = 0;
   }
@@ -253,11 +252,20 @@ export function Window({
         />
       )}
       <div className="window__content">
-        <UbuntuErrorBoundary>
-          {children}
-        </UbuntuErrorBoundary>
+        <AppErrorBoundary windowId={id} appId={win.appId}>
+          {['calculator', 'system-monitor'].includes(win.appId) ? (
+            <iframe
+              src={`/app/${win.appId}?windowId=${id}`}
+              sandbox="allow-scripts allow-same-origin"
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              title={win.appId}
+            />
+          ) : (
+            children
+          )}
+        </AppErrorBoundary>
       </div>
       {resizeHandles}
     </div>
   );
-}
+});

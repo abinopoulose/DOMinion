@@ -8,6 +8,7 @@ import { UbuntuLogin } from './os/ubuntu/components/Login/UbuntuLogin'
 
 // Ubuntu UI
 import { useWindowStore } from './os/ubuntu/store/useUbuntuWindowStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useWorkspaceStore } from './os/ubuntu/store/useWorkspaceStore'
 import { TopBar } from './os/ubuntu/components/TopBar/TopBar'
 import { Desktop } from './os/ubuntu/components/Desktop/Desktop'
@@ -22,24 +23,32 @@ const textIcon = '/ubuntu/icons/text-x-generic.png';
 const settingsIcon = '/ubuntu/icons/system-settings.png';
 const calculatorIcon = '/ubuntu/icons/calculator-app.png';
 const clockIcon = '/ubuntu/icons/clock-app.png';
-// Static load Apps
-import { Terminal, TerminalHeaderControls } from './os/ubuntu/apps/Terminal/Terminal'
-import { FileManager, FileManagerHeaderControls } from './os/ubuntu/apps/FileManager/FileManager'
-import { Browser, BrowserHeaderControls } from './os/ubuntu/apps/Browser/Browser'
-import { TextEditor } from './os/ubuntu/apps/TextEditor/TextEditor'
-import { TextEditorHeaderControls } from './os/ubuntu/apps/TextEditor/components/TextEditorHeaderControls'
-import { Settings, SettingsHeaderControls } from './os/ubuntu/apps/Settings/Settings'
-import { Calculator } from './os/ubuntu/apps/Calculator/Calculator'
-import { ClockApp, ClockHeaderControls } from './os/ubuntu/apps/Clock/ClockApp'
+import React from 'react';
+
+// Lazy load Apps
+const Terminal = React.lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.Terminal })));
+const TerminalHeaderControls = React.lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.TerminalHeaderControls })));
+const FileManager = React.lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManager })));
+const FileManagerHeaderControls = React.lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManagerHeaderControls })));
+const Browser = React.lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.Browser })));
+const BrowserHeaderControls = React.lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.BrowserHeaderControls })));
+const TextEditor = React.lazy(() => import('./os/ubuntu/apps/TextEditor/TextEditor').then(m => ({ default: m.TextEditor })));
+const TextEditorHeaderControls = React.lazy(() => import('./os/ubuntu/apps/TextEditor/components/TextEditorHeaderControls').then(m => ({ default: m.TextEditorHeaderControls })));
+const Settings = React.lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.Settings })));
+const SettingsHeaderControls = React.lazy(() => import('./os/ubuntu/apps/Settings/Settings').then(m => ({ default: m.SettingsHeaderControls })));
+const Calculator = React.lazy(() => import('./os/ubuntu/apps/Calculator/Calculator').then(m => ({ default: m.Calculator })));
+const ClockApp = React.lazy(() => import('./os/ubuntu/apps/Clock/ClockApp').then(m => ({ default: m.ClockApp })));
+const ClockHeaderControls = React.lazy(() => import('./os/ubuntu/apps/Clock/ClockApp').then(m => ({ default: m.ClockHeaderControls })));
+const ImageViewer = React.lazy(() => import('./os/ubuntu/apps/ImageViewer/ImageViewer').then(m => ({ default: m.ImageViewer })));
+const VideoPlayer = React.lazy(() => import('./os/ubuntu/apps/VideoPlayer/VideoPlayer').then(m => ({ default: m.VideoPlayer })));
+const DocumentViewer = React.lazy(() => import('./os/ubuntu/apps/DocumentViewer/DocumentViewer').then(m => ({ default: m.DocumentViewer })));
+const DiskUsageAnalyzer = React.lazy(() => import('./os/ubuntu/apps/DiskUsageAnalyzer/DiskUsageAnalyzer').then(m => ({ default: m.DiskUsageAnalyzer })));
+const WelcomeApp = React.lazy(() => import('./os/ubuntu/apps/Welcome/WelcomeApp').then(m => ({ default: m.WelcomeApp })));
+const ErrorReporter = React.lazy(() => import('./os/ubuntu/apps/ErrorReporter/ErrorReporter').then(m => ({ default: m.ErrorReporter })));
+const SystemMonitor = React.lazy(() => import('./os/ubuntu/apps/SystemMonitor/SystemMonitor').then(m => ({ default: m.SystemMonitor })));
 import { useClockDaemon } from './os/ubuntu/apps/Clock/hooks/useClockDaemon'
 import { SystemDialog } from './os/ubuntu/components/SystemDialog/SystemDialog'
 import { NotificationPopup } from './os/ubuntu/components/Notifications/NotificationPopup'
-import { ImageViewer } from './os/ubuntu/apps/ImageViewer/ImageViewer'
-import { VideoPlayer } from './os/ubuntu/apps/VideoPlayer/VideoPlayer'
-import { DocumentViewer } from './os/ubuntu/apps/DocumentViewer/DocumentViewer'
-import { DiskUsageAnalyzer } from './os/ubuntu/apps/DiskUsageAnalyzer/DiskUsageAnalyzer'
-import { WelcomeApp } from './os/ubuntu/apps/Welcome/WelcomeApp'
-import { ErrorReporter } from './os/ubuntu/apps/ErrorReporter/ErrorReporter'
 import './App.css'
 
 const APP_META: Record<string, { title: string; icon: string; defaultSize: { width: number; height: number } }> = {
@@ -54,8 +63,25 @@ const APP_META: Record<string, { title: string; icon: string; defaultSize: { wid
   'video-player': { title: 'Video Player', icon: '/ubuntu/icons/video-x-generic.png', defaultSize: { width: 800, height: 600 } },
   'document-viewer': { title: 'Document Viewer', icon: '/ubuntu/icons/document-viewer.png', defaultSize: { width: 800, height: 900 } },
   'disk-usage-analyzer': { title: 'Disk Usage Analyzer', icon: '/ubuntu/icons/disk.png', defaultSize: { width: 500, height: 400 } },
-  welcome: { title: 'Welcome to Ubuntu', icon: '/ubuntu/icons/ubuntu-logo.svg', defaultSize: { width: 700, height: 500 } },
+  'welcome': { title: 'Welcome to Ubuntu', icon: '/ubuntu/icons/ubuntu-logo.svg', defaultSize: { width: 700, height: 500 } },
   'error-reporter': { title: 'System Error', icon: '/ubuntu/icons/system-settings.png', defaultSize: { width: 550, height: 450 } },
+  'system-monitor': { title: 'System Monitor', icon: '/ubuntu/icons/utilities-system-monitor.png', defaultSize: { width: 650, height: 500 } },
+}
+
+export function UbuntuLoadingScreen({ shuttingDown = false }: { shuttingDown?: boolean }) {
+  return (
+    <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 99999 }}>
+      <svg viewBox="0 0 24 24" width="100" height="100" fill="var(--color-accent, #E95420)">
+        <path d="M17.61.455a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zM12.92.8C8.923.777 5.137 2.941 3.148 6.451a4.5 4.5 0 0 1 .26-.007 4.92 4.92 0 0 1 2.585.737A8.316 8.316 0 0 1 12.688 3.6 4.944 4.944 0 0 1 13.723.834 11.008 11.008 0 0 0 12.92.8zm9.226 4.994a4.915 4.915 0 0 1-1.918 2.246 8.36 8.36 0 0 1-.273 8.303 4.89 4.89 0 0 1 1.632 2.54 11.156 11.156 0 0 0 .559-13.089zM3.41 7.932A3.41 3.41 0 0 0 0 11.342a3.41 3.41 0 0 0 3.41 3.409 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zm2.027 7.866a4.908 4.908 0 0 1-2.915.358 11.1 11.1 0 0 0 7.991 6.698 11.234 11.234 0 0 0 2.422.249 4.879 4.879 0 0 1-.999-2.85 8.484 8.484 0 0 1-.836-.136 8.304 8.304 0 0 1-5.663-4.32zm11.405.928a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41z"/>
+      </svg>
+      <div style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px' }}>
+        <div style={{ width: '32px', height: '32px', border: '3px solid transparent', borderTop: '3px solid #fff', borderRight: '3px solid #fff', borderRadius: '50%', animation: 'plymouth-spin 1s linear infinite' }}></div>
+        <h1 style={{ color: 'white', fontFamily: 'Ubuntu, sans-serif', fontSize: '32px', fontWeight: 'bold', margin: 0, letterSpacing: '-1px' }}>ubuntu</h1>
+        {shuttingDown && <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', fontFamily: 'sans-serif' }}>Shutting down...</div>}
+      </div>
+      <style>{`@keyframes plymouth-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 }
 
 function MockAppContent({ appId, windowId }: { appId: string, windowId: string }) {
@@ -72,6 +98,7 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
   if (appId === 'disk-usage-analyzer') return <DiskUsageAnalyzer windowId={windowId} />;
   if (appId === 'welcome') return <WelcomeApp windowId={windowId} />;
   if (appId === 'error-reporter') return <ErrorReporter windowId={windowId} />;
+  if (appId === 'system-monitor') return <SystemMonitor windowId={windowId} />;
   return null;
 }
 
@@ -82,12 +109,23 @@ function UbuntuEnvironment() {
 
   useEffect(() => {
     let mounted = true;
-    import('./os/ubuntu/fs/vfsDb').then(async ({ seedVfsFromSnapshot }) => {
-      await seedVfsFromSnapshot();
-      const { migrateVFS } = await import('./os/ubuntu/fs/migration');
-      await migrateVFS();
-      if (mounted) setVfsReady(true);
+    const start = Date.now();
+    
+    // Start both imports in parallel to avoid serial dynamic-import overhead
+    const seedP = import('./os/ubuntu/fs/vfsDb');
+    const migrateP = import('./os/ubuntu/fs/migration');
+    Promise.all([seedP, migrateP]).then(async ([{ seedVfsFromSnapshot }, { migrateVFS }]) => {
+      await seedVfsFromSnapshot();  // Only blocks on ~38 base nodes now (instant)
+      await migrateVFS();           // Usually a no-op (no legacy keys)
+      
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(0, 800 - elapsed);
+      
+      setTimeout(() => {
+        if (mounted) setVfsReady(true);
+      }, remaining);
     });
+    
     return () => { mounted = false; };
   }, []);
 
@@ -96,15 +134,14 @@ function UbuntuEnvironment() {
   const unfocusAll = useWindowStore((s) => s.unfocusAll);
   const restoreWindow = useWindowStore((s) => s.restoreWindow);
   
-  const allWindows = useWindowStore((s) => s.windows);
   const activeWorkspace = useWorkspaceStore((s) => s.activeWorkspace);
+  const allWindows = useWindowStore(useShallow((s) => s.windows));
   const workspaceCount = useWorkspaceStore((s) => s.workspaceCount);
   const nextWorkspace = useWorkspaceStore((s) => s.nextWorkspace);
   const prevWorkspace = useWorkspaceStore((s) => s.prevWorkspace);
   const toggleOverview = useWorkspaceStore((s) => s.toggleOverview);
 
-  // Filter windows to only show those belonging to the active workspace
-  const windowList = allWindows.filter((w) => w.workspaceId === activeWorkspace);
+  const windowList = allWindows.filter(w => w.workspaceId === activeWorkspace);
 
   const toggleWindowFromDock = useCallback((appId: string) => {
     const typedAppId = appId as 'terminal' | 'file-manager' | 'browser' | 'text-editor' | 'calculator' | 'settings' | 'clock'
@@ -121,7 +158,7 @@ function UbuntuEnvironment() {
     } else {
       openWindow(typedAppId)
     }
-  }, [allWindows, activeWorkspace, openWindow, restoreWindow])
+  }, [allWindows, openWindow, restoreWindow])
 
   const nightLight = useSettingsStore((s) => s.nightLight);
   const screenBrightness = useSettingsStore((s) => s.screenBrightness ?? 100);
@@ -221,7 +258,7 @@ function UbuntuEnvironment() {
   }, [nextWorkspace, prevWorkspace, toggleOverview, switchDesktopShortcut, switchAppShortcut, cycleWindows]);
 
   if (!vfsReady) return (
-    <div style={{ width: '100vw', height: '100vh', background: '#2E222A' }} />
+    <UbuntuLoadingScreen />
   );
 
   if (!currentUser) return (
@@ -300,6 +337,18 @@ function UbuntuEnvironment() {
 
 
 export default function App() {
+  const pathname = window.location.pathname;
+  if (pathname.startsWith('/app/')) {
+    const appId = pathname.split('/')[2];
+    const params = new URLSearchParams(window.location.search);
+    const windowId = params.get('windowId') || 'standalone';
+    return (
+      <Suspense fallback={<div style={{ width: '100vw', height: '100vh', background: '#2E222A' }} />}>
+        <MockAppContent appId={appId} windowId={windowId} />
+      </Suspense>
+    );
+  }
+
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
   useEffect(() => {
@@ -340,25 +389,7 @@ export default function App() {
     };
   }, [isSuspended, wake]);
 
-  useEffect(() => {
-    const handleFirstInteraction = () => {
-      try {
-        if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(() => {});
-        }
-      } catch (err) {}
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
-    };
 
-    document.addEventListener('click', handleFirstInteraction);
-    document.addEventListener('keydown', handleFirstInteraction);
-
-    return () => {
-      document.removeEventListener('click', handleFirstInteraction);
-      document.removeEventListener('keydown', handleFirstInteraction);
-    };
-  }, []);
 
   useEffect(() => {
     // Disable browser back button
@@ -384,6 +415,36 @@ export default function App() {
       useUbuntuAuthStore.getState().logout();
     }
   }, [powerState]);
+
+  useEffect(() => {
+    // IPC Router for Iframes
+    const handleIPC = (e: MessageEvent) => {
+      if (!e.data || !e.data.type || !e.data.windowId) return;
+      const { type, windowId, payload } = e.data;
+      const store = useWindowStore.getState();
+
+      switch (type) {
+        case 'WINDOW_API_SET_TITLE':
+          store.updateWindowTitle(windowId, payload.title);
+          break;
+        case 'WINDOW_API_RESIZE_TO':
+          store.updateSize(windowId, { width: payload.width, height: payload.height });
+          break;
+        case 'WINDOW_API_REQUEST_ATTENTION':
+          store.focusWindow(windowId);
+          break;
+        case 'WINDOW_API_UPDATE_STATE':
+          store.updateAppState(windowId, payload.newState);
+          break;
+        case 'OS_API_CLOSE_WINDOW':
+          store.closeWindow(windowId);
+          break;
+      }
+    };
+    window.addEventListener('message', handleIPC);
+    return () => window.removeEventListener('message', handleIPC);
+  }, []);
+
   if (isMobile) {
     return (
       <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#000', color: '#fff', padding: '24px', textAlign: 'center', fontFamily: 'sans-serif' }}>
@@ -432,18 +493,7 @@ export default function App() {
   
   if (powerState === 'shutting_down') {
     if (activeOS === 'ubuntu') {
-      return (
-        <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-          <svg viewBox="0 0 24 24" width="100" height="100" fill="var(--color-accent, #E95420)">
-            <path d="M17.61.455a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zM12.92.8C8.923.777 5.137 2.941 3.148 6.451a4.5 4.5 0 0 1 .26-.007 4.92 4.92 0 0 1 2.585.737A8.316 8.316 0 0 1 12.688 3.6 4.944 4.944 0 0 1 13.723.834 11.008 11.008 0 0 0 12.92.8zm9.226 4.994a4.915 4.915 0 0 1-1.918 2.246 8.36 8.36 0 0 1-.273 8.303 4.89 4.89 0 0 1 1.632 2.54 11.156 11.156 0 0 0 .559-13.089zM3.41 7.932A3.41 3.41 0 0 0 0 11.342a3.41 3.41 0 0 0 3.41 3.409 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41zm2.027 7.866a4.908 4.908 0 0 1-2.915.358 11.1 11.1 0 0 0 7.991 6.698 11.234 11.234 0 0 0 2.422.249 4.879 4.879 0 0 1-.999-2.85 8.484 8.484 0 0 1-.836-.136 8.304 8.304 0 0 1-5.663-4.32zm11.405.928a3.41 3.41 0 0 0-3.41 3.41 3.41 3.41 0 0 0 3.41 3.41 3.41 3.41 0 0 0 3.41-3.41 3.41 3.41 0 0 0-3.41-3.41z"/>
-          </svg>
-          <div style={{ position: 'absolute', bottom: '15%', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '30px' }}>
-            <div style={{ width: '32px', height: '32px', border: '3px solid transparent', borderTop: '3px solid #fff', borderRight: '3px solid #fff', borderRadius: '50%', animation: 'plymouth-spin 1s linear infinite' }}></div>
-            <h1 style={{ color: 'white', fontFamily: 'Ubuntu, sans-serif', fontSize: '32px', fontWeight: 'bold', margin: 0, letterSpacing: '-1px' }}>ubuntu</h1>
-          </div>
-          <style>{`@keyframes plymouth-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-        </div>
-      );
+      return <UbuntuLoadingScreen shuttingDown={true} />;
     }
     return (
       <div style={{ width: '100vw', height: '100vh', backgroundColor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

@@ -1,7 +1,7 @@
 import { useUbuntuAuthStore } from '../store/useUbuntuAuthStore';
 import { verifyPassword } from '../utils/passwordHasher';
 import { parseSudoersFile, getUserGroups } from './sudoersParser';
-import { useUbuntuVFSStore } from '../store';
+// import { useUbuntuVFSStore } from '../store';
 import { setTempExecutionUser } from '../store/useUbuntuVFSStore';
 import { UBUNTU_ACCOUNTS } from '../../../config/accounts';
 
@@ -53,7 +53,7 @@ const MAX_SUDO_ATTEMPTS = 3;
  *
  * @returns SudoAuthResult with authorization status and whether password is needed.
  */
-export function checkSudoAuthorization(options: SudoOptions): SudoAuthResult {
+export async function checkSudoAuthorization(options: SudoOptions): Promise<SudoAuthResult> {
   const { requestingUser, targetUser = 'root', command } = options;
 
   // Root can always sudo
@@ -62,7 +62,7 @@ export function checkSudoAuthorization(options: SudoOptions): SudoAuthResult {
   }
 
   // Parse sudoers
-  const config = parseSudoersFile();
+  const config = await parseSudoersFile();
 
   if (!config) {
     // Fallback: if /etc/sudoers doesn't exist, check config/accounts.ts
@@ -79,7 +79,7 @@ export function checkSudoAuthorization(options: SudoOptions): SudoAuthResult {
   }
 
   // Get user's groups
-  const userGroups = getUserGroups(requestingUser);
+  const userGroups = await getUserGroups(requestingUser);
 
   // Check rules (last matching rule wins, like real sudoers)
   let matchedRule: typeof config.rules[0] | null = null;
@@ -175,21 +175,34 @@ export async function verifySudoPassword(
   }
 
   // Read /etc/shadow
-  const store = useUbuntuVFSStore.getState();
-  const shadowNode = store.resolvePath('/etc/shadow');
   let isValid = false;
-
-  if (shadowNode && shadowNode.type === 'file') {
-    const lines = shadowNode.content.split('\n');
+  let shadowNodeExists = false;
+  
+  try {
+    const { getAbsolutePathAsync } = await import('../fs/pathResolver');
+    const { readFile } = await import('../fs/operations');
+    const path = await getAbsolutePathAsync('/etc/shadow');
+    const contentBlob = await readFile(path);
+    let content = '';
+    if (contentBlob instanceof Blob) {
+      content = await contentBlob.text();
+    } else {
+      content = contentBlob as string;
+    }
+    shadowNodeExists = true;
+    
+    const lines = content.split('\n');
     const userLine = lines.find(l => l.startsWith(username + ':'));
     if (userLine) {
       const hash = userLine.split(':')[1];
       isValid = await verifyPassword(password, hash);
     }
+  } catch (e) {
+    // fallback
   }
 
   // Fallback to config/accounts.ts
-  if (!isValid && !shadowNode) {
+  if (!isValid && !shadowNodeExists) {
     const userObj = UBUNTU_ACCOUNTS.find((u: any) => u.username === username);
     isValid = !!(userObj && userObj.password === password);
   }
@@ -257,8 +270,8 @@ export function withElevation<T>(operation: () => T | Promise<T>): T | Promise<T
  *
  * @returns Timeout in milliseconds
  */
-export function getSudoTimestampTimeout(): number {
-  const config = parseSudoersFile();
+export async function getSudoTimestampTimeout(): Promise<number> {
+  const config = await parseSudoersFile();
   if (config) {
     return config.defaults.timestampTimeout * 60 * 1000;
   }

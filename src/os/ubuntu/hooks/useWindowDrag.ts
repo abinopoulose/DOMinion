@@ -1,4 +1,5 @@
 import { useRef, useCallback, type PointerEvent as ReactPointerEvent } from 'react';
+import { getEdgeSnap, getTopEdgeSnap } from '../engine/WindowManagerEngine';
 
 interface DragState {
   offsetX: number;
@@ -18,10 +19,8 @@ interface UseWindowDragOptions {
 }
 
 /**
- * Custom hook for pointer-based window dragging.
- * Constrains the title bar to remain within viewport bounds.
- * When maximized, dragging the title bar down > RESTORE_THRESHOLD px
- * calls onRestore() to exit fullscreen, then continues as a normal drag.
+ * Custom hook for pointer-based window dragging using direct DOM manipulation.
+ * Eliminates React state updates during drag for 60FPS performance.
  */
 export function useWindowDrag({
   position,
@@ -42,7 +41,10 @@ export function useWindowDrag({
   // Track initial pointer down to distinguish clicks from drags
   const dragStart = useRef<{ x: number, y: number, pointerId: number, target: HTMLElement } | null>(null);
   const hasStartedDragging = useRef(false);
-  // How many pixels downward the user must drag before we restore the window
+  
+  // To track the current style transform and commit it at the end
+  const currentPos = useRef<{ x: number, y: number }>({ ...position });
+
   const RESTORE_THRESHOLD = 40;
   const DRAG_THRESHOLD = 3;
 
@@ -69,9 +71,15 @@ export function useWindowDrag({
         };
       } else {
         maxDragStartY.current = null;
+        // Calculate offset based on current DOM position to avoid jumps if posRef is stale
+        const windowEl = dragStart.current.target.closest('.window') as HTMLElement;
+        const rect = windowEl ? windowEl.getBoundingClientRect() : posRef.current;
+        const currentX = rect.x !== undefined ? rect.x : posRef.current.x;
+        const currentY = rect.y !== undefined ? rect.y : posRef.current.y;
+        
         dragRef.current = {
-          offsetX: e.clientX - posRef.current.x,
-          offsetY: e.clientY - posRef.current.y,
+          offsetX: e.clientX - currentX,
+          offsetY: e.clientY - currentY,
           isTearingOff: false,
         };
       }
@@ -89,29 +97,28 @@ export function useWindowDrag({
         if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
           hasStartedDragging.current = true;
           dragStart.current.target.setPointerCapture(dragStart.current.pointerId);
-          const windowEl = dragStart.current.target.closest('.window');
-          if (windowEl) windowEl.classList.add('window--dragging');
+          const windowEl = dragStart.current.target.closest('.window') as HTMLElement;
+          if (windowEl) {
+            windowEl.classList.add('window--dragging');
+            // Remove CSS transitions during drag
+            windowEl.style.transition = 'none';
+          }
         } else {
           return;
         }
       }
 
+      const windowEl = e.currentTarget.closest('.window') as HTMLElement;
+      
       if (dragRef.current.isTearingOff) {
-        const deltaY =
-          maxDragStartY.current !== null ? e.clientY - maxDragStartY.current : 0;
+        const deltaY = maxDragStartY.current !== null ? e.clientY - maxDragStartY.current : 0;
 
         if (deltaY > RESTORE_THRESHOLD) {
-          // Kill transitions instantly before React removes .window--maximized
-          const windowEl = e.currentTarget.closest('.window');
           if (windowEl) windowEl.classList.add('window--unmaximizing');
-          // Exit fullscreen
           if (onRestore) onRestore();
           dragRef.current.isTearingOff = false;
-          // Re-anchor offsetX so the window's centre tracks the pointer
           dragRef.current.offsetX = size.width / 2;
-          // keep the vertical offset from the titlebar top so it feels natural
         } else {
-          // Threshold not met yet — don't move the window
           return;
         }
       }
@@ -120,13 +127,22 @@ export function useWindowDrag({
       const newX = e.clientX - dragRef.current.offsetX;
       const newY = e.clientY - dragRef.current.offsetY;
 
-      // Constrain so the title bar stays inside the viewport
+      // Constrain inside viewport
       const clampedX = Math.max(-200, Math.min(window.innerWidth - 200, newX));
       const clampedY = Math.max(topbarHeight, Math.min(window.innerHeight - 40, newY));
 
-      onPositionChange({ x: clampedX, y: clampedY });
+      currentPos.current = { x: clampedX, y: clampedY };
+
+      // Apply direct DOM mutation
+      if (windowEl) {
+        // We assume left/top are initially set, we update left/top.
+        // If we want to use transform, we'd need to set left/top to 0 and use translate3d.
+        // For simplicity and avoiding conflicts with resize logic which relies on left/top:
+        windowEl.style.left = `${clampedX}px`;
+        windowEl.style.top = `${clampedY}px`;
+      }
     },
-    [onPositionChange, onRestore, size.width]
+    [onRestore, size.width]
   );
 
   const handlePointerUp = useCallback(
@@ -135,11 +151,15 @@ export function useWindowDrag({
 
       if (hasStartedDragging.current) {
         e.currentTarget.releasePointerCapture(e.pointerId);
-        const windowEl = e.currentTarget.closest('.window');
+        const windowEl = e.currentTarget.closest('.window') as HTMLElement;
         if (windowEl) {
           windowEl.classList.remove('window--dragging');
           windowEl.classList.remove('window--unmaximizing');
+          windowEl.style.transition = ''; // Restore transitions
         }
+        
+        // Commit final position to store
+        onPositionChange(currentPos.current);
       }
 
       if (dragRef.current.isTearingOff && hasStartedDragging.current) {
@@ -151,12 +171,13 @@ export function useWindowDrag({
       }
 
       if (hasStartedDragging.current) {
-        if (e.clientY <= 30 && onMaximize) {
+        if (getTopEdgeSnap(e.clientY) && onMaximize) {
           onMaximize();
-        } else if (e.clientX <= 20 && onTile) {
-          onTile('left');
-        } else if (e.clientX >= window.innerWidth - 20 && onTile) {
-          onTile('right');
+        } else {
+          const side = getEdgeSnap(e.clientX, window.innerWidth);
+          if (side && onTile) {
+            onTile(side);
+          }
         }
       }
 
@@ -165,7 +186,7 @@ export function useWindowDrag({
       dragStart.current = null;
       hasStartedDragging.current = false;
     },
-    [onMaximize, onTile]
+    [onMaximize, onTile, onPositionChange]
   );
 
   return {

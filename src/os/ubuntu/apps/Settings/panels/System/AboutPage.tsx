@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { hardwareConfig } from '../../../../../../hardware/hardwareConfig';
-import { useUbuntuVFSStore } from '../../../../store/useUbuntuVFSStore';
+// useUbuntuVFSStore removed
 
 export function AboutPage() {
-  const vfsStore = useUbuntuVFSStore();
   const [deviceName, setDeviceName] = useState(() => {
     return localStorage.getItem('ubuntu-hostname') || 'envyy';
   });
@@ -13,10 +12,16 @@ export function AboutPage() {
     setDeviceName(newName);
     localStorage.setItem('ubuntu-hostname', newName);
     
-    const node = vfsStore.resolvePath('/etc/hostname');
-    if (node && node.type === 'file') {
-      vfsStore.updateContent(node.id, newName + '\n', 'root');
-    }
+    (async () => {
+      try {
+        const { getAbsolutePathAsync } = await import('../../../../fs/pathResolver');
+        const { writeFile } = await import('../../../../fs/operations');
+        const path = await getAbsolutePathAsync('/etc/hostname');
+        await writeFile(path, newName + '\n');
+      } catch (err) {
+        console.error('Failed to save hostname to VFS', err);
+      }
+    })();
   };
 
   return (

@@ -1,4 +1,4 @@
-export type FSEventType = 'fs:changed' | 'fs:created' | 'fs:deleted';
+export type FSEventType = 'fs:changed' | 'fs:created' | 'fs:deleted' | 'fs:modified';
 
 export type FSEventHandler = (path: string, type: FSEventType) => void;
 

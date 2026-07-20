@@ -1,17 +1,16 @@
-import React, { useCallback, useState } from 'react';
-import { useWindowStore, useVFSStore } from '../../../store';
+import React, { useState } from 'react';
+
+import { useWindowAPI } from '../../../hooks/useWindowAPI';
 import { useUbuntuAuthStore } from '../../../store/useUbuntuAuthStore';
-import { hasPermission } from '../../../fs/permissions';
 import { useSystemDialogStore } from '../../../store/useSystemDialogStore';
 
 
 export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
-  const windowState = useWindowStore(useCallback((s) => s.windows.find((w) => w.id === windowId), [windowId]));
-  const updateAppState = useWindowStore((s) => s.updateAppState);
-  const vfsStore = useVFSStore();
+  const { updateState, getState } = useWindowAPI(windowId);
+  const appState = getState<any>() || {};
   const username = useUbuntuAuthStore((s) => s.currentUser) || 'user';
 
-  const appState = (windowState?.appState as any) || {};
+
   const cwdId = appState.cwdId || '';
   const viewMode = appState.viewMode || 'grid';
   const historyStack = appState.historyStack || [cwdId];
@@ -21,6 +20,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
   const elevatedDirs = appState.elevatedDirs || [];
   const sortBy = appState.sortBy || 'name';
   const sortOrder = appState.sortOrder || 'asc';
+  const showHiddenFiles = appState.showHiddenFiles || false;
 
   const [isEditingPath, setIsEditingPath] = useState(false);
   const [pathInput, setPathInput] = useState('');
@@ -29,17 +29,36 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
   const canGoBack = historyIndex > 0;
   const canGoForward = historyIndex < historyStack.length - 1;
 
-  const updateState = (updates: any) => {
-    updateAppState(windowId, { ...appState, ...updates });
+  const setAppState = (updates: any) => {
+    updateState({ ...appState, ...updates });
   };
 
-  const navigateTo = (id: string, name: string = 'directory') => {
+  const navigateTo = async (id: string, name: string = 'directory') => {
     if (id === cwdId) return; // already there
     
-    const canExecute = (id === 'starred' || id === 'other-locations') ? true : hasPermission(vfsStore.map, id, 'execute', username);
+    let canExecute = true;
+    let nodeName = name;
+    
+    if (id !== 'starred' && id !== 'other-locations') {
+      try {
+        const { getDB } = await import('../../../fs/db');
+        const { hasPermission } = await import('../../../fs/permissions');
+        const db = await getDB();
+        const node = await db.get('inodes', id);
+        if (node) {
+          nodeName = node.name;
+          const isElevated = elevatedDirs.includes(id);
+          const effectiveUser = isElevated ? 'root' : username;
+          canExecute = hasPermission(node, 'execute', effectiveUser);
+        }
+      } catch (e) {
+        console.error('Failed to resolve permissions for navigation:', e);
+      }
+    }
+
     if (!canExecute) {
       useSystemDialogStore.getState().openPolkitDialog({
-        message: `Authentication is needed to access '${name}'.`,
+        message: `Authentication is needed to access '${nodeName}'.`,
         actionId: 'org.freedesktop.filemanager.access-directory',
         icon: 'folder',
         onSuccess: () => {
@@ -60,7 +79,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
     }
     const newStack = historyStack.slice(0, historyIndex + 1);
     newStack.push(id);
-    updateState({
+    setAppState({
       cwdId: id,
       historyStack: newStack,
       historyIndex: newStack.length - 1,
@@ -69,33 +88,39 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
     });
   };
 
-  const getSegments = (id: string) => {
-    if (id === 'starred') {
-      return [{ id: 'starred', name: 'Starred', type: 'directory' as any, parentId: null, children: [], content: '', createdAt: 0, modifiedAt: 0, owner: '', group: '', permissions: '' }];
+  const [segments, setSegments] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+    if (cwdId === 'starred') {
+      setSegments([{ id: 'starred', name: 'Starred', type: 'directory' }]);
+      return;
     }
-    if (id === 'other-locations') {
-      return [{ id: 'other-locations', name: '+ Other Locations', type: 'directory' as any, parentId: null, children: [], content: '', createdAt: 0, modifiedAt: 0, owner: '', group: '', permissions: '' }];
+    if (cwdId === 'other-locations') {
+      setSegments([{ id: 'other-locations', name: '+ Other Locations', type: 'directory' }]);
+      return;
     }
-    const segments = [];
-    let current = vfsStore.getNode(id);
-    while (current) {
-      segments.unshift(current);
-      if (current.parentId) {
-        current = vfsStore.getNode(current.parentId);
-      } else {
-        current = null;
+    (async () => {
+      const { getDB } = await import('../../../fs/db');
+      const db = await getDB();
+      const segs = [];
+      let currentId = cwdId;
+      while (currentId) {
+        const node = await db.get('inodes', currentId);
+        if (!node) break;
+        segs.unshift(node);
+        currentId = node.parentId || '';
       }
-    }
-    return segments;
-  };
+      if (active) setSegments(segs);
+    })();
+    return () => { active = false; };
+  }, [cwdId]);
 
-  const segments = getSegments(cwdId);
-
-  
   const currentPathStr = '/' + segments.map(s => s.name).filter(Boolean).join('/');
 
-  const handlePathSubmit = () => {
-    const node = vfsStore.resolvePath(pathInput);
+  const handlePathSubmit = async () => {
+    const { resolvePathAsync } = await import('../../../fs/pathResolver');
+    const node = await resolvePathAsync(pathInput);
     if (node && node.type === 'directory') {
       navigateTo(node.id, node.name);
     }
@@ -139,7 +164,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
             style={{ WebkitAppRegion: 'no-drag', background: 'transparent', padding: '6px' } as any}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => {
-              if (canGoBack) updateState({ cwdId: historyStack[historyIndex - 1], historyIndex: historyIndex - 1 });
+              if (canGoBack) setAppState({ cwdId: historyStack[historyIndex - 1], historyIndex: historyIndex - 1 });
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -152,7 +177,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
             style={{ WebkitAppRegion: 'no-drag', background: 'transparent', padding: '6px' } as any}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => {
-              if (canGoForward) updateState({ cwdId: historyStack[historyIndex + 1], historyIndex: historyIndex + 1 });
+              if (canGoForward) setAppState({ cwdId: historyStack[historyIndex + 1], historyIndex: historyIndex + 1 });
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -168,7 +193,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
               type="text" 
               placeholder="Search files..."
               value={searchQuery}
-              onChange={(e) => updateState({ searchQuery: e.target.value })}
+              onChange={(e) => setAppState({ searchQuery: e.target.value })}
               style={{
                 background: 'rgba(0,0,0,0.05)',
                 border: '1px solid transparent',
@@ -249,6 +274,36 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                     onPointerDown={(e) => e.stopPropagation()}
                     onDoubleClick={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); navigateTo(seg.id); }}
+                    onDragOver={(e) => {
+                      if (seg.id !== 'starred' && seg.id !== 'other-locations') {
+                        e.preventDefault(); e.stopPropagation();
+                      }
+                    }}
+                    onDrop={(e) => {
+                      if (seg.id === 'starred' || seg.id === 'other-locations') return;
+                      e.preventDefault(); e.stopPropagation();
+                      const multi = e.dataTransfer.getData('application/x-vfs-nodes');
+                      const single = e.dataTransfer.getData('application/x-vfs-node');
+                      
+                      const handleDropMove = async (ids: string[]) => {
+                        const { rename } = await import('../../../fs/operations');
+                        const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
+                        const targetPath = await getAbsolutePathAsync(seg.id);
+                        for (const id of ids) {
+                          if (id === seg.id) continue;
+                          try {
+                            const oldPath = await getAbsolutePathAsync(id);
+                            const name = oldPath.split('/').pop();
+                            if (name) await rename(oldPath, `${targetPath}/${name}`);
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }
+                      };
+
+                      if (multi) handleDropMove(JSON.parse(multi));
+                      else if (single && single !== seg.id) handleDropMove([single]);
+                    }}
                   >
                     {seg.id === 'starred' ? (
                       <>
@@ -357,7 +412,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                   <div style={{ padding: '4px 8px', fontSize: '11px', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>View</div>
                   <button 
                     className={`fm-menu-item ${viewMode === 'list' ? 'active' : ''}`}
-                    onClick={() => { updateState({ viewMode: 'list' }); setShowSortMenu(false); }}
+                    onClick={() => { setAppState({ viewMode: 'list' }); setShowSortMenu(false); }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="8" y1="6" x2="21" y2="6"></line>
@@ -371,7 +426,7 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                   </button>
                   <button 
                     className={`fm-menu-item ${viewMode === 'grid' ? 'active' : ''}`}
-                    onClick={() => { updateState({ viewMode: 'grid' }); setShowSortMenu(false); }}
+                    onClick={() => { setAppState({ viewMode: 'grid' }); setShowSortMenu(false); }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="3" width="7" height="7"></rect>
@@ -387,9 +442,9 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                     className={`fm-menu-item ${sortBy === 'name' ? 'active' : ''}`}
                     onClick={() => {
                       if (sortBy === 'name') {
-                        updateState({ sortOrder: sortOrder === 'asc' ? 'desc' : 'asc' });
+                        setAppState({ sortOrder: sortOrder === 'asc' ? 'desc' : 'asc' });
                       } else {
-                        updateState({ sortBy: 'name', sortOrder: 'asc' });
+                        setAppState({ sortBy: 'name', sortOrder: 'asc' });
                       }
                       setShowSortMenu(false);
                     }}
@@ -405,9 +460,9 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                     className={`fm-menu-item ${sortBy === 'size' ? 'active' : ''}`}
                     onClick={() => {
                       if (sortBy === 'size') {
-                        updateState({ sortOrder: sortOrder === 'asc' ? 'desc' : 'asc' });
+                        setAppState({ sortOrder: sortOrder === 'asc' ? 'desc' : 'asc' });
                       } else {
-                        updateState({ sortBy: 'size', sortOrder: 'asc' });
+                        setAppState({ sortBy: 'size', sortOrder: 'asc' });
                       }
                       setShowSortMenu(false);
                     }}
@@ -416,6 +471,21 @@ export function FileManagerHeaderControls({ windowId }: { windowId: string }) {
                     {sortBy === 'size' && (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         {sortOrder === 'asc' ? <polyline points="18 15 12 9 6 15"></polyline> : <polyline points="6 9 12 15 18 9"></polyline>}
+                      </svg>
+                    )}
+                  </button>
+                  <div style={{ height: '1px', background: 'var(--color-border)', margin: '4px 0' }} />
+                  <button 
+                    className={`fm-menu-item`}
+                    onClick={() => {
+                      setAppState({ showHiddenFiles: !showHiddenFiles });
+                      setShowSortMenu(false);
+                    }}
+                  >
+                    <span style={{ flex: 1 }}>Show Hidden Files</span>
+                    {showHiddenFiles && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
                       </svg>
                     )}
                   </button>

@@ -1,4 +1,5 @@
-import { useUbuntuVFSStore } from '../store';
+import { getAbsolutePathAsync } from '../fs/pathResolver';
+import { readFile } from '../fs/operations';
 
 /**
  * Represents a parsed sudoers rule.
@@ -52,12 +53,18 @@ export interface SudoersConfig {
  * - Comments: Lines starting with `#`
  * - Blank lines are ignored
  */
-export function parseSudoersFile(): SudoersConfig | null {
-  const store = useUbuntuVFSStore.getState();
+export async function parseSudoersFile(): Promise<SudoersConfig | null> {
+  try {
+    const path = await getAbsolutePathAsync('/etc/sudoers');
+    const contentBlob = await readFile(path);
+    let content = '';
+    if (contentBlob instanceof Blob) {
+      content = await contentBlob.text();
+    } else {
+      content = contentBlob as string;
+    }
 
-  // Read /etc/sudoers bypassing permission checks (kernel-level access)
-  const sudoersNode = store.resolvePath('/etc/sudoers');
-  if (!sudoersNode || sudoersNode.type !== 'file') return null;
+    if (!content) return null;
 
   const config: SudoersConfig = {
     rules: [],
@@ -68,7 +75,7 @@ export function parseSudoersFile(): SudoersConfig | null {
     },
   };
 
-  const lines = sudoersNode.content.split('\n');
+  const lines = content.split('\n');
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
@@ -147,19 +154,30 @@ export function parseSudoersFile(): SudoersConfig | null {
   }
 
   return config;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Parse /etc/group to get group memberships for a user.
  * Returns an array of group names the user belongs to.
  */
-export function getUserGroups(username: string): string[] {
-  const store = useUbuntuVFSStore.getState();
-  const groupNode = store.resolvePath('/etc/group');
-  if (!groupNode || groupNode.type !== 'file') return [];
+export async function getUserGroups(username: string): Promise<string[]> {
+  try {
+    const path = await getAbsolutePathAsync('/etc/group');
+    const contentBlob = await readFile(path);
+    let content = '';
+    if (contentBlob instanceof Blob) {
+      content = await contentBlob.text();
+    } else {
+      content = contentBlob as string;
+    }
 
-  const groups: string[] = [];
-  const lines = groupNode.content.split('\n');
+    if (!content) return [];
+
+    const groups: string[] = [];
+    const lines = content.split('\n');
 
   for (const line of lines) {
     if (!line.trim()) continue;
@@ -177,4 +195,7 @@ export function getUserGroups(username: string): string[] {
   }
 
   return groups;
+  } catch {
+    return [];
+  }
 }

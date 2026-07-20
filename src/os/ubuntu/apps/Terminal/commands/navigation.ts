@@ -1,55 +1,59 @@
 import type { CommandHandler } from './types';
-import { useVFSStore } from '../../../store';
 import { getAuthContext } from '../../../store/useUbuntuVFSStore';
 import { getHomeId } from '../../../fs/seed';
 import { hasPermission } from '../../../fs/permissions';
 
-export const pwd: CommandHandler = (_args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
-  const store = useVFSStore.getState();
-  const path = store.getAbsolutePath(cwdId);
-  [path].forEach((line: string) => process.stdout.writeLine(line)); return {};
+export const pwd: CommandHandler = async (_args, env, streams) => {
+  const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
+  const path = await getAbsolutePathAsync(env.cwdId);
+  [path].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
 };
 
-export const cd: CommandHandler = (args, cwdId, updateCwd, _clearHistory, _appState, process) => {
-  const store = useVFSStore.getState();
-  const username = _appState?.effectiveUser || getAuthContext().username;
+export const cd: CommandHandler = async (args, env, streams) => {
+  const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
+  const username = env.effectiveUser || getAuthContext().username;
   const HOME_ID = getHomeId(username);
   
   if (args.length === 0) {
-    updateCwd(HOME_ID);
-    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+    env.cwdId = HOME_ID;
+    env.cwdPath = await getAbsolutePathAsync(HOME_ID);
+    return 0;
   }
 
   let path = args[0];
   
   if (path === '~') {
-    updateCwd(HOME_ID);
-    [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+    env.cwdId = HOME_ID;
+    env.cwdPath = await getAbsolutePathAsync(HOME_ID);
+    return 0;
   }
   
   if (path.startsWith('~/')) {
-    path = path.replace('~', store.getAbsolutePath(HOME_ID));
+    const homePath = await getAbsolutePathAsync(HOME_ID);
+    path = path.replace('~', homePath);
   }
 
-  const node = store.resolveRelativePath(cwdId, path);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const node = await resolveRelativePathAsync(cwdPath, path);
   
   if (!node) {
-    [`cd: ${args[0]}: No such file or directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    [`cd: ${args[0]}: No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
   
   if (node.type !== 'directory') {
-    [`cd: ${args[0]}: Not a directory`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+    [`cd: ${args[0]}: Not a directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
   
-  if (!hasPermission(store.map, node.id, 'execute', username)) {
-    [`cd: ${args[0]}: Permission denied`].forEach((line: string) => process.stderr.writeLine(line)); return {};
+  if (!hasPermission(node, 'execute', username)) {
+    [`cd: ${args[0]}: Permission denied`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
-  updateCwd(node.id);
-  [].forEach((line: string) => process.stdout.writeLine(line)); return {};
+  env.cwdId = node.id;
+  env.cwdPath = await getAbsolutePathAsync(node.id);
+  return 0;
 };
 
-export const ls: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory, _appState, process) => {
+export const ls: CommandHandler = async (args, env, streams) => {
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readdir } = await import('../../../fs/operations');
 
@@ -66,12 +70,12 @@ export const ls: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
     }
   }
 
-  const cwdPath = await getAbsolutePathAsync(cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId);
   const targetNode = await resolveRelativePathAsync(cwdPath, targetPath);
   
   if (!targetNode) {
-    process.stderr.writeLine(`ls: cannot access '${targetPath}': No such file or directory`); 
-    return {};
+    streams.stderr.writeLine(`ls: cannot access '${targetPath}': No such file or directory`); 
+    return 1;
   }
   
   let children: any[] = [];
@@ -112,7 +116,7 @@ export const ls: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
       return `${permString} ${links} ${owner} ${group} ${size.toString().padStart(5, ' ')} ${dateStr} ${nameStr}`;
     });
     
-    outputLines.forEach((line: string) => process.stdout.writeLine(line)); return {};
+    outputLines.forEach((line: string) => streams.stdout.writeLine(line)); return 0;
   }
 
   const items = children.map(c => {
@@ -140,9 +144,9 @@ export const ls: CommandHandler = async (args, cwdId, _updateCwd, _clearHistory,
           line += item + ' '.repeat(colWidth - visibleLen);
         }
       }
-      process.stdout.writeLine(line.trimEnd());
+      streams.stdout.writeLine(line.trimEnd());
     }
   }
 
-  return {};
+  return 0;
 };

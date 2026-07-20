@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { SettingsDropdown } from '../../components/SettingsDropdown';
-import { useUbuntuVFSStore } from '../../../../store/useUbuntuVFSStore';
+// useUbuntuVFSStore removed
 import { getTrashId } from '../../../../fs/seed';
 import { useUbuntuAuthStore } from '../../../../store/useUbuntuAuthStore';
 
@@ -9,26 +9,38 @@ export function FileHistoryPage() {
   const [autoDeleteTrash, setAutoDeleteTrash] = useState(false);
   const [autoDeleteTemp, setAutoDeleteTemp] = useState(false);
 
-  const { map, deleteNode } = useUbuntuVFSStore();
   const currentUser = useUbuntuAuthStore(state => state.currentUser || 'ubuntu');
 
-  const handleEmptyTrash = () => {
-    const trashId = getTrashId(currentUser);
-    const trashNode = map[trashId];
-    if (trashNode) {
-      [...trashNode.children].forEach(childId => {
-        deleteNode(childId, currentUser);
-      });
+  const handleEmptyTrash = async () => {
+    try {
+      const dbModule = await import('../../../../fs/db');
+      const operations = await import('../../../../fs/operations');
+      const db = await dbModule.getDB();
+      const trashId = getTrashId(currentUser);
+      const children = await db.getAllFromIndex('inodes', 'by-parent', trashId);
+      for (const child of children) {
+        await operations.removeNode(child.id);
+      }
+    } catch (err) {
+      console.error('Failed to empty trash', err);
     }
   };
 
-  const handleDeleteTemp = () => {
-    const tmpNodeId = Object.keys(map).find(id => map[id].name === 'tmp' && map[id].parentId === 'root');
-    if (tmpNodeId) {
-      const tmpNode = map[tmpNodeId];
-      [...tmpNode.children].forEach(childId => {
-        deleteNode(childId, currentUser);
-      });
+  const handleDeleteTemp = async () => {
+    try {
+      const dbModule = await import('../../../../fs/db');
+      const operations = await import('../../../../fs/operations');
+      const db = await dbModule.getDB();
+      const nodes = await db.getAllFromIndex('inodes', 'by-parent', 'root');
+      const tmpNode = nodes.find(n => n.name === 'tmp');
+      if (tmpNode) {
+        const children = await db.getAllFromIndex('inodes', 'by-parent', tmpNode.id);
+        for (const child of children) {
+          await operations.removeNode(child.id);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to clear tmp', err);
     }
   };
 
