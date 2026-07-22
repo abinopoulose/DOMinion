@@ -1,6 +1,6 @@
 import type { CommandHandler } from '../types';
 
-export const cowsay: CommandHandler = (args, env, streams) => {
+export const cowsay: CommandHandler = async (args, _env, streams) => {
   let text = args.join(' ');
   if (!text) {
     text = streams.stdin.readAll().trim();

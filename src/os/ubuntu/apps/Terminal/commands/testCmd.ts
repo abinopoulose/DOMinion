@@ -2,7 +2,7 @@ import type { CommandHandler } from './types';
 import { getAbsolutePathAsync, resolveRelativePathAsync } from '../../../fs/pathResolver';
 import { stat } from '../../../fs/operations';
 
-export const testCmd: CommandHandler = async (args, env, streams) => {
+export const testCmd: CommandHandler = async (args, env, _streams) => {
   // If invoked as [, the last argument must be ]
   if (args.length > 0 && args[args.length - 1] === ']') {
     args = args.slice(0, -1);
@@ -59,9 +59,8 @@ export const testCmd: CommandHandler = async (args, env, streams) => {
           
           if (op === '-s') {
             if (node.type !== 'file') return false;
-            const absPath = await getAbsolutePathAsync(node.id);
             const st = await stat(absPath);
-            return st.size > 0;
+            return st.sizeBytes > 0;
           }
         } catch {
           return false;

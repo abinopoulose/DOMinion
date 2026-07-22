@@ -383,3 +383,306 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+/* ============================================================
+   XTerm Scrollbar Styles
+   ============================================================ */
+.xterm-viewport {
+  /* Only show when needed instead of always */
+  overflow-y: auto !important;
+}
+
+.xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.xterm-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* ============================================================
+   Terminal Hamburger Menu
+   ============================================================ */
+
+.terminal-menu-popup {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  width: 220px;
+  background-color: #3d0c2e;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  color: #eeeeec;
+  font-family: var(--font-ubuntu, sans-serif);
+  animation: terminal-menu-fade-in 0.15s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transform-origin: top right;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@keyframes terminal-menu-fade-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-5px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.terminal-menu-pointer {
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  width: 12px;
+  height: 12px;
+  background-color: #3d0c2e;
+  transform: rotate(45deg);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: -1;
+}
+
+.terminal-menu-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 16px;
+}
+
+.terminal-menu-themes {
+  padding: 12px 16px;
+}
+
+.terminal-theme-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+
+.terminal-theme-btn:hover {
+  transform: scale(1.05);
+}
+
+.terminal-theme-btn.active {
+  border-color: #e95420;
+}
+
+.terminal-theme-circle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+.terminal-theme-system .terminal-theme-circle {
+  background: linear-gradient(135deg, #ffffff 50%, #2e3436 50%);
+}
+
+.terminal-theme-light .terminal-theme-circle {
+  background: #ffffff;
+}
+
+.terminal-theme-dark .terminal-theme-circle {
+  background: #2e3436;
+}
+
+.terminal-theme-check {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 16px;
+  height: 16px;
+  background-color: #e95420;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: 2px solid #3d0c2e;
+}
+
+.terminal-zoom-btn {
+  background: transparent;
+  border: none;
+  color: #eeeeec;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terminal-zoom-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.terminal-zoom-reset {
+  background: transparent;
+  border: none;
+  color: #eeeeec;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.terminal-zoom-reset:hover {
+  color: #ffffff;
+}
+
+.terminal-menu-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 4px 0;
+  width: 100%;
+}
+
+.terminal-menu-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 16px;
+  background: transparent;
+  border: none;
+  color: #eeeeec;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.terminal-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.terminal-menu-shortcut {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ============================================================
+   Terminal Search Bar
+   ============================================================ */
+
+.terminal-search-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(61, 12, 46, 0.95);
+  padding: 6px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.terminal-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 4px 8px;
+  flex: 1;
+  margin-right: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.terminal-search-icon {
+  color: rgba(255, 255, 255, 0.5);
+  margin-right: 8px;
+}
+
+.terminal-search-input {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  outline: none;
+  flex: 1;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.terminal-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.terminal-search-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.terminal-search-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.terminal-search-btn:hover, .terminal-search-btn.active {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+.terminal-search-settings-popup {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  background-color: #3d0c2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-search-option {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  color: #eeeeec;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.terminal-search-option:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.terminal-search-option input[type="checkbox"] {
+  margin-right: 12px;
+  accent-color: #e95420;
+}

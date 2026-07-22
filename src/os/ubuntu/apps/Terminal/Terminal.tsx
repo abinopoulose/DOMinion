@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useWindowAPI } from '../../hooks/useWindowAPI';
 import { useWindowStore } from '../../store';
-import { TerminalPreferences } from './components/TerminalPreferences';
 import { TerminalTabBar } from './components/TerminalTabBar';
 import { TerminalSession, type TerminalTabState } from './components/TerminalSession';
+import { TerminalMenu } from './components/TerminalMenu';
+import { TerminalSearch } from './components/TerminalSearch';
 import { useTerminalProfileStore } from './store/useTerminalProfileStore';
 import { themes } from './themes';
 import './Terminal.css';
@@ -43,6 +44,8 @@ export function Terminal({ windowId }: TerminalProps) {
   const [activeTabId, setActiveTabId] = useState<string>(
     initialAppState.activeTabId || (tabs[0]?.id || '')
   );
+  
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const profile = useTerminalProfileStore(state => state.activeProfile);
   const theme = themes[profile.colorScheme] || themes['ubuntu'];
@@ -98,8 +101,20 @@ export function Terminal({ windowId }: TerminalProps) {
         handleAddTab();
       }
     };
+    
+    const handleToggleSearch = (e: any) => {
+      if (e.detail?.windowId === windowId) {
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+    
     window.addEventListener('terminal:new-tab', handleNewTab);
-    return () => window.removeEventListener('terminal:new-tab', handleNewTab);
+    window.addEventListener('terminal:toggle-search', handleToggleSearch);
+    
+    return () => {
+      window.removeEventListener('terminal:new-tab', handleNewTab);
+      window.removeEventListener('terminal:toggle-search', handleToggleSearch);
+    };
   }, [windowId, handleAddTab]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -166,6 +181,17 @@ export function Terminal({ windowId }: TerminalProps) {
           />
         ))}
       </div>
+      
+      {/* Search Bar */}
+      {isSearchOpen && (
+        <TerminalSearch 
+          windowId={windowId} 
+          onClose={() => {
+            setIsSearchOpen(false);
+            window.dispatchEvent(new CustomEvent('terminal:close-search', { detail: { windowId } }));
+          }} 
+        />
+      )}
     </div>
   );
 }
@@ -177,10 +203,11 @@ export function TerminalHeaderControls({ windowId }: { windowId: string }) {
   const tabs = appState?.tabs || [];
   const activeTab = tabs.find((t: any) => t.id === activeTabId) || tabs[0];
   
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
   const user = activeTab?.effectiveUser || 'peasant';
   const homePath = user === 'root' ? '/root' : `/home/${user}`;
   const fullPath = activeTab?.cwdPath || homePath;
-  const displayCwd = fullPath.startsWith(homePath) ? '~' + fullPath.slice(homePath.length) : fullPath;
   const basename = fullPath === '/' ? '/' : (fullPath.split('/').pop() || '~');
   
   // Custom event trigger for new tab (this would ideally interact with Terminal component)
@@ -196,6 +223,7 @@ export function TerminalHeaderControls({ windowId }: { windowId: string }) {
           onClick={() => {
             window.dispatchEvent(new CustomEvent('terminal:new-tab', { detail: { windowId } }));
           }}
+          onDoubleClick={(e) => e.stopPropagation()}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
         </button>
@@ -203,20 +231,28 @@ export function TerminalHeaderControls({ windowId }: { windowId: string }) {
       
       <div className="terminal-header-center">
         <div className="terminal-header-title">{user}@envyy: {basename}</div>
-        <div className="terminal-header-subtitle">{displayCwd}</div>
       </div>
       
       <div className="terminal-header-right">
-        <button className="terminal-header-btn" title="Search">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        </button>
         <button 
           className="terminal-header-btn" 
-          title="Terminal Preferences" 
-          onClick={() => useWindowStore.getState().openWindow('terminal-preferences')}
+          title="Search" 
+          onClick={() => window.dispatchEvent(new CustomEvent('terminal:toggle-search', { detail: { windowId } }))}
+          onDoubleClick={(e) => e.stopPropagation()}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
         </button>
+        <div style={{ position: 'relative' }}>
+          <button 
+            className="terminal-header-btn" 
+            title="Terminal Menu" 
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          {isMenuOpen && <TerminalMenu windowId={windowId} onClose={() => setIsMenuOpen(false)} />}
+        </div>
       </div>
     </div>
   );

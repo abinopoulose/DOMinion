@@ -42,8 +42,9 @@ const DEFAULT_SIZES: Record<AppId, { width: number; height: number }> = {
   'document-viewer': { width: 800, height: 900 },
   'disk-usage-analyzer': { width: 500, height: 400 },
   welcome: { width: 740, height: 520 },
-  'error-reporter': { width: 550, height: 450 },
-  'system-monitor': { width: 650, height: 500 },
+  'error-reporter': { width: 500, height: 350 },
+  'system-monitor': { width: 800, height: 600 },
+  'terminal-preferences': { width: 600, height: 400 },
 };
 
 const APP_TITLES: Record<AppId, string> = {
@@ -61,6 +62,7 @@ const APP_TITLES: Record<AppId, string> = {
   welcome: 'Welcome to Ubuntu',
   'error-reporter': 'System Error',
   'system-monitor': 'System Monitor',
+  'terminal-preferences': 'Terminal Preferences',
 };
 
 export const useWindowStore = create<WindowStore>()(

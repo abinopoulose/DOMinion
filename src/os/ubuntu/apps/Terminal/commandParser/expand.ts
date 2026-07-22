@@ -118,6 +118,7 @@ function parseSegments(input: string): Segment[] {
 function expandArithmetic(text: string): string {
   const regex = /\$\(\(([^)]+)\)\)/g;
   return text.replace(regex, (match, expr) => {
+    return resolved.replace(/\$(\w+)/g, (_match, varName) => {
     try {
       // Remove any non-math characters for basic safety
       const safeExpr = expr.replace(/[^0-9+\-*/%(). ]/g, '');

@@ -1,11 +1,13 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
+import { SearchAddon } from '@xterm/addon-search';
 import '@xterm/xterm/css/xterm.css';
 
 export interface XTermReactRef {
   terminal: Terminal;
   fit: () => void;
+  searchAddon: SearchAddon;
 }
 
 import type { ITerminalOptions } from '@xterm/xterm';
@@ -20,12 +22,14 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
   const terminalRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
 
   useImperativeHandle(ref, () => ({
     get terminal() { return xtermRef.current!; },
     fit: () => {
       fitAddonRef.current?.fit();
-    }
+    },
+    get searchAddon() { return searchAddonRef.current!; }
   }));
 
   useEffect(() => {
@@ -40,11 +44,17 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
 
+    const searchAddon = new SearchAddon();
+    term.loadAddon(searchAddon);
+
     term.open(terminalRef.current);
-    fitAddon.fit();
+    if (terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
+      try { fitAddon.fit(); } catch {}
+    }
 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
+    searchAddonRef.current = searchAddon;
 
     let dataDisposable: any;
     if (onData) {
@@ -56,14 +66,15 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
       resizeDisposable = term.onResize(({ cols, rows }) => onResize(cols, rows));
     }
 
-    const handleWindowResize = () => {
-      fitAddon.fit();
-    };
-
-    window.addEventListener('resize', handleWindowResize);
+    const resizeObserver = new ResizeObserver(() => {
+      if (terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
+        try { fitAddon.fit(); } catch {}
+      }
+    });
+    resizeObserver.observe(terminalRef.current);
 
     return () => {
-      window.removeEventListener('resize', handleWindowResize);
+      resizeObserver.disconnect();
       dataDisposable?.dispose();
       resizeDisposable?.dispose();
       term.dispose();
@@ -74,12 +85,16 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
     if (xtermRef.current && options) {
       Object.entries(options).forEach(([key, value]) => {
         try {
-          xtermRef.current!.options[key as keyof ITerminalOptions] = value as any;
+          (xtermRef.current!.options as any)[key] = value;
         } catch {
           // ignore invalid options
         }
       });
-      setTimeout(() => fitAddonRef.current?.fit(), 0);
+      setTimeout(() => {
+        if (terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
+          try { fitAddonRef.current?.fit(); } catch {}
+        }
+      }, 0);
     }
   }, [options]);
 

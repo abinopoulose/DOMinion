@@ -502,7 +502,7 @@ export class PTY {
           const absPath = await getAbsolutePathAsync(node.id);
           const fileStat = await stat(absPath);
           // Check mock executable bit (if owner exec is set or just assume yes for .sh)
-          if ((fileStat.mode & 0o100) || firstToken.endsWith('.sh')) {
+          if ((fileStat.permissions & 0o100) || firstToken.endsWith('.sh')) {
             const blob = await readFile(absPath);
             const content = await blob.text();
             if (content.startsWith('#!/bin/bash') || content.startsWith('#!/bin/sh') || firstToken.endsWith('.sh')) {

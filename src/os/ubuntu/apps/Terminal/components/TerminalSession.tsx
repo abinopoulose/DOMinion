@@ -108,6 +108,34 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
     }
   }, [isActive]);
 
+  // Search Event Listener
+  useEffect(() => {
+    const handleDoSearch = (e: any) => {
+      const { windowId: searchWindowId, query, options, direction } = e.detail;
+      if (searchWindowId === windowId && isActive && xtermRef.current) {
+        if (direction === 'next') {
+          xtermRef.current.searchAddon.findNext(query, options);
+        } else {
+          xtermRef.current.searchAddon.findPrevious(query, options);
+        }
+      }
+    };
+    
+    const handleCloseSearch = (e: any) => {
+      if (e.detail.windowId === windowId && isActive && xtermRef.current) {
+        xtermRef.current.searchAddon.clearDecorations();
+      }
+    };
+
+    window.addEventListener('terminal:do-search', handleDoSearch);
+    window.addEventListener('terminal:close-search', handleCloseSearch);
+    
+    return () => {
+      window.removeEventListener('terminal:do-search', handleDoSearch);
+      window.removeEventListener('terminal:close-search', handleCloseSearch);
+    };
+  }, [windowId, isActive]);
+
   // Sync state from parent to local state for Nano
   useEffect(() => {
     setInteractiveApp(tab.interactiveApp as any);

@@ -296,7 +296,7 @@ export const gzip: CommandHandler = async (args, env, streams) => {
   }
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
-  const { readFile, writeFile, rm } = await import('../../../fs/operations');
+  const { readFile, writeFile, unlink } = await import('../../../fs/operations');
   const cwdPath = await getAbsolutePathAsync(env.cwdId);
   
   for (const target of positional) {
@@ -318,7 +318,7 @@ export const gzip: CommandHandler = async (args, env, streams) => {
     await writeFile(`${absPath}.gz`, await blob.text()); // Simulated compression, just rename/copy
     
     // Remove old file
-    await rm(absPath);
+    await unlink(absPath);
   }
   
   return 0;
@@ -333,7 +333,7 @@ export const gunzip: CommandHandler = async (args, env, streams) => {
   }
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
-  const { readFile, writeFile, rm } = await import('../../../fs/operations');
+  const { readFile, writeFile, unlink } = await import('../../../fs/operations');
   const cwdPath = await getAbsolutePathAsync(env.cwdId);
   
   for (const target of positional) {
@@ -361,7 +361,7 @@ export const gunzip: CommandHandler = async (args, env, streams) => {
     await writeFile(uncompressedPath, await blob.text()); 
     
     // Remove old file
-    await rm(absPath);
+    await unlink(absPath);
   }
   
   return 0;

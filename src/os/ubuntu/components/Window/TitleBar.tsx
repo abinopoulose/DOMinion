@@ -54,6 +54,7 @@ export function TitleBar({
         <button
           className="titlebar__btn titlebar__btn--minimize"
           onClick={(e) => { e.stopPropagation(); onMinimize(); }}
+          onDoubleClick={(e) => e.stopPropagation()}
           aria-label="Minimize"
         >
           <svg className="titlebar__btn-icon" viewBox="0 0 10 10">
@@ -65,6 +66,7 @@ export function TitleBar({
         <button
           className="titlebar__btn titlebar__btn--maximize"
           onClick={(e) => { e.stopPropagation(); onMaximize(); }}
+          onDoubleClick={(e) => e.stopPropagation()}
           aria-label="Maximize"
         >
           <svg className="titlebar__btn-icon" viewBox="0 0 10 10">
@@ -76,6 +78,7 @@ export function TitleBar({
         <button
           className="titlebar__btn titlebar__btn--close"
           onClick={(e) => { e.stopPropagation(); onClose(); }}
+          onDoubleClick={(e) => e.stopPropagation()}
           aria-label="Close"
         >
           <svg className="titlebar__btn-icon" viewBox="0 0 10 10">
