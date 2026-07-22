@@ -1,4 +1,4 @@
-import { CommandHandler } from '../types';
+import type { CommandHandler } from '../types';
 
 const quotes = [
   "A bug in the hand is better than one as yet undetected.",

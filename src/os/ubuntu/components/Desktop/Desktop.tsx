@@ -435,6 +435,18 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
         setPropertiesNode(contextNode);
         hideContextMenu();
       }
+    },
+    { id: 'sep-4', label: '', separator: true },
+    {
+      id: 'open-terminal',
+      label: 'Open in Terminal',
+      onClick: async () => {
+        const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+        const path = contextNode.type === 'directory' ? await getAbsolutePathAsync(contextNode.id) : desktopPath;
+        const id = contextNode.type === 'directory' ? contextNode.id : DESKTOP_ID;
+        openWindow('terminal', { cwdId: id, cwdPath: path });
+        hideContextMenu();
+      }
     }
   ] : [
     { id: 'new-folder', label: 'New Folder', disabled: !canWriteDesktop },
@@ -870,7 +882,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
             ...item,
             onClick: item.onClick ? item.onClick : () => {
               if (item.id === 'open-terminal') {
-                openWindow('terminal');
+                openWindow('terminal', { cwdId: DESKTOP_ID, cwdPath: desktopPath });
               } else if (item.id === 'new-folder') {
                 import('../../fs/operations').then(({ mkdir }) => {
                   let name = 'New Folder';

@@ -80,6 +80,7 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
     
     return () => {
       clearTimeout(timer);
+      ptyRef.current = null;
     };
   }, []); // Run once on mount
 
@@ -115,7 +116,7 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
 
   if (interactiveApp === 'nano' && nanoFileId) {
     return (
-      <div className={`flex-1 overflow-hidden p-1 ${isActive ? 'block' : 'hidden'}`}>
+      <div className={`terminal-session-container ${isActive ? '' : 'hidden'}`}>
         <NanoEditor 
           fileId={nanoFileId} 
           onExit={() => {
@@ -134,7 +135,7 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
   }
 
   return (
-    <div className={`flex-1 overflow-hidden p-1 ${isActive ? 'block' : 'hidden'}`}>
+    <div className={`terminal-session-container ${isActive ? '' : 'hidden'}`}>
       <XTermReact 
         ref={xtermRef}
         onData={handleData}

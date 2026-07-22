@@ -246,7 +246,7 @@
 }
 
 .window--terminal-dark .titlebar {
-  background: #222222 !important;
+  background: #26071C !important;
   color: #ffffff !important;
   border-bottom: none !important;
   height: 46px !important; /* Slightly taller like GNOME 40+ */

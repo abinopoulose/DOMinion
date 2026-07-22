@@ -104,7 +104,7 @@ export class PTY {
         const blob = await readFile(absPath);
         const content = await blob.text();
         
-        const { ScriptParser } = await import('../commandParser/ScriptParser');
+        const { ScriptParser } = await import('./ScriptParser');
         const { ScriptRunner } = await import('./ScriptRunner');
         const { StandardStream } = await import('./Streams');
         
@@ -506,7 +506,7 @@ export class PTY {
             const blob = await readFile(absPath);
             const content = await blob.text();
             if (content.startsWith('#!/bin/bash') || content.startsWith('#!/bin/sh') || firstToken.endsWith('.sh')) {
-              const { ScriptParser } = await import('../commandParser/ScriptParser');
+              const { ScriptParser } = await import('./ScriptParser');
               const { ScriptRunner } = await import('./ScriptRunner');
               const parser = new ScriptParser(content);
               const ast = parser.parse();
@@ -596,7 +596,7 @@ export class PTY {
 
         const streams: StandardStreams = {
           stdin: isFirst ? new StandardStream(false) : (prevStdout as StandardStream),
-          stdout: new StandardStream(!isLast),
+          stdout: new StandardStream(isLast),
           stderr: new StandardStream(true),
         };
 

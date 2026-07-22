@@ -1,4 +1,4 @@
-import { CommandHandler } from './commands/types';
+import type { CommandHandler } from './commands/types';
 
 export interface MockPackage {
   name: string;

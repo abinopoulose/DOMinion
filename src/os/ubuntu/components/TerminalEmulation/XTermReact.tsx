@@ -8,7 +8,7 @@ export interface XTermReactRef {
   fit: () => void;
 }
 
-import { ITerminalOptions } from '@xterm/xterm';
+import type { ITerminalOptions } from '@xterm/xterm';
 
 export interface XTermReactProps {
   onData?: (data: string) => void;

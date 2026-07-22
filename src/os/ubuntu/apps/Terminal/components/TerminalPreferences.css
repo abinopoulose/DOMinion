@@ -1,0 +1,173 @@
+.term-prefs-modal {
+  background-color: #2d2d2d;
+  color: white;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.term-prefs-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.term-prefs-sidebar {
+  width: 160px;
+  background-color: #252526;
+  border-right: 1px solid #3c3c3c;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  overflow-y: auto;
+}
+
+.term-prefs-tab {
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 14px;
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+.term-prefs-tab:hover:not(.active) {
+  background-color: #2a2d2e;
+}
+
+.term-prefs-tab.active {
+  background-color: #37373d;
+  color: white;
+}
+
+.term-prefs-reset-container {
+  margin-top: auto;
+  padding: 8px 16px;
+}
+
+.term-prefs-reset-btn {
+  width: 100%;
+  padding: 6px;
+  font-size: 13px;
+  background-color: #523d3d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.term-prefs-reset-btn:hover {
+  background-color: #724d4d;
+}
+
+.term-prefs-main {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  background-color: #1e1e1e;
+}
+
+.term-prefs-group {
+  margin-bottom: 24px;
+}
+
+.term-prefs-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #d1d5db;
+  margin-bottom: 6px;
+}
+
+.term-prefs-label-flex {
+  display: flex;
+  justify-content: space-between;
+}
+
+.term-prefs-input {
+  width: 100%;
+  background-color: #3c3c3c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: white;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.term-prefs-input:focus {
+  border-color: #3b82f6;
+}
+
+.term-prefs-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.term-prefs-radio-group {
+  display: flex;
+  gap: 16px;
+}
+
+.term-prefs-radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.term-prefs-radio-label input {
+  accent-color: #3b82f6;
+}
+
+.term-prefs-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.term-prefs-checkbox-label input {
+  accent-color: #3b82f6;
+}
+
+.term-prefs-preview {
+  border-radius: 4px;
+  padding: 16px;
+  margin-top: 16px;
+  font-family: monospace;
+  font-size: 13px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+  line-height: 1.5;
+}
+
+.term-prefs-preview-line {
+  margin-bottom: 4px;
+}
+
+/* Custom Scrollbars for Modal */
+.term-prefs-modal *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.term-prefs-modal *::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.term-prefs-modal *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.term-prefs-modal *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

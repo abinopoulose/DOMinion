@@ -9,7 +9,6 @@ import './SystemDialog.css';
 export function SystemDialog() {
   const { activeDialog, closeDialog } = useSystemDialogStore();
   const powerOff = useHardwareStore((s) => s.powerOff);
-  const turnOn = useHardwareStore((s) => s.turnOn);
   const logout = useUbuntuAuthStore((s) => s.logout);
 
   useEffect(() => {
@@ -35,7 +34,8 @@ export function SystemDialog() {
         useHardwareStore.getState().powerOff();
       } else if (dialogToExecute === 'restart') {
         useWindowStore.getState().clearAllWindows();
-        useHardwareStore.getState().turnOn();
+        useHardwareStore.getState().powerOff();
+        setTimeout(() => useHardwareStore.getState().turnOn(), 3500);
       } else if (dialogToExecute === 'log_out') {
         useUbuntuAuthStore.getState().logout();
       }
@@ -65,7 +65,13 @@ export function SystemDialog() {
       message = 'The system will restart automatically in 60 seconds.';
       actionText = 'Restart';
       isDestructive = true;
-      action = () => { closeDialog(); useWindowStore.getState().clearAllWindows(); turnOn(); };
+      action = () => { 
+        closeDialog(); 
+        useWindowStore.getState().clearAllWindows(); 
+        const hw = useHardwareStore.getState();
+        hw.powerOff();
+        setTimeout(() => hw.turnOn(), 3500);
+      };
       break;
     case 'log_out':
       title = 'Log Out';

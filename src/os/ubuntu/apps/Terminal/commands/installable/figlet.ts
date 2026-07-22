@@ -1,4 +1,4 @@
-import { CommandHandler } from '../types';
+import type { CommandHandler } from '../types';
 
 // Extremely basic 5-line 3-width font for demo purposes
 const font: Record<string, string[]> = {

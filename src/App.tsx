@@ -28,6 +28,7 @@ import React from 'react';
 // Lazy load Apps
 const Terminal = React.lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.Terminal })));
 const TerminalHeaderControls = React.lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.TerminalHeaderControls })));
+const TerminalPreferences = React.lazy(() => import('./os/ubuntu/apps/Terminal/components/TerminalPreferences').then(m => ({ default: m.TerminalPreferences })));
 const FileManager = React.lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManager })));
 const FileManagerHeaderControls = React.lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManagerHeaderControls })));
 const Browser = React.lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.Browser })));
@@ -56,6 +57,7 @@ const APP_META: Record<string, { title: string; icon: string; defaultSize: { wid
   'file-manager': { title: 'Files', icon: fileManagerIcon, defaultSize: { width: 750, height: 500 } },
   browser: { title: 'Firefox', icon: browserIcon, defaultSize: { width: 900, height: 600 } },
   'text-editor': { title: 'Text Editor', icon: textIcon, defaultSize: { width: 600, height: 500 } },
+  'terminal-preferences': { title: 'Terminal Preferences', icon: settingsIcon, defaultSize: { width: 550, height: 450 } },
   calculator: { title: 'Calculator', icon: calculatorIcon, defaultSize: { width: 320, height: 480 } },
   settings: { title: 'Settings', icon: settingsIcon, defaultSize: { width: 900, height: 600 } },
   clock: { title: 'Clocks', icon: clockIcon, defaultSize: { width: 800, height: 600 } },
@@ -88,6 +90,7 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
   if (appId === 'terminal') return <Terminal windowId={windowId} />;
   if (appId === 'file-manager') return <FileManager windowId={windowId} />;
   if (appId === 'browser') return <Browser windowId={windowId} />;
+  if (appId === 'terminal-preferences') return <TerminalPreferences onClose={() => useWindowStore.getState().closeWindow(windowId)} />;
   if (appId === 'text-editor') return <TextEditor windowId={windowId} />;
   if (appId === 'calculator') return <Calculator windowId={windowId} />;
   if (appId === 'settings') return <Settings />;
@@ -314,7 +317,7 @@ function UbuntuEnvironment() {
                   win.appId === 'text-editor' ? <Suspense fallback={null}><TextEditorHeaderControls windowId={win.id} /></Suspense> :
                   win.appId === 'clock' ? <Suspense fallback={null}><ClockHeaderControls windowId={win.id} /></Suspense> : undefined
                 }
-                fullHeaderControls={win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager' || win.appId === 'clock' || win.appId === 'text-editor'}
+                fullHeaderControls={win.appId === 'terminal' || win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager' || win.appId === 'clock' || win.appId === 'text-editor'}
               >
                 <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid var(--color-accent, #E95420)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
                   <MockAppContent appId={win.appId} windowId={win.id} />
@@ -349,10 +352,10 @@ export default function App() {
     );
   }
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 700);
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    const handleResize = () => setIsMobile(window.innerWidth < 700);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);

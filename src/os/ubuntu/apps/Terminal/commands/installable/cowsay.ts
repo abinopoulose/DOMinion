@@ -1,4 +1,4 @@
-import { CommandHandler } from '../types';
+import type { CommandHandler } from '../types';
 
 export const cowsay: CommandHandler = (args, env, streams) => {
   let text = args.join(' ');
@@ -19,22 +19,22 @@ export const cowsay: CommandHandler = (args, env, streams) => {
   
   streams.stdout.writeLine(topBorder);
   if (lines.length === 1) {
-    streams.stdout.writeLine(\`< \${lines[0].padEnd(maxLength, ' ')} >\`);
+    streams.stdout.writeLine(`< \${lines[0].padEnd(maxLength, ' ')} >`);
   } else {
     for (let i = 0; i < lines.length; i++) {
-      if (i === 0) streams.stdout.writeLine(\`/ \${lines[i].padEnd(maxLength, ' ')} \\\`);
-      else if (i === lines.length - 1) streams.stdout.writeLine(\`\\ \${lines[i].padEnd(maxLength, ' ')} /\`);
-      else streams.stdout.writeLine(\`| \${lines[i].padEnd(maxLength, ' ')} |\`);
+      if (i === 0) streams.stdout.writeLine(`/ \${lines[i].padEnd(maxLength, ' ')} \\`);
+      else if (i === lines.length - 1) streams.stdout.writeLine(`\\ \${lines[i].padEnd(maxLength, ' ')} /`);
+      else streams.stdout.writeLine(`| \${lines[i].padEnd(maxLength, ' ')} |`);
     }
   }
   streams.stdout.writeLine(bottomBorder);
   
   const cow = [
-    \`        \\   ^__^\`,
-    \`         \\  (oo)\\_______\`,
-    \`            (__)\\       )\\/\\\`,
-    \`                ||----w |\`,
-    \`                ||     ||\`
+    `        \\   ^__^`,
+    `         \\  (oo)\\_______`,
+    `            (__)\\       )\\/\\`,
+    `                ||----w |`,
+    `                ||     ||`
   ];
   
   cow.forEach(line => streams.stdout.writeLine(line));

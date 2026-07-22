@@ -1,6 +1,6 @@
-import { Statement } from './ScriptParser';
+import type { Statement } from './ScriptParser';
 import { ShellEnvironment } from './ShellEnvironment';
-import { StandardStreams } from './Streams';
+import type { StandardStreams } from './Streams';
 import { PTY } from './PTY';
 import { expandAll } from '../commandParser/expand';
 

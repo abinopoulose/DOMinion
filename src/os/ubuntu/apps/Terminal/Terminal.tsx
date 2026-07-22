@@ -3,10 +3,9 @@ import { useWindowAPI } from '../../hooks/useWindowAPI';
 import { useWindowStore } from '../../store';
 import { TerminalPreferences } from './components/TerminalPreferences';
 import { TerminalTabBar } from './components/TerminalTabBar';
-import { TerminalSession, TerminalTabState } from './components/TerminalSession';
+import { TerminalSession, type TerminalTabState } from './components/TerminalSession';
 import { useTerminalProfileStore } from './store/useTerminalProfileStore';
 import { themes } from './themes';
-import { LucideSettings } from 'lucide-react';
 import './Terminal.css';
 
 interface TerminalProps {
@@ -45,7 +44,6 @@ export function Terminal({ windowId }: TerminalProps) {
     initialAppState.activeTabId || (tabs[0]?.id || '')
   );
 
-  const [showPreferences, setShowPreferences] = useState(false);
   const profile = useTerminalProfileStore(state => state.activeProfile);
   const theme = themes[profile.colorScheme] || themes['ubuntu'];
 
@@ -94,6 +92,16 @@ export function Terminal({ windowId }: TerminalProps) {
     });
   }, [activeTabId, closeWindow]);
 
+  useEffect(() => {
+    const handleNewTab = (e: any) => {
+      if (e.detail?.windowId === windowId) {
+        handleAddTab();
+      }
+    };
+    window.addEventListener('terminal:new-tab', handleNewTab);
+    return () => window.removeEventListener('terminal:new-tab', handleNewTab);
+  }, [windowId, handleAddTab]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'T') {
       e.preventDefault();
@@ -126,12 +134,11 @@ export function Terminal({ windowId }: TerminalProps) {
 
   return (
     <div 
-      className="terminal-app flex flex-col w-full h-full outline-none" 
-      style={{ backgroundColor: theme.background }}
+      className="terminal-app" 
+      style={{ backgroundColor: theme.background, display: 'flex', flexDirection: 'column', width: '100%', height: '100%', outline: 'none', padding: 0 }}
       onKeyDown={handleKeyDown}
       tabIndex={-1} // Allow div to receive keyboard events
     >
-      {showPreferences && <TerminalPreferences onClose={() => setShowPreferences(false)} />}
       
       {/* Tab Bar */}
       {tabs.length > 1 && (
@@ -144,19 +151,10 @@ export function Terminal({ windowId }: TerminalProps) {
         />
       )}
 
-      {/* Settings Header Button - normally part of window controls, but we add it here for Terminal */}
-      <div className="absolute top-1 right-2 z-10 opacity-30 hover:opacity-100 transition-opacity">
-        <button 
-          onClick={() => setShowPreferences(true)}
-          className="p-1.5 rounded hover:bg-white/20 text-white"
-          title="Terminal Preferences"
-        >
-          <LucideSettings size={14} />
-        </button>
-      </div>
+      {/* Settings button is now in TerminalHeaderControls */}
 
       {/* Terminal Sessions */}
-      <div className="flex-1 relative flex">
+      <div style={{ flex: 1, position: 'relative', display: 'flex', overflow: 'hidden' }}>
         {tabs.map(tab => (
           <TerminalSession 
             key={tab.id}
@@ -173,6 +171,53 @@ export function Terminal({ windowId }: TerminalProps) {
 }
 
 export function TerminalHeaderControls({ windowId }: { windowId: string }) {
-  // Empty, keeping it consistent with the internal header button above.
-  return null;
+  const appState = useWindowStore(state => state.windows.find(w => w.id === windowId)?.appState as any);
+  
+  const activeTabId = appState?.activeTabId;
+  const tabs = appState?.tabs || [];
+  const activeTab = tabs.find((t: any) => t.id === activeTabId) || tabs[0];
+  
+  const user = activeTab?.effectiveUser || 'peasant';
+  const homePath = user === 'root' ? '/root' : `/home/${user}`;
+  const fullPath = activeTab?.cwdPath || homePath;
+  const displayCwd = fullPath.startsWith(homePath) ? '~' + fullPath.slice(homePath.length) : fullPath;
+  const basename = fullPath === '/' ? '/' : (fullPath.split('/').pop() || '~');
+  
+  // Custom event trigger for new tab (this would ideally interact with Terminal component)
+  // For now we'll just dispatch a dummy event, but full implementation would need context
+  // The terminal adds a tab via a global event or store method if needed, but since we just want visual:
+  
+  return (
+    <div className="terminal-header-csd">
+      <div className="terminal-header-left">
+        <button 
+          className="terminal-header-btn" 
+          title="New Tab" 
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('terminal:new-tab', { detail: { windowId } }));
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+      </div>
+      
+      <div className="terminal-header-center">
+        <div className="terminal-header-title">{user}@envyy: {basename}</div>
+        <div className="terminal-header-subtitle">{displayCwd}</div>
+      </div>
+      
+      <div className="terminal-header-right">
+        <button className="terminal-header-btn" title="Search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <button 
+          className="terminal-header-btn" 
+          title="Terminal Preferences" 
+          onClick={() => useWindowStore.getState().openWindow('terminal-preferences')}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+      </div>
+    </div>
+  );
 }

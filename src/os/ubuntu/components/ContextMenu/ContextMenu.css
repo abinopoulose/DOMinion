@@ -15,6 +15,7 @@
   padding: var(--space-xs) 0;
   animation: context-menu-in 0.12s cubic-bezier(0.16, 1, 0.3, 1) both;
   user-select: none;
+  overflow: hidden;
 }
 
 @keyframes context-menu-in {
@@ -41,6 +42,7 @@
 
 .context-menu__item:hover {
   background-color: var(--color-accent);
+  color: #ffffff;
 }
 
 .context-menu__item--disabled {

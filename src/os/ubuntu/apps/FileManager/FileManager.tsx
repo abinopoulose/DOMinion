@@ -425,7 +425,19 @@ export function FileManager({ windowId }: FileManagerProps) {
               hideMenu();
             }
           },
-          { id: 'sep-1', label: '', separator: true }
+          { id: 'sep-1', label: '', separator: true },
+          {
+            id: 'open-terminal',
+            label: 'Open in Terminal',
+            onClick: async () => {
+              const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+              const path = contextNode.type === 'directory' ? await getAbsolutePathAsync(contextNode.id) : await getAbsolutePathAsync(cwdId);
+              const id = contextNode.type === 'directory' ? contextNode.id : cwdId;
+              const { useWindowStore } = await import('../../store');
+              useWindowStore.getState().openWindow('terminal', { cwdId: id, cwdPath: path });
+              hideMenu();
+            }
+          }
         );
       }
 
@@ -603,6 +615,18 @@ export function FileManager({ windowId }: FileManagerProps) {
               `Authentication is needed to paste into this location.`,
               'org.freedesktop.filemanager.paste'
             );
+            hideMenu();
+          }
+        },
+        { id: 'sep-2', label: '', separator: true },
+        {
+          id: 'open-terminal',
+          label: 'Open in Terminal',
+          onClick: async () => {
+            const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+            const path = await getAbsolutePathAsync(cwdId);
+            const { useWindowStore } = await import('../../store');
+            useWindowStore.getState().openWindow('terminal', { cwdId, cwdPath: path });
             hideMenu();
           }
         }
