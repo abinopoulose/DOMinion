@@ -28,12 +28,15 @@ export function Terminal({ windowId }: TerminalProps) {
       return initialAppState.tabs;
     }
     // Migrate legacy state or create default
+    const effectiveUser = initialAppState.effectiveUser || 'peasant';
+    const defaultHomeId = effectiveUser === 'root' ? 'root-home' : `home-${effectiveUser}`;
+    const defaultHomePath = effectiveUser === 'root' ? '/root' : `/home/${effectiveUser}`;
     return [{
       id: `tab-${generateId()}`,
-      title: initialAppState.cwdPath === '/' ? '/' : (initialAppState.cwdPath?.split('/').pop() || '~'),
-      cwdId: initialAppState.cwdId || 'root',
-      cwdPath: initialAppState.cwdPath || '/',
-      effectiveUser: initialAppState.effectiveUser || 'peasant',
+      title: initialAppState.cwdPath ? (initialAppState.cwdPath === '/' ? '/' : initialAppState.cwdPath.split('/').pop()) : '~',
+      cwdId: initialAppState.cwdId || defaultHomeId,
+      cwdPath: initialAppState.cwdPath || defaultHomePath,
+      effectiveUser: effectiveUser,
       commandHistory: initialAppState.commandHistory || [],
       interactiveApp: initialAppState.interactiveApp,
       nanoFileId: initialAppState.nanoFileId,
@@ -81,12 +84,16 @@ export function Terminal({ windowId }: TerminalProps) {
     const newTabId = `tab-${generateId()}`;
     const activeTab = tabs.find(t => t.id === activeTabId);
     
+    const user = activeTab ? activeTab.effectiveUser : 'peasant';
+    const defaultHomeId = user === 'root' ? 'root-home' : `home-${user}`;
+    const defaultHomePath = user === 'root' ? '/root' : `/home/${user}`;
+    
     const newTab: TerminalTabState = {
       id: newTabId,
       title: '~', // Will be updated on first prompt
-      cwdId: activeTab ? activeTab.cwdId : 'root',
-      cwdPath: activeTab ? activeTab.cwdPath : '/',
-      effectiveUser: activeTab ? activeTab.effectiveUser : 'peasant',
+      cwdId: activeTab ? activeTab.cwdId : defaultHomeId,
+      cwdPath: activeTab ? activeTab.cwdPath : defaultHomePath,
+      effectiveUser: user,
       commandHistory: activeTab ? [...activeTab.commandHistory] : [],
       hasShownMotd: true, // Don't show MOTD on new tabs
     };

@@ -56,7 +56,7 @@ export const TerminalMenu: React.FC<TerminalMenuProps> = ({ windowId, onClose })
         // Optional feature
         break;
       case 'about':
-        // Optional feature
+        window.dispatchEvent(new CustomEvent('terminal:about', { detail: { windowId } }));
         break;
     }
     onClose();

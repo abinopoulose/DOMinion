@@ -8,7 +8,6 @@
   flex-direction: column;
   border-radius: var(--radius-window);
   box-shadow: var(--shadow-window);
-  overflow: hidden;
   will-change: transform, opacity, width, height, top, left;
   transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.2s ease, border-radius 0.2s ease;
   transform-origin: center center;
@@ -20,6 +19,11 @@
   border-radius: 0 !important;
   border: none;
   transition: top 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), bottom 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), left 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), right 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), border-radius 0.2s ease;
+}
+
+.window--maximized .titlebar,
+.window--maximized .window__content {
+  border-radius: 0 !important;
 }
 
 .window--unfocused {
@@ -41,6 +45,8 @@
   height: var(--titlebar-height);
   min-height: var(--titlebar-height);
   background: var(--bg-titlebar);
+  border-top-left-radius: calc(var(--radius-window) - 1px);
+  border-top-right-radius: calc(var(--radius-window) - 1px);
   padding: 0 10px;
   cursor: default;
   user-select: none;
@@ -140,6 +146,8 @@
   flex: 1;
   overflow: auto;
   position: relative;
+  border-bottom-left-radius: calc(var(--radius-window) - 1px);
+  border-bottom-right-radius: calc(var(--radius-window) - 1px);
 }
 
 /* ============================================================
