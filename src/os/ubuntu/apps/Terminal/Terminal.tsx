@@ -194,7 +194,7 @@ export function Terminal({ windowId }: TerminalProps) {
     >
       
       {/* Tab Bar */}
-      {tabs.length > 0 && (
+      {tabs.length > 1 && (
         <TerminalTabBar 
           tabs={tabs} 
           activeTabId={activeTabId} 
@@ -216,6 +216,7 @@ export function Terminal({ windowId }: TerminalProps) {
             isActive={tab.id === activeTabId}
             isFocused={isFocused || false}
             onStateChange={handleTabStateChange}
+            onTabClose={handleCloseTab}
           />
         ))}
       </div>

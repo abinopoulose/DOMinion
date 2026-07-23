@@ -10,7 +10,7 @@ interface TerminalTabBarProps {
   onTabAdd: () => void;
 }
 
-export const TerminalTabBar: React.FC<TerminalTabBarProps> = ({ tabs, activeTabId, onTabSelect, onTabClose }) => {
+export const TerminalTabBar: React.FC<TerminalTabBarProps> = ({ tabs, activeTabId, onTabSelect, onTabClose, onTabAdd }) => {
   return (
     <div className="terminal-tab-bar">
       {tabs.map((tab) => {

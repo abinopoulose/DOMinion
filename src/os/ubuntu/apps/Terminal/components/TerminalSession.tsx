@@ -23,10 +23,11 @@ interface TerminalSessionProps {
   tab: TerminalTabState;
   isActive: boolean;
   onStateChange: (tabId: string, updates: Partial<TerminalTabState>) => void;
+  onTabClose: (tabId: string) => void;
   isFocused: boolean;
 }
 
-export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab, isActive, onStateChange, isFocused }) => {
+export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab, isActive, onStateChange, onTabClose, isFocused }) => {
   const xtermRef = useRef<XTermReactRef>(null);
   const ptyRef = useRef<PTY | null>(null);
   
