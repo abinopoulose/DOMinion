@@ -38,7 +38,7 @@ export const echo: CommandHandler = (args, _env, streams) => {
 };
 
 export const clear: CommandHandler = (_args, _env, streams) => {
-  streams.stdout.write('\x1b[2J\x1b[H');
+  streams.stdout.write('\x1b[2J\x1b[3J\x1b[H');
   return 0;
 };
 

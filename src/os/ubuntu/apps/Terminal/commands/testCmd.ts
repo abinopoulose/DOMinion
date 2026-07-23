@@ -59,6 +59,7 @@ export const testCmd: CommandHandler = async (args, env, _streams) => {
           
           if (op === '-s') {
             if (node.type !== 'file') return false;
+            const absPath = await getAbsolutePathAsync(node.id);
             const st = await stat(absPath);
             return st.sizeBytes > 0;
           }

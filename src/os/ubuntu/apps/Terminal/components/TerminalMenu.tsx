@@ -68,7 +68,7 @@ export const TerminalMenu: React.FC<TerminalMenuProps> = ({ windowId, onClose })
   const isDark = profile.colorScheme === 'dark';
 
   return (
-    <div className="terminal-menu-popup" ref={menuRef}>
+    <div className="terminal-menu-popup" ref={menuRef} onDoubleClick={(e) => e.stopPropagation()}>
       <div className="terminal-menu-pointer" />
       
       {/* Themes */}
@@ -104,7 +104,9 @@ export const TerminalMenu: React.FC<TerminalMenuProps> = ({ windowId, onClose })
       {/* Zoom */}
       <div className="terminal-menu-section terminal-menu-zoom">
         <button className="terminal-zoom-btn" onClick={handleZoomOut}><LucideMinus size={14} /></button>
-        <button className="terminal-zoom-reset" onClick={handleZoomReset}>100%</button>
+        <button className="terminal-zoom-reset" onClick={handleZoomReset}>
+          {Math.round((profile.fontSize / 14) * 100)}%
+        </button>
         <button className="terminal-zoom-btn" onClick={handleZoomIn}><LucidePlus size={14} /></button>
       </div>
 

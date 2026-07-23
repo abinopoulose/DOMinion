@@ -1,6 +1,6 @@
 import type { CommandHandler } from '../types';
 
-export const sl: CommandHandler = async (args, env, streams) => {
+export const sl: CommandHandler = async (_args, env, streams) => {
   const train = [
     `      ====        ________                ___________ `,
     `  _D _|  |_______/        \\__I_I_____===__|_________| `,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LucideX } from 'lucide-react';
+import { LucideX, LucidePlus } from 'lucide-react';
 import type { TerminalTabState } from './TerminalSession';
 
 interface TerminalTabBarProps {
@@ -12,7 +12,7 @@ interface TerminalTabBarProps {
 
 export const TerminalTabBar: React.FC<TerminalTabBarProps> = ({ tabs, activeTabId, onTabSelect, onTabClose }) => {
   return (
-    <div className="terminal-tab-bar" style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '6px', backgroundColor: '#26071C', userSelect: 'none', minHeight: '40px', boxSizing: 'border-box' }}>
+    <div className="terminal-tab-bar">
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         return (
@@ -37,6 +37,13 @@ export const TerminalTabBar: React.FC<TerminalTabBarProps> = ({ tabs, activeTabI
           </div>
         );
       })}
+      <button 
+        onClick={onTabAdd} 
+        className="terminal-tab-add" 
+        title="New Tab"
+      >
+        <LucidePlus size={16} />
+      </button>
     </div>
   );
 };

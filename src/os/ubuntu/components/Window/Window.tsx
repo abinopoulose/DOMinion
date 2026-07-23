@@ -196,7 +196,7 @@ export const Window = React.memo(function Window({
     animState === 'minimizing' && 'window--minimizing',
     animState === 'restoring' && 'window--restoring',
     animState === 'opening' && 'window--opening',
-    win.appId === 'terminal' && 'window--terminal-dark',
+    win.appId === 'terminal' && ((win.appState as any)?.isLightTheme ? 'window--terminal-light' : 'window--terminal-dark'),
     win.appId === 'welcome' && 'window--welcome',
   ].filter(Boolean).join(' ');
 

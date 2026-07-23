@@ -111,7 +111,11 @@ export const ls: CommandHandler = async (args, env, streams) => {
       const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) + ' ' + 
                       dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
       
-      const nameStr = c.type === 'directory' ? `\x1b[1;34m${c.name}\x1b[0m` : c.name;
+      const isExecutable = c.type !== 'directory' && (c.permissions ? (c.permissions & 1) || (c.permissions & 8) || (c.permissions & 64) : false);
+      let nameStr = c.name;
+      if (c.type === 'directory') nameStr = `\x1b[1;34m${c.name}\x1b[0m`;
+      else if (c.type === 'symlink') nameStr = `\x1b[1;36m${c.name}\x1b[0m`;
+      else if (isExecutable) nameStr = `\x1b[1;32m${c.name}\x1b[0m`;
       
       return `${permString} ${links} ${owner} ${group} ${size.toString().padStart(5, ' ')} ${dateStr} ${nameStr}`;
     });
@@ -120,7 +124,10 @@ export const ls: CommandHandler = async (args, env, streams) => {
   }
 
   const items = children.map(c => {
+    const isExecutable = c.type !== 'directory' && (c.permissions ? (c.permissions & 1) || (c.permissions & 8) || (c.permissions & 64) : false);
     if (c.type === 'directory') return `\x1b[1;34m${c.name}/\x1b[0m`;
+    if (c.type === 'symlink') return `\x1b[1;36m${c.name}\x1b[0m`;
+    if (isExecutable) return `\x1b[1;32m${c.name}\x1b[0m`;
     return c.name;
   });
 

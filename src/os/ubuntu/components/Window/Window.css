@@ -285,3 +285,51 @@
 .window--terminal-dark .titlebar__btn--close:hover .titlebar__btn-icon {
   opacity: 1;
 }
+
+/* Light Mode Variant */
+.window--terminal-light {
+  border: 1px solid #d4d4d4 !important;
+  background: #ffffff !important;
+}
+
+.window--terminal-light .titlebar {
+  background: #f2f2f2 !important;
+  color: #333333 !important;
+  border-bottom: 1px solid #e0e0e0 !important;
+  height: 46px !important;
+}
+
+.window--terminal-light .titlebar__title {
+  color: #333333 !important;
+  font-weight: bold !important;
+}
+
+.window--terminal-light .titlebar__btn {
+  background: #e5e5e5 !important;
+  border-radius: 50% !important;
+  width: 24px !important;
+  height: 24px !important;
+  margin: 0 2px;
+}
+
+.window--terminal-light .titlebar__btn:hover {
+  background: #d4d4d4 !important;
+}
+
+.window--terminal-light .titlebar__btn:active {
+  background: #c4c4c4 !important;
+}
+
+.window--terminal-light .titlebar__btn--close:hover {
+  background: #C7162B !important;
+}
+
+.window--terminal-light .titlebar__btn-icon {
+  stroke: #333333;
+  opacity: 0.8;
+}
+
+.window--terminal-light .titlebar__btn--close:hover .titlebar__btn-icon {
+  stroke: #ffffff;
+  opacity: 1;
+}

@@ -31,7 +31,7 @@ const font: Record<string, string[]> = {
   ' ': ['   ', '   ', '   ', '   ', '   ']
 };
 
-export const figlet: CommandHandler = (args, env, streams) => {
+export const figlet: CommandHandler = (args, _env, streams) => {
   let text = args.join(' ').toUpperCase();
   if (!text) {
     text = streams.stdin.readAll().trim().toUpperCase();

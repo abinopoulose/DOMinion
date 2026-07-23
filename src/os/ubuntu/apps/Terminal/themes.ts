@@ -2,6 +2,8 @@ export interface TerminalTheme {
   name: string;
   background: string;
   foreground: string;
+  chrome: string;
+  chromeForeground: string;
   cursor: string;
   selectionBackground: string;
   black: string;
@@ -27,6 +29,8 @@ export const themes: Record<string, TerminalTheme> = {
     name: 'Ubuntu Default',
     background: '#300a24',
     foreground: '#ffffff',
+    chrome: '#26071c',
+    chromeForeground: '#ffffff',
     cursor: '#ffffff',
     selectionBackground: 'rgba(255, 255, 255, 0.3)',
     black: '#2e3436',
@@ -50,6 +54,8 @@ export const themes: Record<string, TerminalTheme> = {
     name: 'Ubuntu Light',
     background: '#ffffff',
     foreground: '#300a24',
+    chrome: '#f2f2f2',
+    chromeForeground: '#333333',
     cursor: '#300a24',
     selectionBackground: 'rgba(0, 0, 0, 0.15)',
     black: '#2e3436',
@@ -73,6 +79,8 @@ export const themes: Record<string, TerminalTheme> = {
     name: 'Dark',
     background: '#1e1e1e',
     foreground: '#d4d4d4',
+    chrome: '#252526',
+    chromeForeground: '#cccccc',
     cursor: '#d4d4d4',
     selectionBackground: '#264f78',
     black: '#000000',
@@ -96,6 +104,8 @@ export const themes: Record<string, TerminalTheme> = {
     name: 'Dracula',
     background: '#282a36',
     foreground: '#f8f8f2',
+    chrome: '#21222c',
+    chromeForeground: '#f8f8f2',
     cursor: '#f8f8f2',
     selectionBackground: '#44475a',
     black: '#21222c',
@@ -119,6 +129,8 @@ export const themes: Record<string, TerminalTheme> = {
     name: 'Solarized Dark',
     background: '#002b36',
     foreground: '#839496',
+    chrome: '#073642',
+    chromeForeground: '#93a1a1',
     cursor: '#93a1a1',
     selectionBackground: '#073642',
     black: '#073642',
@@ -142,6 +154,8 @@ export const themes: Record<string, TerminalTheme> = {
     name: 'Nord',
     background: '#2e3440',
     foreground: '#d8dee9',
+    chrome: '#3b4252',
+    chromeForeground: '#eceff4',
     cursor: '#d8dee9',
     selectionBackground: '#434c5e',
     black: '#3b4252',

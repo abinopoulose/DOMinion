@@ -38,7 +38,20 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
     const term = new Terminal({
       cursorBlink: true,
       scrollback: 10000,
+      bellStyle: 'none',
       ...options,
+    });
+    
+    term.onBell(() => {
+      if (terminalRef.current) {
+        terminalRef.current.style.transition = 'opacity 0.1s ease';
+        terminalRef.current.style.opacity = '0.7';
+        setTimeout(() => {
+          if (terminalRef.current) {
+            terminalRef.current.style.opacity = '1';
+          }
+        }, 100);
+      }
     });
     
     const fitAddon = new FitAddon();
@@ -46,6 +59,12 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
 
     const searchAddon = new SearchAddon();
     term.loadAddon(searchAddon);
+    
+    searchAddon.onDidChangeResults((e) => {
+      window.dispatchEvent(new CustomEvent('terminal:search-results', {
+        detail: { resultIndex: e?.resultIndex ?? -1, resultCount: e?.resultCount ?? 0 }
+      }));
+    });
 
     term.open(terminalRef.current);
     if (terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
@@ -55,6 +74,25 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
     searchAddonRef.current = searchAddon;
+    
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.ctrlKey && event.shiftKey && event.code === 'KeyC') {
+        if (event.type === 'keydown') {
+          const selection = term.getSelection();
+          if (selection) navigator.clipboard.writeText(selection);
+        }
+        return false;
+      }
+      if (event.ctrlKey && event.shiftKey && event.code === 'KeyV') {
+        if (event.type === 'keydown') {
+          navigator.clipboard.readText().then(text => {
+            term.paste(text);
+          }).catch(() => {});
+        }
+        return false;
+      }
+      return true;
+    });
 
     let dataDisposable: any;
     if (onData) {
@@ -66,10 +104,16 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
       resizeDisposable = term.onResize(({ cols, rows }) => onResize(cols, rows));
     }
 
+    let resizeTimeout: any;
     const resizeObserver = new ResizeObserver(() => {
-      if (terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
-        try { fitAddon.fit(); } catch {}
-      }
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        requestAnimationFrame(() => {
+          if (terminalRef.current && terminalRef.current.clientWidth > 0 && terminalRef.current.clientHeight > 0) {
+            try { fitAddonRef.current?.fit(); } catch {}
+          }
+        });
+      }, 20);
     });
     resizeObserver.observe(terminalRef.current);
 

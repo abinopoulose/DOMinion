@@ -118,7 +118,6 @@ function parseSegments(input: string): Segment[] {
 function expandArithmetic(text: string): string {
   const regex = /\$\(\(([^)]+)\)\)/g;
   return text.replace(regex, (match, expr) => {
-    return resolved.replace(/\$(\w+)/g, (_match, varName) => {
     try {
       // Remove any non-math characters for basic safety
       const safeExpr = expr.replace(/[^0-9+\-*/%(). ]/g, '');
@@ -135,7 +134,7 @@ function expandArithmetic(text: string): string {
  */
 function expandVariablesStr(text: string, env: ShellEnvironment): string {
   const regex = /\$\{([A-Za-z_][A-Za-z_0-9]*)\}|\$([A-Za-z_][A-Za-z_0-9]*|\?|\$|0|#|@|\*|[1-9][0-9]*)/g;
-  return text.replace(regex, (match, p1, p2) => {
+  return text.replace(regex, (_match, p1, p2) => {
     const varName = p1 || p2;
     if (varName === '?') return env.lastExitCode.toString();
     if (varName === '$') return '3072'; // mock PID

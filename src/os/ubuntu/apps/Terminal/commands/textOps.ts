@@ -88,9 +88,11 @@ export const grep: CommandHandler = async (args, env, streams) => {
         count++;
         if (!flags.c) {
           let result = '';
-          if (multiFile && file.name !== '(standard input)') result += `${file.name}:`;
-          if (flags.n) result += `${lineIdx + 1}:`;
-          result += line;
+          if (multiFile && file.name !== '(standard input)') result += `\x1b[35m${file.name}\x1b[36m:\x1b[0m`;
+          if (flags.n) result += `\x1b[32m${lineIdx + 1}\x1b[36m:\x1b[0m`;
+          
+          const highlighted = line.replace(regex, (match) => `\x1b[1;31m${match}\x1b[0m`);
+          result += highlighted;
           outputLines.push(result);
         }
       }

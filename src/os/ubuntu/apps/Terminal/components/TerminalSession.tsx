@@ -58,6 +58,11 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
         title: env.cwdPath === '/' ? '/' : env.cwdPath.split('/').pop() || '/'
       });
     };
+
+    newPty.onExitRequest = () => {
+      onTabClose(tab.id);
+    };
+
     ptyRef.current = newPty;
 
     // Initial prompt and MOTD
@@ -103,8 +108,8 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
 
   useEffect(() => {
     if (isActive && xtermRef.current) {
-      // Small delay to ensure display:none is lifted before fit
-      setTimeout(() => xtermRef.current?.fit(), 10);
+      // Increase delay to ensure display:none is lifted before fit
+      setTimeout(() => xtermRef.current?.fit(), 50);
     }
   }, [isActive]);
 
@@ -113,10 +118,21 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
     const handleDoSearch = (e: any) => {
       const { windowId: searchWindowId, query, options, direction } = e.detail;
       if (searchWindowId === windowId && isActive && xtermRef.current) {
+        const fullOptions = {
+          ...options,
+          decorations: {
+            matchBackground: '#4a4a4a',
+            matchBorder: 'transparent',
+            matchOverviewRuler: '#4a4a4a',
+            activeMatchBackground: '#ff8c00',
+            activeMatchBorder: 'transparent',
+            activeMatchColorOverviewRuler: '#ff8c00'
+          }
+        };
         if (direction === 'next') {
-          xtermRef.current.searchAddon.findNext(query, options);
+          xtermRef.current.searchAddon.findNext(query, fullOptions);
         } else {
-          xtermRef.current.searchAddon.findPrevious(query, options);
+          xtermRef.current.searchAddon.findPrevious(query, fullOptions);
         }
       }
     };

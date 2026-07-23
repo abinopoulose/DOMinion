@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTerminalProfileStore } from '../store/useTerminalProfileStore';
 import { themes } from '../themes';
-import { LucideSettings, LucideX } from 'lucide-react';
 import './TerminalPreferences.css';
 
-export function TerminalPreferences({ onClose }: { onClose?: () => void }) {
+export function TerminalPreferences({ onClose: _onClose }: { onClose?: () => void }) {
   const { activeProfile, updateProfile, resetProfile } = useTerminalProfileStore();
   const [activeTab, setActiveTab] = useState<'profile' | 'text' | 'colors'>('text');
 

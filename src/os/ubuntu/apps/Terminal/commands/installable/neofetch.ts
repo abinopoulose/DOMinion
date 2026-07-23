@@ -1,6 +1,6 @@
 import type { CommandHandler } from '../types';
 
-export const neofetch: CommandHandler = (args, env, streams) => {
+export const neofetch: CommandHandler = (_args, env, streams) => {
   const uptimeMins = Math.floor((Date.now() - ((window as any).APP_BOOT_TIME || Date.now())) / 60000);
   const hours = Math.floor(uptimeMins / 60);
   const mins = uptimeMins % 60;

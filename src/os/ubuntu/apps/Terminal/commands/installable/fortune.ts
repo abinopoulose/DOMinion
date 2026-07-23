@@ -16,7 +16,7 @@ const quotes = [
   "Software and cathedrals are much the same - first we build them, then we pray."
 ];
 
-export const fortune: CommandHandler = (args, env, streams) => {
+export const fortune: CommandHandler = async (_args, _env, streams) => {
   const quote = quotes[Math.floor(Math.random() * quotes.length)];
   streams.stdout.writeLine(quote);
   return 0;

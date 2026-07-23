@@ -1,6 +1,6 @@
 import type { CommandHandler } from '../types';
 
-export const htop: CommandHandler = async (args, env, streams) => {
+export const htop: CommandHandler = async (_args, env, streams) => {
   const output = [
     `\x1b[36m  1  \x1b[0m[\x1b[32m|||||\x1b[31m|||\x1b[0m                                     15.2%]`,
     `\x1b[36m  2  \x1b[0m[\x1b[32m|||\x1b[31m|\x1b[0m                                         8.4%]`,

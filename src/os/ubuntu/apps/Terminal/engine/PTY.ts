@@ -23,6 +23,7 @@ export class PTY {
   private searchQuery: string = '';
 
   public onClearRequest: () => void = () => {};
+  public onExitRequest: () => void = () => {};
   public onCommandComplete: () => void = () => {};
 
   constructor(xtermWrite: (data: string) => void, env: ShellEnvironment) {
@@ -282,17 +283,44 @@ export class PTY {
 
     switch (data) {
       case '\x0C': // Ctrl+L
-        this.xtermWrite('\x1b[2J\x1b[H');
+        this.xtermWrite('\x1b[2J\x1b[3J\x1b[H');
         this.writePrompt();
         this.xtermWrite(this.inputBuffer);
+        if (this.cursorPos < this.inputBuffer.length) {
+          const diff = this.inputBuffer.length - this.cursorPos;
+          this.xtermWrite(`\x1b[${diff}D`);
+        }
+        break;
+      case '\x15': // Ctrl+U
+        if (this.cursorPos > 0) {
+          this.inputBuffer = this.inputBuffer.slice(this.cursorPos);
+          this.cursorPos = 0;
+          this.redrawLine();
+        }
+        break;
+      case '\x0b': // Ctrl+K
+        if (this.cursorPos < this.inputBuffer.length) {
+          this.inputBuffer = this.inputBuffer.slice(0, this.cursorPos);
+          this.redrawLine();
+        }
+        break;
+      case '\x17': // Ctrl+W
+        if (this.cursorPos > 0) {
+          const beforeCursor = this.inputBuffer.slice(0, this.cursorPos);
+          const afterCursor = this.inputBuffer.slice(this.cursorPos);
+          
+          const trimmed = beforeCursor.trimEnd();
+          const lastSpaceIdx = trimmed.lastIndexOf(' ');
+          const newBeforeCursor = lastSpaceIdx >= 0 ? trimmed.slice(0, lastSpaceIdx + 1) : '';
+          
+          this.inputBuffer = newBeforeCursor + afterCursor;
+          this.cursorPos = newBeforeCursor.length;
+          this.redrawLine();
+        }
         break;
       case '\x04': // Ctrl+D
         if (this.inputBuffer.length === 0 && this.pendingMultiline.length === 0) {
-          if (this.env.windowId) {
-            import('../../../store/useUbuntuWindowStore').then(({ useWindowStore }) => {
-              useWindowStore.getState().closeWindow(this.env.windowId!);
-            });
-          }
+          this.onExitRequest();
         } else if (this.cursorPos < this.inputBuffer.length) {
           // Forward delete
           const before = this.inputBuffer.slice(0, this.cursorPos);
@@ -641,7 +669,10 @@ export class PTY {
           prevStdout = nextStdin;
         }
 
-        streams.stderr.onData((data) => this.xtermWrite(data));
+        streams.stderr.onData((data) => {
+          // Format stderr in red, ensuring we don't break newlines in a way that messes up xterm
+          this.xtermWrite(`\x1b[31m${data.replace(/\r?\n$/, '')}\x1b[0m\r\n`);
+        });
 
         try {
           if (typeof handler === 'function') {

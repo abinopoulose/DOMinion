@@ -16,7 +16,7 @@ interface TerminalProps {
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export function Terminal({ windowId }: TerminalProps) {
-  const { updateState, getState, closeWindow } = useWindowAPI(windowId);
+  const { updateState, getState } = useWindowAPI(windowId);
   const isFocused = useWindowStore((s) => s.windows.find(w => w.id === windowId)?.isFocused);
   
   // Read state once on mount to initialize local tabs state
@@ -52,8 +52,26 @@ export function Terminal({ windowId }: TerminalProps) {
 
   // Sync state to window manager periodically or on unmount
   useEffect(() => {
-    updateState({ tabs, activeTabId });
-  }, [tabs, activeTabId, updateState]);
+    const activeTab = tabs.find(t => t.id === activeTabId);
+    let windowTitle = 'Terminal';
+    
+    if (activeTab) {
+      const hostname = localStorage.getItem('ubuntu-hostname') || 'envyy';
+      let displayPath = activeTab.cwdPath;
+      const homePrefix = `/home/${activeTab.effectiveUser}`;
+      if (displayPath.startsWith(homePrefix)) {
+        displayPath = '~' + displayPath.slice(homePrefix.length);
+      }
+      windowTitle = `${activeTab.effectiveUser}@${hostname}: ${displayPath}`;
+    }
+
+    updateState({ 
+      tabs, 
+      activeTabId,
+      title: windowTitle,
+      isLightTheme: profile.colorScheme === 'ubuntuLight'
+    });
+  }, [tabs, activeTabId, profile.colorScheme, updateState]);
 
   const handleTabStateChange = useCallback((tabId: string, updates: Partial<TerminalTabState>) => {
     setTabs(prev => prev.map(t => t.id === tabId ? { ...t, ...updates } : t));
@@ -81,8 +99,8 @@ export function Terminal({ windowId }: TerminalProps) {
     setTabs(prev => {
       const newTabs = prev.filter(t => t.id !== tabId);
       if (newTabs.length === 0) {
-        closeWindow();
-        return prev; // Window is closing anyway
+        useWindowStore.getState().closeWindow(windowId);
+        return prev;
       }
       if (activeTabId === tabId) {
         // Find index of closed tab
@@ -93,7 +111,7 @@ export function Terminal({ windowId }: TerminalProps) {
       }
       return newTabs;
     });
-  }, [activeTabId, closeWindow]);
+  }, [activeTabId, windowId]);
 
   useEffect(() => {
     const handleNewTab = (e: any) => {
@@ -108,12 +126,20 @@ export function Terminal({ windowId }: TerminalProps) {
       }
     };
     
+    const handleFullscreen = (e: any) => {
+      if (e.detail?.windowId === windowId) {
+        useWindowStore.getState().toggleMaximize(windowId);
+      }
+    };
+    
     window.addEventListener('terminal:new-tab', handleNewTab);
     window.addEventListener('terminal:toggle-search', handleToggleSearch);
+    window.addEventListener('terminal:fullscreen', handleFullscreen);
     
     return () => {
       window.removeEventListener('terminal:new-tab', handleNewTab);
       window.removeEventListener('terminal:toggle-search', handleToggleSearch);
+      window.removeEventListener('terminal:fullscreen', handleFullscreen);
     };
   }, [windowId, handleAddTab]);
 
@@ -150,13 +176,25 @@ export function Terminal({ windowId }: TerminalProps) {
   return (
     <div 
       className="terminal-app" 
-      style={{ backgroundColor: theme.background, display: 'flex', flexDirection: 'column', width: '100%', height: '100%', outline: 'none', padding: 0 }}
+      style={{ 
+        '--term-bg': theme.background,
+        '--term-fg': theme.foreground,
+        '--term-chrome': theme.chrome,
+        '--term-chrome-fg': theme.chromeForeground,
+        backgroundColor: theme.background, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        width: '100%', 
+        height: '100%', 
+        outline: 'none', 
+        padding: 0 
+      } as React.CSSProperties}
       onKeyDown={handleKeyDown}
       tabIndex={-1} // Allow div to receive keyboard events
     >
       
       {/* Tab Bar */}
-      {tabs.length > 1 && (
+      {tabs.length > 0 && (
         <TerminalTabBar 
           tabs={tabs} 
           activeTabId={activeTabId} 

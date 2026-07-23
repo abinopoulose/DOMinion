@@ -16,6 +16,20 @@ export const TerminalSearch: React.FC<TerminalSearchProps> = ({ windowId, onClos
   const inputRef = useRef<HTMLInputElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
 
+  const [resultIndex, setResultIndex] = useState(-1);
+  const [resultCount, setResultCount] = useState(0);
+
+  useEffect(() => {
+    const handleResults = (e: any) => {
+      if (e.detail) {
+        setResultIndex(e.detail.resultIndex);
+        setResultCount(e.detail.resultCount);
+      }
+    };
+    window.addEventListener('terminal:search-results', handleResults);
+    return () => window.removeEventListener('terminal:search-results', handleResults);
+  }, []);
+
   useEffect(() => {
     // Focus the input when opened
     inputRef.current?.focus();
@@ -60,6 +74,8 @@ export const TerminalSearch: React.FC<TerminalSearchProps> = ({ windowId, onClos
       }
     } else if (e.key === 'Escape') {
       onClose();
+      e.stopPropagation();
+      e.preventDefault();
     }
   };
 
@@ -101,6 +117,7 @@ export const TerminalSearch: React.FC<TerminalSearchProps> = ({ windowId, onClos
       </div>
       
       <div className="terminal-search-actions">
+        {resultCount > 0 && <span className="terminal-search-count">{resultIndex >= 0 ? resultIndex + 1 : 0} of {resultCount}</span>}
         <button 
           className="terminal-search-btn" 
           onClick={() => dispatchSearch('prev')}

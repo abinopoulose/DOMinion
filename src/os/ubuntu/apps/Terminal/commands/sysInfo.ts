@@ -191,7 +191,7 @@ export const lsusb: CommandHandler = (_args, _env, streams) => {
   return 0;
 };
 
-export const dmesg: CommandHandler = (args, _env, streams) => {
+export const dmesg: CommandHandler = (_args, _env, streams) => {
   const output = [
     '[    0.000000] Linux version 6.8.0-31-generic (buildd@lcy02-amd64-077) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.2.0-23ubuntu4) 13.2.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #31-Ubuntu SMP PREEMPT_DYNAMIC Sat Apr 20 00:40:06 UTC 2024 (Ubuntu 6.8.0-31.31-generic 6.8.1)',
     '[    0.000000] Command line: BOOT_IMAGE=/boot/vmlinuz-6.8.0-31-generic root=UUID=1234 ro quiet splash',
