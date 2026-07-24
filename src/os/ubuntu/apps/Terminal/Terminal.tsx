@@ -5,6 +5,7 @@ import { TerminalTabBar } from './components/TerminalTabBar';
 import { TerminalSession, type TerminalTabState } from './components/TerminalSession';
 import { TerminalMenu } from './components/TerminalMenu';
 import { TerminalSearch } from './components/TerminalSearch';
+import { TerminalAboutDialog } from './components/TerminalAboutDialog';
 import { useTerminalProfileStore } from './store/useTerminalProfileStore';
 import { themes } from './themes';
 import './Terminal.css';
@@ -49,6 +50,7 @@ export function Terminal({ windowId }: TerminalProps) {
   );
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   const profile = useTerminalProfileStore(state => state.activeProfile);
   const theme = themes[profile.colorScheme] || themes['ubuntu'];
@@ -139,14 +141,22 @@ export function Terminal({ windowId }: TerminalProps) {
       }
     };
     
+    const handleAbout = (e: any) => {
+      if (e.detail?.windowId === windowId) {
+        setIsAboutOpen(true);
+      }
+    };
+    
     window.addEventListener('terminal:new-tab', handleNewTab);
     window.addEventListener('terminal:toggle-search', handleToggleSearch);
     window.addEventListener('terminal:fullscreen', handleFullscreen);
+    window.addEventListener('terminal:about', handleAbout);
     
     return () => {
       window.removeEventListener('terminal:new-tab', handleNewTab);
       window.removeEventListener('terminal:toggle-search', handleToggleSearch);
       window.removeEventListener('terminal:fullscreen', handleFullscreen);
+      window.removeEventListener('terminal:about', handleAbout);
     };
   }, [windowId, handleAddTab]);
 
@@ -238,6 +248,9 @@ export function Terminal({ windowId }: TerminalProps) {
           }} 
         />
       )}
+      
+      {/* About Dialog */}
+      {isAboutOpen && <TerminalAboutDialog onClose={() => setIsAboutOpen(false)} />}
     </div>
   );
 }

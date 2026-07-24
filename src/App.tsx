@@ -29,6 +29,7 @@ import React from 'react';
 const Terminal = React.lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.Terminal })));
 const TerminalHeaderControls = React.lazy(() => import('./os/ubuntu/apps/Terminal/Terminal').then(m => ({ default: m.TerminalHeaderControls })));
 const TerminalPreferences = React.lazy(() => import('./os/ubuntu/apps/Terminal/components/TerminalPreferences').then(m => ({ default: m.TerminalPreferences })));
+const TerminalPreferencesHeader = React.lazy(() => import('./os/ubuntu/apps/Terminal/components/TerminalPreferences').then(m => ({ default: m.TerminalPreferencesHeader })));
 const FileManager = React.lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManager })));
 const FileManagerHeaderControls = React.lazy(() => import('./os/ubuntu/apps/FileManager/FileManager').then(m => ({ default: m.FileManagerHeaderControls })));
 const Browser = React.lazy(() => import('./os/ubuntu/apps/Browser/Browser').then(m => ({ default: m.Browser })));
@@ -311,13 +312,14 @@ function UbuntuEnvironment() {
                 icon={<img src={APP_META[win.appId]?.icon} alt="" style={{ width: 16, height: 16 }} />}
                 headerControls={
                   win.appId === 'terminal' ? <Suspense fallback={null}><TerminalHeaderControls windowId={win.id} /></Suspense> :
+                  win.appId === 'terminal-preferences' ? <Suspense fallback={null}><TerminalPreferencesHeader /></Suspense> :
                   win.appId === 'browser' ? <Suspense fallback={null}><BrowserHeaderControls windowId={win.id} /></Suspense> : 
                   win.appId === 'settings' ? <Suspense fallback={null}><SettingsHeaderControls windowId={win.id} /></Suspense> :
                   win.appId === 'file-manager' ? <Suspense fallback={null}><FileManagerHeaderControls windowId={win.id} /></Suspense> :
                   win.appId === 'text-editor' ? <Suspense fallback={null}><TextEditorHeaderControls windowId={win.id} /></Suspense> :
                   win.appId === 'clock' ? <Suspense fallback={null}><ClockHeaderControls windowId={win.id} /></Suspense> : undefined
                 }
-                fullHeaderControls={win.appId === 'terminal' || win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager' || win.appId === 'clock' || win.appId === 'text-editor'}
+                fullHeaderControls={win.appId === 'terminal' || win.appId === 'terminal-preferences' || win.appId === 'browser' || win.appId === 'settings' || win.appId === 'file-manager' || win.appId === 'clock' || win.appId === 'text-editor'}
               >
                 <Suspense fallback={<div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 30, height: 30, border: '3px solid #f3f3f3', borderTop: '3px solid var(--color-accent, #E95420)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /></div>}>
                   <MockAppContent appId={win.appId} windowId={win.id} />

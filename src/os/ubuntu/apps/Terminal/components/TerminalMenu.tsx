@@ -65,7 +65,7 @@ export const TerminalMenu: React.FC<TerminalMenuProps> = ({ windowId, onClose })
   // Determine effective theme state (mapping for simplicity)
   const isSystem = profile.colorScheme === 'ubuntu';
   const isLight = profile.colorScheme === 'ubuntuLight';
-  const isDark = profile.colorScheme === 'dark';
+  const isDark = profile.colorScheme === 'vscode';
 
   return (
     <div className="terminal-menu-popup" ref={menuRef} onDoubleClick={(e) => e.stopPropagation()}>
@@ -91,7 +91,7 @@ export const TerminalMenu: React.FC<TerminalMenuProps> = ({ windowId, onClose })
         </button>
         <button 
           className={`terminal-theme-btn terminal-theme-dark ${isDark ? 'active' : ''}`}
-          onClick={() => updateProfile({ colorScheme: 'dark' })}
+          onClick={() => updateProfile({ colorScheme: 'vscode' })}
           title="Dark Theme"
         >
           <div className="terminal-theme-circle" />
