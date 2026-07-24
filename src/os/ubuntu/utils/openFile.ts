@@ -18,7 +18,7 @@ export const openFileApp = async (id: string, isDirectory: boolean) => {
     
     const blob = await readFile(path);
     
-    let appId: any = 'text-editor';
+    let appId: import('../types/window').AppId = 'text-editor';
     
     if (blob instanceof Blob) {
       const mime = await sniffMimeType(blob);

@@ -573,8 +573,8 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
           const GRID_X = 100;
           const GRID_Y = 100;
 
-          let targetCol = Math.round((rawX - OFFSET_X) / GRID_X);
-          let targetRow = Math.round((rawY - OFFSET_Y) / GRID_Y);
+          const targetCol = Math.round((rawX - OFFSET_X) / GRID_X);
+          const targetRow = Math.round((rawY - OFFSET_Y) / GRID_Y);
           
           const maxRow = Math.max(0, Math.floor((window.innerHeight - OFFSET_Y - (dockPosition === 'bottom' ? dockWidth : 0)) / GRID_Y) - 1);
           const maxCol = Math.max(0, Math.floor((window.innerWidth - OFFSET_X - (dockPosition === 'right' ? dockWidth : 0)) / GRID_X) - 1);
@@ -593,8 +593,8 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
 
           const findSlot = (tC: number, tR: number) => {
             let radius = 0;
-            let startC = Math.max(0, Math.min(tC, maxCol));
-            let startR = Math.max(0, Math.min(tR, maxRow));
+            const startC = Math.max(0, Math.min(tC, maxCol));
+            const startR = Math.max(0, Math.min(tR, maxRow));
             let found = false;
             let finalC = startC, finalR = startR;
             while (radius < 30 && !found) {
@@ -691,7 +691,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
     >
       <div className="desktop__icons" ref={undefined} style={{ position: 'relative' }}>
         {combinedIcons.map((item) => {
-          let pos = layoutPositions[item.id];
+          const pos = layoutPositions[item.id];
 
           return (
             <div

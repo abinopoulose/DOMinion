@@ -14,7 +14,7 @@ export class ShellEnvironment {
   abortSignal?: AbortSignal;
   interactiveRead?: (prompt?: string, silent?: boolean) => Promise<string>;
   positionalArgs: string[] = [];
-  functions: Record<string, any> = {};
+  functions: Record<string, import('./ScriptParser').Statement[]> = {};
 
   constructor(initialCwdId?: string, initialCwdPath?: string, initialUser?: string, windowId?: string) {
     const authStoreUser = useUbuntuAuthStore.getState().currentUser || 'peasant';

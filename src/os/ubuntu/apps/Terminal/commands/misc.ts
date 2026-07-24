@@ -203,7 +203,10 @@ export const exportCmd: CommandHandler = (args, env, streams) => {
     const eqIdx = arg.indexOf('=');
     if (eqIdx !== -1) {
       const key = arg.slice(0, eqIdx);
-      const val = arg.slice(eqIdx + 1);
+      let val = arg.slice(eqIdx + 1);
+      if ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))) {
+        val = val.slice(1, -1);
+      }
       env.updateEnv(key, val);
     }
   }

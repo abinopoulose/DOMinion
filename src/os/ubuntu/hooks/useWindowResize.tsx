@@ -154,6 +154,7 @@ export function useWindowResize({
         <div
           key={edge}
           className={`window__resize-handle window__resize-handle--${edge}`}
+          // eslint-disable-next-line react-hooks/refs
           onPointerDown={(e) => handleResizeStart(edge, e)}
           onPointerMove={handleResizeMove}
           onPointerUp={handleResizeEnd}

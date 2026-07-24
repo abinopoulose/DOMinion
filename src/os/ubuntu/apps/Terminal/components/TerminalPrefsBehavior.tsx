@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useTerminalProfileStore } from '../store/useTerminalProfileStore';
 
 export function ToggleSwitch({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) {

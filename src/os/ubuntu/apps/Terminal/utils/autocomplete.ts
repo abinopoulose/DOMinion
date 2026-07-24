@@ -22,6 +22,7 @@ function getLongestCommonPrefix(words: string[]): string {
 
 export function formatAsColumns(items: string[], terminalWidth = 100): string[] {
   if (items.length === 0) return [];
+  // eslint-disable-next-line no-control-regex
   const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
   const maxLen = Math.max(...items.map(s => stripAnsi(s).length));
   const colWidth = maxLen + 2; 
@@ -116,6 +117,7 @@ export async function handleAutocomplete(currentInput: string, cwdPath: string):
         return { completion: words.join(' ') };
       } else {
         const displayMatches = matches.map(m => m.display).sort((a, b) => {
+          // eslint-disable-next-line no-control-regex
           const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
           return strip(a).toLowerCase().localeCompare(strip(b).toLowerCase());
         });

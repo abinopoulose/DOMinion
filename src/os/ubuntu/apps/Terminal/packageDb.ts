@@ -128,7 +128,9 @@ export function getInstalledPackages(): string[] {
     if (data) {
       return JSON.parse(data);
     }
-  } catch {}
+  } catch (e) {
+    console.error('Failed to parse installed packages', e);
+  }
   return [...BASE_SYSTEM_PACKAGES];
 }
 

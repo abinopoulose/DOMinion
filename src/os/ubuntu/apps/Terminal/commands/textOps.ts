@@ -551,7 +551,7 @@ export const tee: CommandHandler = async (args, env, streams) => {
 export const sed: CommandHandler = async (args, env, streams) => {
   const { flags, options, positional } = parseArgs(args, ['e']);
   
-  let expression = options.e || positional.shift();
+  const expression = options.e || positional.shift();
   if (!expression) {
     streams.stderr.writeLine(`sed: missing command`);
     return 1;
@@ -565,7 +565,7 @@ export const sed: CommandHandler = async (args, env, streams) => {
     const delim = expression[1];
     const parts = expression.split(delim);
     if (parts.length >= 4) {
-      let pattern = parts[1];
+      const pattern = parts[1];
       replacement = parts[2];
       global = parts[3].includes('g');
       try {
@@ -587,7 +587,7 @@ export const sed: CommandHandler = async (args, env, streams) => {
     const content = streams.stdin.readAll();
     const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
-      let l = lines[i];
+      const l = lines[i];
       if (i === lines.length - 1 && l === '') break;
       streams.stdout.writeLine(l.replace(regex, replacement));
     }
@@ -608,7 +608,7 @@ export const sed: CommandHandler = async (args, env, streams) => {
       
       let newContent = '';
       for (let i = 0; i < lines.length; i++) {
-        let l = lines[i];
+        const l = lines[i];
         if (i === lines.length - 1 && l === '') break;
         newContent += l.replace(regex, replacement) + '\n';
       }

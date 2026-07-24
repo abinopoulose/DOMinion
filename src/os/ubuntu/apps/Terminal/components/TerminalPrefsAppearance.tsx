@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useTerminalProfileStore } from '../store/useTerminalProfileStore';
 import { themes } from '../themes';
 import { LucideCheck, LucideChevronDown } from 'lucide-react';

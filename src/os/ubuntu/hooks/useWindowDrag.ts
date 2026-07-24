@@ -1,4 +1,4 @@
-import { useRef, useCallback, type PointerEvent as ReactPointerEvent } from 'react';
+import { useRef, useCallback, useEffect, type PointerEvent as ReactPointerEvent } from 'react';
 import { getEdgeSnap, getTopEdgeSnap } from '../engine/WindowManagerEngine';
 
 interface DragState {
@@ -34,7 +34,9 @@ export function useWindowDrag({
 }: UseWindowDragOptions) {
   const dragRef = useRef<DragState | null>(null);
   const posRef = useRef(position);
-  posRef.current = position;
+  useEffect(() => {
+    posRef.current = position;
+  }, [position]);
 
   // Track the initial clientY when starting a drag on a maximized window
   const maxDragStartY = useRef<number | null>(null);

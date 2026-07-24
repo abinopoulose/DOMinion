@@ -27,7 +27,7 @@ export class ScriptRunner {
         await this.pty.executeCommand(stmt.line);
         break;
         
-      case 'if':
+      case 'if': {
         await this.pty.executeCommand(stmt.condition);
         let executed = false;
         
@@ -49,8 +49,9 @@ export class ScriptRunner {
           await this.execute(stmt.elseBlock);
         }
         break;
+      }
         
-      case 'for':
+      case 'for': {
         // expand list
         const expandedList = await expandAll(stmt.list, this.env);
         // split by whitespace if it's a single string
@@ -62,6 +63,7 @@ export class ScriptRunner {
           await this.execute(stmt.body);
         }
         break;
+      }
         
       case 'while':
         while (true) {
@@ -72,7 +74,7 @@ export class ScriptRunner {
         }
         break;
         
-      case 'case':
+      case 'case': {
         // Expand the variable to match
         const expandedVar = await expandAll([stmt.variable], this.env);
         const matchVal = expandedVar.join(' ');
@@ -86,6 +88,7 @@ export class ScriptRunner {
           }
         }
         break;
+      }
         
       case 'function':
         if (!this.env.functions) {

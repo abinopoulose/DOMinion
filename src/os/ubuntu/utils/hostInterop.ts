@@ -21,7 +21,7 @@ export async function downloadFile(id: string) {
       URL.revokeObjectURL(url);
     } else {
       // Create blob from string
-      const textBlob = new Blob([blob as any], { type: 'text/plain' });
+      const textBlob = new Blob([blob as BlobPart], { type: 'text/plain' });
       const url = URL.createObjectURL(textBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -109,7 +109,7 @@ export async function handleHostDrop(e: React.DragEvent, targetDirId: string, on
     return;
   }
 
-  const queue: { entry: any, path: string }[] = [];
+  const queue: { entry: FileSystemEntry, path: string }[] = [];
 
   for (let i = 0; i < items?.length || 0; i++) {
     const item = items[i];
@@ -182,7 +182,7 @@ export async function handleHostDrop(e: React.DragEvent, targetDirId: string, on
       console.log(`[VFS Sync: hostInterop] Processing file entry: ${absolutePath}`);
       onProgress?.(`Uploading ${entry.name}...`, currentIndex, queue.length);
       await new Promise<void>((resolve, reject) => {
-        entry.file(async (file: File) => {
+        (entry as FileSystemFileEntry).file(async (file: File) => {
           try {
             console.log(`[VFS Sync: hostInterop] Executing backend writeFile for entry: ${absolutePath}`);
             
@@ -214,13 +214,14 @@ export async function handleHostDrop(e: React.DragEvent, targetDirId: string, on
       onProgress?.(`Creating folder ${entry.name}...`, currentIndex, queue.length);
       try {
         await mkdir(absolutePath);
-      } catch (e: any) {
-        if (!e.message?.includes('already exists')) console.warn(e);
+      } catch (e) {
+        const error = e as Error;
+        if (!error.message?.includes('already exists')) console.warn(e);
       }
       
-      const dirReader = entry.createReader();
+      const dirReader = (entry as FileSystemDirectoryEntry).createReader();
       const readEntries = async () => {
-        return new Promise<any[]>((resolve, reject) => {
+        return new Promise<FileSystemEntry[]>((resolve, reject) => {
           dirReader.readEntries(resolve, reject);
         });
       };

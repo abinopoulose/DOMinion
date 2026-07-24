@@ -322,7 +322,7 @@ export function Dock() {
     const droppedAppId = e.dataTransfer.getData('application/x-dock-app') || draggedAppId;
     
     if (droppedAppId && targetAppId && droppedAppId !== targetAppId) {
-      let newPinned = [...pinnedApps];
+      const newPinned = [...pinnedApps];
       if (!newPinned.includes(droppedAppId)) newPinned.push(droppedAppId);
       if (!newPinned.includes(targetAppId)) newPinned.push(targetAppId);
       
@@ -372,7 +372,7 @@ export function Dock() {
           const origDraggedIdx = dockAppIds.indexOf(draggedAppId || '');
           const isDraggingDown = origDraggedIdx > -1 && index > origDraggedIdx;
           
-          let dynamicStyle: React.CSSProperties = { position: 'relative', transition: 'padding 0.2s cubic-bezier(0.2, 0, 0.1, 1)' };
+          const dynamicStyle: React.CSSProperties = { position: 'relative', transition: 'padding 0.2s cubic-bezier(0.2, 0, 0.1, 1)' };
           
           if (draggedAppId && isDragOver) {
             const gapSize = dockIconSize + 8;

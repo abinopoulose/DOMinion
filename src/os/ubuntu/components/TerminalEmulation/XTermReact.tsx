@@ -38,7 +38,6 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
     const term = new Terminal({
       cursorBlink: true,
       scrollback: 10000,
-      bellStyle: 'none',
       ...options,
     });
     

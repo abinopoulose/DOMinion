@@ -34,8 +34,8 @@ export const cat: CommandHandler = async (args, env, streams) => {
     const blob = await readFile(targetAbsPath);
     const text = await blob.text();
     text.split('\n').forEach((line: string) => streams.stdout.writeLine(line));
-  } catch (err: any) {
-    streams.stderr.writeLine(`cat: ${args[0]}: ${err.message}`);
+  } catch (err) {
+    streams.stderr.writeLine(`cat: ${args[0]}: ${(err as Error).message}`);
     return 1;
   }
   return 0;
@@ -56,7 +56,7 @@ export const touch: CommandHandler = async (args, env, streams) => {
       const targetAbsPath = await getAbsolutePathAsync(node.id);
       const blob = await readFile(targetAbsPath);
       await writeFile(targetAbsPath, blob);
-    } catch(e) {}
+    } catch(e) { console.error('Failed to update touch time:', e); }
     return 0;
   }
 
@@ -74,8 +74,8 @@ export const touch: CommandHandler = async (args, env, streams) => {
   
   try {
     await writeFile(newFilePath, new Blob([]));
-  } catch (err: any) {
-    streams.stderr.writeLine(`touch: ${err.message}`);
+  } catch (err) {
+    streams.stderr.writeLine(`touch: ${(err as Error).message}`);
     return 1;
   }
   return 0;
@@ -103,8 +103,8 @@ export const mkdir: CommandHandler = async (args, env, streams) => {
   
   try {
     await mkdirOp(newDirPath);
-  } catch (err: any) {
-    streams.stderr.writeLine(`mkdir: cannot create directory '${name}': ${err.message}`);
+  } catch (err) {
+    streams.stderr.writeLine(`mkdir: cannot create directory '${name}': ${(err as Error).message}`);
     return 1;
   }
   return 0;
@@ -155,8 +155,8 @@ export const rm: CommandHandler = async (args, env, streams) => {
       } else {
         await unlink(absPath);
       }
-    } catch (err: any) {
-      streams.stderr.writeLine(`rm: cannot remove '${target}': ${err.message}`); return 1;
+    } catch (err) {
+      streams.stderr.writeLine(`rm: cannot remove '${target}': ${(err as Error).message}`); return 1;
     }
   }
 
@@ -191,8 +191,8 @@ export const chmod: CommandHandler = async (args, env, streams) => {
   try {
     const absPath = await getAbsolutePathAsync(node.id);
     await chmodOp(absPath, permissions);
-  } catch (err: any) {
-    streams.stderr.writeLine(`chmod: ${err.message}`); return 1;
+  } catch (err) {
+    streams.stderr.writeLine(`chmod: ${(err as Error).message}`); return 1;
   }
   
   return 0;
@@ -222,8 +222,8 @@ export const chown: CommandHandler = async (args, env, streams) => {
   try {
     const absPath = await getAbsolutePathAsync(node.id);
     await chownOp(absPath, owner || node.ownerId, group || node.groupId);
-  } catch (err: any) {
-    streams.stderr.writeLine(`chown: ${err.message}`); return 1;
+  } catch (err) {
+    streams.stderr.writeLine(`chown: ${(err as Error).message}`); return 1;
   }
   
   return 0;
@@ -276,7 +276,7 @@ export const cp: CommandHandler = async (args, env, streams) => {
   async function copyRecursive(srcAbs: string, destAbs: string) {
     const node = await stat(srcAbs);
     if (node.type === 'directory') {
-      try { await mkdir(destAbs); } catch(e) {}
+      try { await mkdir(destAbs); } catch(e) { console.error(e); }
       const children = await readdir(srcAbs);
       for (const child of children) {
         await copyRecursive(srcAbs === '/' ? '/' + child.name : srcAbs + '/' + child.name, destAbs === '/' ? '/' + child.name : destAbs + '/' + child.name);
@@ -319,8 +319,8 @@ export const cp: CommandHandler = async (args, env, streams) => {
       const finalDestPath = destParentAbs === '/' ? '/' + destName : destParentAbs + '/' + destName;
       await copyRecursive(sourceAbsPath, finalDestPath);
     }
-  } catch (err: any) {
-    [`cp: ${err.message}`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
+  } catch (err) {
+    [`cp: ${(err as Error).message}`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   return 0;
@@ -395,8 +395,8 @@ export const mv: CommandHandler = async (args, env, streams) => {
       const finalDestPath = destParentAbs === '/' ? '/' + destName : destParentAbs + '/' + destName;
       await rename(sourceAbsPath, finalDestPath);
     }
-  } catch (err: any) {
-    [`mv: ${err.message}`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
+  } catch (err) {
+    [`mv: ${(err as Error).message}`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
   return 0;
@@ -433,8 +433,8 @@ export const rmdir: CommandHandler = async (args, env, streams) => {
     try {
       const absPath = await getAbsolutePathAsync(node.id);
       await rmdirOp(absPath, { recursive: false });
-    } catch (err: any) {
-      streams.stderr.writeLine(`rmdir: failed to remove '${target}': ${err.message}`); return 1;
+    } catch (err) {
+      streams.stderr.writeLine(`rmdir: failed to remove '${target}': ${(err as Error).message}`); return 1;
     }
   }
   return 0;
@@ -505,8 +505,8 @@ export const ln: CommandHandler = async (args, env, streams) => {
       const linkAbsPath = cwdPath === '/' ? '/' + linkName : cwdPath + '/' + linkName;
       // Note: A true robust ln implementation resolves parents, but for now we simplify.
       await symlink(targetPath, linkAbsPath);
-    } catch (err: any) {
-      streams.stderr.writeLine(`ln: ${err.message}`);
+    } catch (err) {
+      streams.stderr.writeLine(`ln: ${(err as Error).message}`);
     }
   } else {
     streams.stderr.writeLine(`ln: hard links not currently supported`);
@@ -556,6 +556,7 @@ export const du: CommandHandler = async (args, env, streams) => {
       
       return totalSize;
     } catch (err) {
+      console.error(err);
       streams.stderr.writeLine(`du: cannot access '${name}': No such file or directory`);
       return 0;
     }
@@ -571,7 +572,6 @@ export const du: CommandHandler = async (args, env, streams) => {
     
     if (flags.s) {
       // In summary mode we just calculate and print once at the root of the target
-      let totalSize = 0;
       const getDirSize = async (p: string): Promise<number> => {
         const s = await stat(p);
         let size = s.sizeBytes || 0;
@@ -583,7 +583,7 @@ export const du: CommandHandler = async (args, env, streams) => {
         }
         return size;
       };
-      totalSize = await getDirSize(absPath);
+      const totalSize = await getDirSize(absPath);
       streams.stdout.writeLine(`${formatSize(totalSize)}\t${target}`);
     } else {
       await calculateSize(absPath, target);
@@ -648,6 +648,7 @@ export const file: CommandHandler = async (args, env, streams) => {
       
       streams.stdout.writeLine(`${target}: ${typeStr}`);
     } catch (err) {
+      console.error(err);
       streams.stderr.writeLine(`${target}: cannot open \`${target}'`);
     }
   }
@@ -742,6 +743,7 @@ export const readlink: CommandHandler = async (args, env, streams) => {
     streams.stdout.writeLine(linkTarget);
     return 0;
   } catch (err) {
+    console.error(err);
     return 1;
   }
 };

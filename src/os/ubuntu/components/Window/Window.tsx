@@ -12,14 +12,18 @@ export interface WindowProps {
   icon?: ReactNode;
   headerControls?: ReactNode;
   fullHeaderControls?: boolean;
+  hideTitleBar?: boolean;
   children: ReactNode;
 }
+
+export const WindowDragContext = React.createContext<any>(null);
 
 export const Window = React.memo(function Window({
   id,
   icon,
   headerControls,
   fullHeaderControls,
+  hideTitleBar,
   children,
 }: WindowProps) {
   const win = useWindowStore(useCallback((state) => state.windows.find((w) => w.id === id), [id]));
@@ -160,7 +164,7 @@ export const Window = React.memo(function Window({
   const dockSize = dockAutoHide ? 0 : dockIconSize + 12;
   const topbarHeight = 28;
 
-  let maxTop = topbarHeight;
+  const maxTop = topbarHeight;
   let maxBottom = 0;
   let maxLeft = 0;
   let maxRight = 0;
@@ -236,7 +240,7 @@ export const Window = React.memo(function Window({
       data-app-id={win.appId}
       onMouseDown={handleFocus}
     >
-      {win.appId !== 'welcome' && (
+      {win.appId !== 'welcome' && !hideTitleBar && (
         <TitleBar
           title={title}
           icon={icon}
@@ -252,18 +256,20 @@ export const Window = React.memo(function Window({
         />
       )}
       <div className="window__content">
-        <AppErrorBoundary windowId={id} appId={win.appId}>
-          {['calculator', 'system-monitor'].includes(win.appId) ? (
-            <iframe
-              src={`/app/${win.appId}?windowId=${id}`}
-              sandbox="allow-scripts allow-same-origin"
-              style={{ width: '100%', height: '100%', border: 'none' }}
-              title={win.appId}
-            />
-          ) : (
-            children
-          )}
-        </AppErrorBoundary>
+        <WindowDragContext.Provider value={dragHandlers}>
+          <AppErrorBoundary windowId={id} appId={win.appId}>
+            {['calculator', 'system-monitor'].includes(win.appId) ? (
+              <iframe
+                src={`/app/${win.appId}?windowId=${id}`}
+                sandbox="allow-scripts allow-same-origin"
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                title={win.appId}
+              />
+            ) : (
+              children
+            )}
+          </AppErrorBoundary>
+        </WindowDragContext.Provider>
       </div>
       {resizeHandles}
     </div>

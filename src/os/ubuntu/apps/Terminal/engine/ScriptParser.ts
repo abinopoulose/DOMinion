@@ -39,7 +39,7 @@ export class ScriptParser {
   private parseStatement(): Statement | null {
     if (this.isAtEnd()) return null;
     
-    let line = this.peek();
+    const line = this.peek();
     
     // Simple inline `;` separation handling is complex for block statements.
     // For this mock, we assume block keywords start a line.
@@ -111,11 +111,11 @@ export class ScriptParser {
   }
 
   private parseFor(): Statement {
-    let line = this.advance();
+    const line = this.advance();
     // e.g. "for var in 1 2 3; do"
     const match = line.match(/^for\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+in\s+(.*?)(?:;\s*do)?$/);
     const variable = match ? match[1] : 'i';
-    let listStr = match ? match[2] : '';
+    const listStr = match ? match[2] : '';
     
     if (this.peek() === 'do') {
       this.advance();
@@ -141,7 +141,7 @@ export class ScriptParser {
   }
 
   private parseWhile(): Statement {
-    let line = this.advance();
+    const line = this.advance();
     let condition = line.slice(6).trim();
     if (condition.endsWith('; do')) {
       condition = condition.slice(0, -4).trim();
@@ -163,14 +163,14 @@ export class ScriptParser {
   }
 
   private parseCase(): Statement {
-    let line = this.advance();
+    const line = this.advance();
     const match = line.match(/^case\s+(.*?)\s+in$/);
     const variable = match ? match[1] : '';
     
     const patterns: { pattern: string; body: Statement[] }[] = [];
     
     while (!this.isAtEnd() && this.peek() !== 'esac') {
-      let patLine = this.advance();
+      const patLine = this.advance();
       // Remove trailing `)`
       let pattern = patLine.trim();
       if (pattern.endsWith(')')) {
@@ -203,7 +203,7 @@ export class ScriptParser {
   }
 
   private parseFunction(): Statement {
-    let line = this.advance();
+    const line = this.advance();
     const match = line.match(/^(?:function\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\s*\(\s*\)\s*\{/);
     const name = match ? match[1] : 'unknown_func';
     

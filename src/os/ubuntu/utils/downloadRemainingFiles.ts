@@ -320,7 +320,7 @@ export async function downloadRemainingFiles(onProgress: (percent: number) => vo
   try {
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.register('/sw.js');
-      try { await reg.update(); } catch(e) {}
+      try { await reg.update(); } catch(error) { console.error('Service worker update failed:', error); }
     }
 
       if ('caches' in window) {
@@ -340,7 +340,8 @@ export async function downloadRemainingFiles(onProgress: (percent: number) => vo
              if (response.ok) {
                await cache.put(asset, response);
              }
-          } catch(e) {
+          } catch(error) {
+             console.error(`Failed to fetch ${asset}`, error);
              if (onLog) onLog(`Err:1 http://archive.ubuntu.com/ubuntu noble/main ${asset} 404 Not Found`);
           } 
           loaded++;
@@ -356,7 +357,8 @@ export async function downloadRemainingFiles(onProgress: (percent: number) => vo
           try {
              if (onLog) onLog(`Get:1 http://archive.ubuntu.com/ubuntu noble/main ${asset} [${Math.floor(Math.random() * 50 + 10)} kB]`);
              await fetch(asset, { cache: 'force-cache' });
-          } catch(e) {
+          } catch(error) {
+             console.error(`Failed to fetch ${asset}`, error);
              if (onLog) onLog(`Err:1 http://archive.ubuntu.com/ubuntu noble/main ${asset} 404 Not Found`);
           }
           loaded++;

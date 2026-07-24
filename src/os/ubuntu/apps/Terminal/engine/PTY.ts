@@ -94,6 +94,9 @@ export class PTY {
   }
 
   async initShell() {
+    this.isExecuting = true;
+    this.writePrompt();
+
     try {
       const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
       const { readFile } = await import('../../../fs/operations');
@@ -121,10 +124,19 @@ export class PTY {
         await runner.execute(ast);
       }
     } catch (e) {
-      // Ignore
+      console.error('Error in initShell:', e);
     }
     
+    this.isExecuting = false;
+    this.xtermWrite('\r\x1b[K');
     this.writePrompt();
+    if (this.inputBuffer.length > 0) {
+      this.xtermWrite(this.inputBuffer);
+      if (this.cursorPos < this.inputBuffer.length) {
+        const diff = this.inputBuffer.length - this.cursorPos;
+        this.xtermWrite(`\x1b[${diff}D`);
+      }
+    }
   }
 
   writePrompt() {
@@ -291,33 +303,7 @@ export class PTY {
           this.xtermWrite(`\x1b[${diff}D`);
         }
         break;
-      case '\x15': // Ctrl+U
-        if (this.cursorPos > 0) {
-          this.inputBuffer = this.inputBuffer.slice(this.cursorPos);
-          this.cursorPos = 0;
-          this.redrawLine();
-        }
-        break;
-      case '\x0b': // Ctrl+K
-        if (this.cursorPos < this.inputBuffer.length) {
-          this.inputBuffer = this.inputBuffer.slice(0, this.cursorPos);
-          this.redrawLine();
-        }
-        break;
-      case '\x17': // Ctrl+W
-        if (this.cursorPos > 0) {
-          const beforeCursor = this.inputBuffer.slice(0, this.cursorPos);
-          const afterCursor = this.inputBuffer.slice(this.cursorPos);
-          
-          const trimmed = beforeCursor.trimEnd();
-          const lastSpaceIdx = trimmed.lastIndexOf(' ');
-          const newBeforeCursor = lastSpaceIdx >= 0 ? trimmed.slice(0, lastSpaceIdx + 1) : '';
-          
-          this.inputBuffer = newBeforeCursor + afterCursor;
-          this.cursorPos = newBeforeCursor.length;
-          this.redrawLine();
-        }
-        break;
+
       case '\x04': // Ctrl+D
         if (this.inputBuffer.length === 0 && this.pendingMultiline.length === 0) {
           this.onExitRequest();
@@ -340,7 +326,7 @@ export class PTY {
         this.cursorPos = 0;
         this.writePrompt();
         break;
-      case '\r': // Enter
+      case '\r': { // Enter
         if (this.interactiveReadResolver) {
           const result = this.inputBuffer;
           const resolver = this.interactiveReadResolver;
@@ -392,6 +378,7 @@ export class PTY {
           this.onCommandComplete();
         });
         break;
+      }
       case '\u007F': // Backspace
         if (this.cursorPos > 0) {
           const before = this.inputBuffer.slice(0, this.cursorPos - 1);
@@ -595,7 +582,7 @@ export class PTY {
           }
         }
 
-        let handler = commandRegistry[cmdName as any];
+        let handler = commandRegistry[cmdName as keyof typeof commandRegistry];
         if (!handler) {
           if (this.env.functions && this.env.functions[cmdName]) {
             const funcBody = this.env.functions[cmdName];
@@ -615,6 +602,19 @@ export class PTY {
               return code;
             };
           } else {
+            const assignMatch = cmdName.match(/^([a-zA-Z_][a-zA-Z0-9_]*)=(.*)$/);
+            if (assignMatch && cmdArgs.length === 0) {
+              const key = assignMatch[1];
+              let val = assignMatch[2];
+              if ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))) {
+                val = val.slice(1, -1);
+              }
+              this.env.updateEnv(key, val);
+              lastExitCode = 0;
+              this.env.lastExitCode = 0;
+              continue;
+            }
+
             this.xtermWrite(`${cmdName}: command not found\r\n`);
             this.env.lastExitCode = 127;
             lastExitCode = 127;
@@ -642,7 +642,8 @@ export class PTY {
             const blob = await readFile(targetPath);
             const text = await blob.text();
             streams.stdin.appendToBuffer(text);
-          } catch (e: any) {
+          } catch (e) {
+            console.error(e);
             this.xtermWrite(`bash: ${inRedir.target}: No such file or directory\r\n`);
             this.env.lastExitCode = 1;
             lastExitCode = 1;
@@ -676,15 +677,16 @@ export class PTY {
 
         try {
           if (typeof handler === 'function') {
-             lastExitCode = await handler(cmdArgs, this.env, streams) ?? 0;
+             lastExitCode = await (handler as Function)(cmdArgs, this.env, streams) ?? 0;
           } else if (typeof handler === 'object' && 'run' in handler) {
-             lastExitCode = await (handler as any).run(cmdArgs, this.env, streams) ?? 0;
+             lastExitCode = await (handler as { run: Function }).run(cmdArgs, this.env, streams) ?? 0;
           } else {
              this.xtermWrite(`Command ${cmdName} is not migrated to new architecture.\r\n`);
              lastExitCode = 1;
           }
-        } catch (err: any) {
-          this.xtermWrite(`bash: ${err.message}\r\n`);
+        } catch (err) {
+          console.error(err);
+          this.xtermWrite(`bash: ${(err as Error).message}\r\n`);
           lastExitCode = 1;
         }
 
@@ -695,7 +697,7 @@ export class PTY {
              const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
              const { writeFile } = await import('../../../fs/operations');
              const cwdAbs = await getAbsolutePathAsync(this.env.cwdId);
-             let targetNode = await resolveRelativePathAsync(cwdAbs, target);
+             const targetNode = await resolveRelativePathAsync(cwdAbs, target);
              let targetPath = '';
              if (targetNode) {
                targetPath = await getAbsolutePathAsync(targetNode.id);
@@ -709,7 +711,8 @@ export class PTY {
                targetPath = parentAbs === '/' ? '/' + destName : parentAbs + '/' + destName;
              }
              await writeFile(targetPath, outRedirContent, { append: outRedir.type === '>>' });
-          } catch (e: any) {
+          } catch (e) {
+             console.error(e);
              this.xtermWrite(`bash: ${outRedir.target}: Permission denied or error\r\n`);
              lastExitCode = 1;
           }

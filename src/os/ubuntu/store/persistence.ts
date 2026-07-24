@@ -2,7 +2,7 @@ import { get, set, del, createStore } from 'idb-keyval';
 import type { StateStorage } from 'zustand/middleware';
 
 const customStore = createStore('ubuntu-db', 'ubuntu-store');
-const debouncedSetters: Record<string, any> = {};
+const debouncedSetters: Record<string, ReturnType<typeof setTimeout>> = {};
 
 export const ubuntuIdbStorage: StateStorage = {
   getItem: async (name) => (await get(name, customStore)) ?? null,

@@ -66,7 +66,7 @@ export async function checkSudoAuthorization(options: SudoOptions): Promise<Sudo
 
   if (!config) {
     // Fallback: if /etc/sudoers doesn't exist, check config/accounts.ts
-    const accountRole = UBUNTU_ACCOUNTS.find((a: any) => a.username === requestingUser)?.role;
+    const accountRole = UBUNTU_ACCOUNTS.find((a: { username: string; role?: string }) => a.username === requestingUser)?.role;
     if (accountRole === 'admin') {
       return { authorized: true, requiresPassword: true };
     }
@@ -198,12 +198,12 @@ export async function verifySudoPassword(
       isValid = await verifyPassword(password, hash);
     }
   } catch (e) {
-    // fallback
+    console.warn('Failed to parse shadow file in verifySudoPassword:', e);
   }
 
   // Fallback to config/accounts.ts
   if (!isValid && !shadowNodeExists) {
-    const userObj = UBUNTU_ACCOUNTS.find((u: any) => u.username === username);
+    const userObj = UBUNTU_ACCOUNTS.find((u: { username: string; password?: string }) => u.username === username);
     isValid = !!(userObj && userObj.password === password);
   }
 

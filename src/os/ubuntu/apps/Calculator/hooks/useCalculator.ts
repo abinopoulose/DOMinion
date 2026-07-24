@@ -22,7 +22,7 @@ export function useCalculator() {
   const calculate = useCallback(() => {
     try {
       const sanitizedEq = (equation + display).replace(/[^-()\d/*+.]/g, '');
-      // eslint-disable-next-line no-eval
+       
       const res = eval(sanitizedEq);
       setDisplay(String(res));
       setEquation('');

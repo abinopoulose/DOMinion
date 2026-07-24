@@ -51,8 +51,8 @@ export const apt: CommandHandler = async (args, env, streams) => {
     }
 
     const toInstall = pkgArgs.filter(p => !p.startsWith('-'));
-    let found = [];
-    let notFound = [];
+    const found = [];
+    const notFound = [];
 
     for (const p of toInstall) {
       const pkg = PACKAGE_DB.find(dbPkg => dbPkg.name === p);

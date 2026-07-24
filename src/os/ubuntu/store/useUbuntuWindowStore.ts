@@ -272,18 +272,20 @@ export const useWindowStore = create<WindowStore>()(
       name: 'ubuntu-window-state',
       storage: createJSONStorage(() => ubuntuIdbStorage),
       partialize: (state) => ({ 
-        windows: state.windows.map(({ appState, ...rest }) => rest), 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        windows: state.windows.map(({ appState: _appState, ...rest }) => rest), 
         nextZIndex: state.nextZIndex 
       }), // Omit appState to reduce serialization overhead
-      merge: (persistedState: any, currentState) => {
-        if (!persistedState || !persistedState.windows) {
-          return { ...currentState, ...persistedState };
+      merge: (persistedState: unknown, currentState) => {
+        const state = persistedState as Partial<WindowStore>;
+        if (!state || !state.windows) {
+          return { ...currentState, ...state };
         }
         
         const maxWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
         const maxHeight = typeof window !== 'undefined' ? window.innerHeight : 1080;
         
-        const clampedWindows = persistedState.windows.map((w: WindowState) => {
+        const clampedWindows = state.windows.map((w: WindowState) => {
           let { x, y } = w.position;
           // Ensure title bar is always accessible
           if (y < 28) y = 28; // top bar height
@@ -297,7 +299,7 @@ export const useWindowStore = create<WindowStore>()(
           return { ...w, position: { x, y }, workspaceId };
         });
 
-        return { ...currentState, ...persistedState, windows: clampedWindows };
+        return { ...currentState, ...state, windows: clampedWindows };
       },
     }
   )

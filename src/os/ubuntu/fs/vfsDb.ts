@@ -67,6 +67,15 @@ export async function seedVfsFromSnapshot() {
   primePathCache('/etc/shadow', 'sys-etc-shadow');
   primePathCache('/etc/passwd', 'sys-etc-passwd');
 
+  // Pre-warm terminal shell paths to avoid async DB misses on first boot
+  primePathCache('/home', 'root-home');
+  const users = ['peasant', 'abino'];
+  for (const u of users) {
+    primePathCache(`/home/${u}`, `home-${u}`);
+    primePathCache(`/home/${u}/.bashrc`, `home-${u}-bashrc`);
+    primePathCache(`/home/${u}/.bash_aliases`, `home-${u}-bash_aliases`);
+  }
+
   // Fire-and-forget: seed Resume.pdf and the full 26K-node snapshot in the background.
   // These do NOT block the login screen from rendering.
   seedResumePdfInBackground(db);
@@ -130,7 +139,7 @@ async function seedSnapshotInBackground() {
     }
     console.log(`[VFS Seed BG] Built dedup index with ${existingIndex.size} existing entries.`);
 
-    const BATCH_SIZE = 1000;
+    const BATCH_SIZE = 100;
     let written = 0;
     let skipped = 0;
 
@@ -170,7 +179,7 @@ async function seedSnapshotInBackground() {
       await tx.done;
 
       // Yield to event loop so UI stays responsive
-      await new Promise(r => setTimeout(r, 0));
+      await new Promise(r => setTimeout(r, 10));
     }
 
     console.log(`[VFS Seed BG] ✅ Background seeding complete. Written: ${written}, Skipped (deduped): ${skipped}.`);

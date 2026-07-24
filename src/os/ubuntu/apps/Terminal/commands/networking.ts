@@ -77,7 +77,7 @@ export const curl: CommandHandler = async (args, env, streams) => {
   
   let content = '';
   let contentType = 'text/html';
-  let status = '200 OK';
+  const status = '200 OK';
   
   if (url.startsWith('file://')) {
     try {

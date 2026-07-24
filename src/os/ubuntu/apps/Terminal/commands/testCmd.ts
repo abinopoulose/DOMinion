@@ -21,14 +21,14 @@ export const testCmd: CommandHandler = async (args, env, _streams) => {
     
     // Find highest precedence operator: -o (OR), then -a (AND)
     // Actually, -a has higher precedence than -o in POSIX test
-    let orIdx = tokens.indexOf('-o');
+    const orIdx = tokens.indexOf('-o');
     if (orIdx !== -1) {
       const left = await evaluate(tokens.slice(0, orIdx));
       if (left) return true;
       return await evaluate(tokens.slice(orIdx + 1));
     }
     
-    let andIdx = tokens.indexOf('-a');
+    const andIdx = tokens.indexOf('-a');
     if (andIdx !== -1) {
       const left = await evaluate(tokens.slice(0, andIdx));
       if (!left) return false;

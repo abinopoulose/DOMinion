@@ -61,7 +61,7 @@ export function hasPermission(
   const egid = euid;
   
   const parsedPermissions = typeof node.permissions === 'string' ? parseInt(node.permissions, 8) : node.permissions;
-  let mode: number = typeof parsedPermissions === 'number' ? parsedPermissions : (node.type === 'directory' ? 0o755 : 0o644);
+  const mode: number = typeof parsedPermissions === 'number' ? parsedPermissions : (node.type === 'directory' ? 0o755 : 0o644);
   const uid = getUidForUser(node.ownerId || (node as any).owner || 'user');
   const gid = getUidForUser(node.groupId || (node as any).group || 'user');
 

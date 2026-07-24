@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useTerminalProfileStore } from '../store/useTerminalProfileStore';
 import { LucidePlus, LucideMoreVertical } from 'lucide-react';
 import { ToggleSwitch } from './TerminalPrefsBehavior';
