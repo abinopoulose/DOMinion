@@ -122,7 +122,6 @@
 .term-prefs-appearance {
   display: flex;
   flex-direction: column;
-  max-width: 640px;
   margin: 0 auto;
   width: 100%;
 }
@@ -231,7 +230,6 @@
 .term-prefs-behavior, .term-prefs-shortcuts, .term-prefs-profiles {
   display: flex;
   flex-direction: column;
-  max-width: 640px;
   margin: 0 auto;
   width: 100%;
 }

@@ -101,7 +101,7 @@ export const APP_REGISTRY: Record<string, AppMetadata> = {
   'document-viewer': {
     id: 'document-viewer',
     title: 'Document Viewer',
-    icon: '/ubuntu/icons/document-viewer.svg',
+    icon: '/ubuntu/icons/document-viewer.png',
     defaultSize: { width: 600, height: 800 },
     processCmd: '/usr/bin/evince',
     baseUsage: { cpu: 0.5, mem: 0.7 }

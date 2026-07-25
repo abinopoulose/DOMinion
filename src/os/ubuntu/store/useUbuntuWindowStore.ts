@@ -6,6 +6,7 @@ import { ubuntuIdbStorage } from './persistence';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { APP_REGISTRY } from '../config/appRegistry';
 import { useProcessManager } from '../services/ProcessManager';
+import { calculateOptimalWindowDimensions, getAppCategory } from '../utils/windowSizingEngine';
 
 interface WindowStore {
   windows: WindowState[];
@@ -45,7 +46,8 @@ export const useWindowStore = create<WindowStore>()(
         const { windows, nextZIndex } = get();
 
         // Enforce singleton for specific apps
-        if (appId === 'settings' || appId === 'welcome') {
+        const category = getAppCategory(appId);
+        if (category === 'dialog' || category === 'wizard' || appId === 'settings' || appId === 'system-monitor') {
           const existingApp = windows.find(w => w.appId === appId);
           if (existingApp) {
             console.log(`[WindowStore] ${appId} already open, focusing window ${existingApp.id}`);
@@ -71,12 +73,30 @@ export const useWindowStore = create<WindowStore>()(
         
         const appMeta = APP_REGISTRY[appId] || { title: appId, defaultSize: { width: 800, height: 600 } };
         
+        // Calculate viewport-aware optimal dimensions
+        const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1280;
+        const viewportH = typeof window !== 'undefined' ? window.innerHeight : 720;
+        const optimalSize = calculateOptimalWindowDimensions(appId, viewportW, viewportH);
+
+        // Adjust position so we don't spawn off-screen or center if it's a dialog/wizard
+        let startX = options?.position?.x ?? (120 + cascadeOffset);
+        let startY = options?.position?.y ?? (60 + cascadeOffset);
+        
+        if (category === 'dialog' || category === 'wizard') {
+          // Center it
+          startX = Math.max(0, (viewportW - optimalSize.width) / 2);
+          startY = Math.max(0, (viewportH - optimalSize.height) / 2) - 30; // slightly above absolute center
+        } else {
+          if (startX + optimalSize.width > viewportW) startX = Math.max(0, viewportW - optimalSize.width - 20);
+          if (startY + optimalSize.height > viewportH) startY = Math.max(0, viewportH - optimalSize.height - 40);
+        }
+
         const newWindow: WindowState = {
           id,
           appId,
           title: appMeta.title,
-          position: options?.position || { x: 120 + cascadeOffset, y: 60 + cascadeOffset },
-          size: appMeta.defaultSize,
+          position: { x: startX, y: startY },
+          size: optimalSize,
           zIndex: nextZIndex,
           isMinimized: false,
           isMaximized: false,

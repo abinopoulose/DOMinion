@@ -1,9 +1,11 @@
 import 'fake-indexeddb/auto';
+import { Blob as NodeBlob } from 'node:buffer';
+globalThis.Blob = NodeBlob as any;
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getDB, closeDB } from '../db';
-import { stat, readFile, writeFile, unlink, mkdir, rmdir, rename, readdir, createReadStream } from '../operations';
+import { getDB, closeDB } from '../../../../src/os/ubuntu/fs/db';
+import { stat, readFile, writeFile, unlink, mkdir, rmdir, rename, readdir, createReadStream } from '../../../../src/os/ubuntu/fs/operations';
 
-import type { VFSNode } from '../types';
+import type { VFSNode } from '../../../../src/os/ubuntu/fs/types';
 
 describe('VFS Async Operations', () => {
   beforeEach(async () => {

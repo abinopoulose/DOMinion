@@ -14,14 +14,20 @@ export function DocumentViewer({ windowId }: DocumentViewerProps) {
   const { url, loading, error } = useFileUrl(fileId);
   const [unsupported, setUnsupported] = useState(false);
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setUnsupported(false);
     const draggedId = e.dataTransfer.getData('application/x-vfs-node');
     if (draggedId) {
-      if (draggedId.toLowerCase().endsWith('.pdf')) {
-        updateState({ fileId: draggedId });
-      } else {
+      const { getAbsolutePathAsync } = await import('../../fs/pathResolver');
+      try {
+        const path = await getAbsolutePathAsync(draggedId);
+        if (path.toLowerCase().endsWith('.pdf')) {
+          updateState({ fileId: draggedId });
+        } else {
+          setUnsupported(true);
+        }
+      } catch (err) {
         setUnsupported(true);
       }
     }

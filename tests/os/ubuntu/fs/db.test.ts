@@ -1,9 +1,11 @@
 import 'fake-indexeddb/auto';
+import { Blob as NodeBlob } from 'node:buffer';
+globalThis.Blob = NodeBlob as any;
 import { describe, it, expect, afterEach } from 'vitest';
-import { getDB, closeDB } from '../db';
-import { migrateVFS } from '../migration';
+import { getDB, closeDB } from '../../../../src/os/ubuntu/fs/db';
+import { migrateVFS } from '../../../../src/os/ubuntu/fs/migration';
 import { set, clear } from 'idb-keyval';
-import type { LegacyVFSNode } from '../types';
+import type { LegacyVFSNode } from '../../../../src/os/ubuntu/fs/types';
 
 describe('VFS Database & Migration', () => {
   afterEach(async () => {
