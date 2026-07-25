@@ -1,10 +1,5 @@
 import { DockIcon } from './DockIcon';
-const terminalIcon = '/ubuntu/icons/terminal-app.png';
-const fileManagerIcon = '/ubuntu/icons/folder.png';
-const browserIcon = '/ubuntu/icons/browser.svg';
-const settingsIcon = '/ubuntu/icons/system-settings.png';
-const textIcon = '/ubuntu/icons/text-editor.png';
-const clockIcon = '/ubuntu/icons/clock-app.png';
+import { APP_REGISTRY } from '../../config/appRegistry';
 import { getTrashId } from '../../fs/seed';
 import { getCurrentUserOrFallback } from '../../store/useUbuntuAuthStore';
 import { useWindowStore } from '../../store';
@@ -29,7 +24,7 @@ function WindowSnapshot({ windowId }: { windowId: string }) {
     if (!el) {
       // Window is likely minimized and not in the DOM
       const win = useWindowStore.getState().windows.find(w => w.id === windowId);
-      const meta = win ? APP_META[win.appId] : null;
+      const meta = win ? APP_REGISTRY[win.appId] : null;
       if (meta) {
         containerRef.current.innerHTML = `<img src="${meta.icon}" style="width:48px;height:48px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.5;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));" />`;
       }
@@ -74,15 +69,7 @@ function WindowSnapshot({ windowId }: { windowId: string }) {
   return <div ref={containerRef} style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }} />;
 }
 
-const APP_META: Record<string, { label: string; icon: string }> = {
-  'file-manager': { label: 'Files', icon: fileManagerIcon },
-  'terminal': { label: 'Terminal', icon: terminalIcon },
-  'browser': { label: 'Browser', icon: browserIcon },
-  'settings': { label: 'Settings', icon: settingsIcon },
-  'text-editor': { label: 'Text Editor', icon: textIcon },
-  'clock': { label: 'Clocks', icon: clockIcon },
-  'welcome': { label: 'Welcome to Ubuntu', icon: '/ubuntu/icons/ubuntu-logo.svg' },
-};
+
 
 export function Dock() {
   const dockScrollRef = useDockScroll();
@@ -365,7 +352,7 @@ export function Dock() {
     >
       <div className="dock__apps" style={{ display: 'flex', flexDirection: dockPosition === 'bottom' ? 'row' : 'column', gap: '8px', alignItems: 'center' }}>
         {dockAppIds.map((appId, index) => {
-          const meta = APP_META[appId];
+          const meta = APP_REGISTRY[appId];
           if (!meta) return null;
           
           const isDragOver = dragOverAppId === appId;
@@ -406,7 +393,7 @@ export function Dock() {
             >
               <DockIcon
                 id={appId}
-                label={meta.label}
+                label={meta.title}
                 icon={appId === 'file-manager' ? getFolderIconUrl() : meta.icon}
                 isActive={activeAppIds.has(appId)}
                 isFocused={focusedAppId === appId}

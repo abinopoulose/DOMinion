@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { WindowState, AppId } from '../types';
 import { ubuntuIdbStorage } from './persistence';
 import { useWorkspaceStore } from './useWorkspaceStore';
+import { APP_REGISTRY } from '../config/appRegistry';
 import { useProcessManager } from '../services/ProcessManager';
 
 interface WindowStore {
@@ -29,41 +30,7 @@ interface WindowStore {
   clearAllWindows: () => void;
 }
 
-const DEFAULT_SIZES: Record<AppId, { width: number; height: number }> = {
-  terminal: { width: 700, height: 500 },
-  'file-manager': { width: 800, height: 550 },
-  browser: { width: 900, height: 600 },
-  'text-editor': { width: 600, height: 500 },
-  calculator: { width: 320, height: 480 },
-  settings: { width: 900, height: 600 },
-  clock: { width: 800, height: 600 },
-  'image-viewer': { width: 800, height: 600 },
-  'video-player': { width: 800, height: 600 },
-  'document-viewer': { width: 800, height: 900 },
-  'disk-usage-analyzer': { width: 500, height: 400 },
-  welcome: { width: 740, height: 520 },
-  'error-reporter': { width: 500, height: 350 },
-  'system-monitor': { width: 800, height: 600 },
-  'terminal-preferences': { width: 600, height: 400 },
-};
 
-const APP_TITLES: Record<AppId, string> = {
-  terminal: 'Terminal',
-  'file-manager': 'Files',
-  browser: 'Browser',
-  'text-editor': 'Text Editor',
-  calculator: 'Calculator',
-  settings: 'Settings',
-  clock: 'Clocks',
-  'image-viewer': 'Image Viewer',
-  'video-player': 'Video Player',
-  'document-viewer': 'Document Viewer',
-  'disk-usage-analyzer': 'Disk Usage Analyzer',
-  welcome: 'Welcome to Ubuntu',
-  'error-reporter': 'System Error',
-  'system-monitor': 'System Monitor',
-  'terminal-preferences': 'Terminal Preferences',
-};
 
 export const useWindowStore = create<WindowStore>()(
   persist(
@@ -102,12 +69,14 @@ export const useWindowStore = create<WindowStore>()(
         // cascade offset
         const cascadeOffset = (windows.length % 8) * 30;
         
+        const appMeta = APP_REGISTRY[appId] || { title: appId, defaultSize: { width: 800, height: 600 } };
+        
         const newWindow: WindowState = {
           id,
           appId,
-          title: APP_TITLES[appId],
+          title: appMeta.title,
           position: options?.position || { x: 120 + cascadeOffset, y: 60 + cascadeOffset },
-          size: DEFAULT_SIZES[appId],
+          size: appMeta.defaultSize,
           zIndex: nextZIndex,
           isMinimized: false,
           isMaximized: false,

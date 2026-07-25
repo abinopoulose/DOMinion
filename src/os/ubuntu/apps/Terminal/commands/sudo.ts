@@ -1,5 +1,5 @@
 import type { CommandHandler } from './types';
-import { commandRegistry } from './index';
+
 import { parseArgs } from '../commandParser';
 import {
   checkSudoAuthorization,
@@ -75,6 +75,7 @@ export async function executeSudoCommand(
     return 1;
   }
 
+  const { commandRegistry } = await import('./index');
   const handler = commandRegistry[commandName];
   if (!handler) {
     streams.stderr.writeLine(`sudo: ${commandName}: command not found`);
