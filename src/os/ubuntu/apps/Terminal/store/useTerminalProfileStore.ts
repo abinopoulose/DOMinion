@@ -5,8 +5,12 @@ export interface TerminalProfile {
   name: string;
   fontFamily: string;
   fontSize: number;
+  useSystemFont: boolean;
+  lineHeight: number;
+  letterSpacing: number;
+  blinkingText: 'always' | 'never' | 'focused';
   cursorStyle: 'block' | 'underline' | 'bar';
-  cursorBlink: boolean;
+  cursorBlink: 'system' | 'always' | 'never';
   colorScheme: string; // key in themes.ts
   opacity: number;
   scrollbackLines: number;
@@ -38,8 +42,12 @@ const defaultProfile: TerminalProfile = {
   name: 'Default',
   fontFamily: '"Ubuntu Mono", monospace',
   fontSize: 14,
+  useSystemFont: true,
+  lineHeight: 1.0,
+  letterSpacing: 1.0,
+  blinkingText: 'always',
   cursorStyle: 'block',
-  cursorBlink: false,
+  cursorBlink: 'system',
   colorScheme: 'ubuntu',
   opacity: 1.0,
   scrollbackLines: 1000,

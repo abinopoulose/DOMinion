@@ -91,7 +91,7 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
   if (appId === 'terminal') return <Terminal windowId={windowId} />;
   if (appId === 'file-manager') return <FileManager windowId={windowId} />;
   if (appId === 'browser') return <Browser windowId={windowId} />;
-  if (appId === 'terminal-preferences') return <TerminalPreferences onClose={() => useWindowStore.getState().closeWindow(windowId)} />;
+  if (appId === 'terminal-preferences') return <TerminalPreferences windowId={windowId} onClose={() => useWindowStore.getState().closeWindow(windowId)} />;
   if (appId === 'text-editor') return <TextEditor windowId={windowId} />;
   if (appId === 'calculator') return <Calculator windowId={windowId} />;
   if (appId === 'settings') return <Settings />;

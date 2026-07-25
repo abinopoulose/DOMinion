@@ -5,6 +5,8 @@ import { useWindowDrag } from '../../hooks/useWindowDrag';
 import { useWindowResize } from '../../hooks/useWindowResize';
 import { useWindowStore } from '../../store';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
+import { useTerminalProfileStore } from '../../apps/Terminal/store/useTerminalProfileStore';
+import { themes } from '../../apps/Terminal/themes';
 import './Window.css';
 
 export interface WindowProps {
@@ -150,6 +152,10 @@ export const Window = React.memo(function Window({
 
   const { dockPosition, dockIconSize, dockAutoHide } = useSettingsStore();
 
+  const terminalProfile = useTerminalProfileStore((s) => s.activeProfile);
+  const isTerminalApp = win?.appId === 'terminal' || win?.appId === 'terminal-preferences';
+  const termTheme = isTerminalApp ? (themes[terminalProfile.colorScheme] || themes['ubuntu']) : null;
+
   if (!win) return null;
 
   let { title, zIndex, isMinimized, isFocused } = win;
@@ -200,11 +206,12 @@ export const Window = React.memo(function Window({
     animState === 'minimizing' && 'window--minimizing',
     animState === 'restoring' && 'window--restoring',
     animState === 'opening' && 'window--opening',
-    win.appId === 'terminal' && ((win.appState as any)?.isLightTheme ? 'window--terminal-light' : 'window--terminal-dark'),
+    (win.appId === 'terminal' || win.appId === 'terminal-preferences') && ((win.appState as any)?.isLightTheme ? 'window--terminal-light' : 'window--terminal-dark'),
     win.appId === 'welcome' && 'window--welcome',
+    (win.appId === 'welcome' || hideTitleBar) && 'window--no-titlebar',
   ].filter(Boolean).join(' ');
 
-  const style: React.CSSProperties = isMaximized
+  const baseStyle: React.CSSProperties = isMaximized
     ? {
         top: maxTop,
         bottom: maxBottom,
@@ -223,6 +230,14 @@ export const Window = React.memo(function Window({
           height: size.height,
           zIndex,
         };
+
+  const style: React.CSSProperties = {
+    ...baseStyle,
+    ...(termTheme ? {
+      '--term-chrome': termTheme.chrome,
+      '--term-chrome-fg': termTheme.chromeForeground,
+    } as React.CSSProperties : {})
+  };
 
   if (isMinimized && animState !== 'minimizing') {
     style.display = 'none';

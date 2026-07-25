@@ -17,13 +17,17 @@
 
 .window--maximized {
   border-radius: 0 !important;
-  border: none;
+  border: none !important;
   transition: top 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), bottom 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), left 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), right 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), border-radius 0.2s ease;
 }
 
 .window--maximized .titlebar,
 .window--maximized .window__content {
   border-radius: 0 !important;
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
 }
 
 .window--unfocused {
@@ -150,6 +154,11 @@
   border-bottom-right-radius: calc(var(--radius-window) - 1px);
 }
 
+.window--no-titlebar .window__content {
+  border-top-left-radius: calc(var(--radius-window) - 1px);
+  border-top-right-radius: calc(var(--radius-window) - 1px);
+}
+
 /* ============================================================
    Resize Handles — 8 invisible edges/corners
    ============================================================ */
@@ -254,14 +263,14 @@
 }
 
 .window--terminal-dark .titlebar {
-  background: #26071C !important;
-  color: #ffffff !important;
+  background: var(--term-chrome, #26071C) !important;
+  color: var(--term-chrome-fg, #ffffff) !important;
   border-bottom: none !important;
   height: 46px !important; /* Slightly taller like GNOME 40+ */
 }
 
 .window--terminal-dark .titlebar__title {
-  color: #ffffff !important;
+  color: var(--term-chrome-fg, #ffffff) !important;
   font-weight: bold !important;
 }
 
@@ -301,14 +310,14 @@
 }
 
 .window--terminal-light .titlebar {
-  background: #f2f2f2 !important;
-  color: #333333 !important;
+  background: var(--term-chrome, #f2f2f2) !important;
+  color: var(--term-chrome-fg, #333333) !important;
   border-bottom: 1px solid #e0e0e0 !important;
   height: 46px !important;
 }
 
 .window--terminal-light .titlebar__title {
-  color: #333333 !important;
+  color: var(--term-chrome-fg, #333333) !important;
   font-weight: bold !important;
 }
 

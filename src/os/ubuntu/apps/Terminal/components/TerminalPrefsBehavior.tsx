@@ -1,5 +1,6 @@
 
 import { useTerminalProfileStore } from '../store/useTerminalProfileStore';
+import { TerminalPrefsSelect } from './TerminalPrefsSelect';
 
 export function ToggleSwitch({ checked, onChange }: { checked: boolean, onChange: (val: boolean) => void }) {
   return (
@@ -22,14 +23,14 @@ export function TerminalPrefsBehavior() {
         <div className="term-prefs-list-card">
           <div className="term-prefs-list-row">
             <span className="term-prefs-row-title">New Tab Position</span>
-            <select 
-              className="term-prefs-select"
+            <TerminalPrefsSelect
               value={activeProfile.newTabPosition} 
-              onChange={(e) => updateProfile({ newTabPosition: e.target.value as 'last' | 'next' })}
-            >
-              <option value="last">Last</option>
-              <option value="next">Next</option>
-            </select>
+              onChange={(val) => updateProfile({ newTabPosition: val as 'last' | 'next' })}
+              options={[
+                { value: 'last', label: 'Last' },
+                { value: 'next', label: 'Next' }
+              ]}
+            />
           </div>
         </div>
         
@@ -89,15 +90,15 @@ export function TerminalPrefsBehavior() {
         <div className="term-prefs-list-card">
           <div className="term-prefs-list-row">
             <span className="term-prefs-row-title">Use Scrollbars</span>
-            <select 
-              className="term-prefs-select"
+            <TerminalPrefsSelect 
               value={activeProfile.useScrollbars} 
-              onChange={(e) => updateProfile({ useScrollbars: e.target.value as 'always' | 'never' | 'system' })}
-            >
-              <option value="system">Follow System</option>
-              <option value="always">Always</option>
-              <option value="never">Never</option>
-            </select>
+              onChange={(val) => updateProfile({ useScrollbars: val as any })}
+              options={[
+                { value: 'system', label: 'Follow System' },
+                { value: 'always', label: 'Always' },
+                { value: 'never', label: 'Never' }
+              ]}
+            />
           </div>
         </div>
       </div>

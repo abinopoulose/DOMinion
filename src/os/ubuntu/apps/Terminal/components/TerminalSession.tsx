@@ -188,8 +188,10 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
         options={{
           fontFamily: profile.fontFamily,
           fontSize: profile.fontSize,
+          lineHeight: profile.lineHeight,
+          letterSpacing: profile.letterSpacing,
           cursorStyle: profile.cursorStyle,
-          cursorBlink: profile.cursorBlink,
+          cursorBlink: profile.cursorBlink === 'never' ? false : true,
           scrollback: profile.scrollbackLines,
           theme: theme,
         }}

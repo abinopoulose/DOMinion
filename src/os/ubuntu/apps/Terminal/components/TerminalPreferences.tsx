@@ -1,11 +1,12 @@
 import { useContext } from 'react';
 import { create } from 'zustand';
-import { LucideSearch, LucideType, LucideUser, LucideKeyboard, LucideUsers, LucideX } from 'lucide-react';
+import { LucideType, LucideUser, LucideKeyboard, LucideUsers, LucideX } from 'lucide-react';
 import { WindowDragContext } from '../../../components/Window/Window';
 import { TerminalPrefsAppearance } from './TerminalPrefsAppearance';
 import { TerminalPrefsBehavior } from './TerminalPrefsBehavior';
 import { TerminalPrefsShortcuts } from './TerminalPrefsShortcuts';
 import { TerminalPrefsProfiles } from './TerminalPrefsProfiles';
+import { useWindowStore } from '../../../store/useUbuntuWindowStore';
 import './TerminalPreferences.css';
 
 interface TerminalPrefsUIStore {
@@ -18,7 +19,7 @@ const useTerminalPrefsUIStore = create<TerminalPrefsUIStore>((set) => ({
   setActiveTab: (activeTab) => set({ activeTab })
 }));
 
-export function TerminalPreferencesHeader({ onClose }: { onClose?: () => void }) {
+export function TerminalPreferencesHeader({ windowId, onClose }: { windowId?: string, onClose?: () => void }) {
   const { activeTab, setActiveTab } = useTerminalPrefsUIStore();
   const dragHandlers = useContext(WindowDragContext);
   
@@ -28,8 +29,15 @@ export function TerminalPreferencesHeader({ onClose }: { onClose?: () => void })
       onPointerDown={(dragHandlers as any)?.onPointerDown}
       onPointerMove={(dragHandlers as any)?.onPointerMove}
       onPointerUp={(dragHandlers as any)?.onPointerUp}
+      onDoubleClick={() => {
+        if (windowId) {
+          useWindowStore.getState().toggleMaximize(windowId);
+        }
+      }}
     >
-      <button className="term-prefs-icon-btn"><LucideSearch size={16} /></button>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+        {/* Search button removed per user request */}
+      </div>
       <div className="term-prefs-tabs">
         <button 
           className={`term-prefs-tab ${activeTab === 'appearance' ? 'active' : ''}`}
@@ -56,18 +64,19 @@ export function TerminalPreferencesHeader({ onClose }: { onClose?: () => void })
           <LucideUsers size={14} /> Profiles
         </button>
       </div>
-      <div style={{ flex: 1 }} />
-      <button className="term-prefs-icon-btn" onClick={onClose}><LucideX size={16} /></button>
+      <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+        <button className="term-prefs-icon-btn" onClick={onClose}><LucideX size={16} /></button>
+      </div>
     </div>
   );
 }
 
-export function TerminalPreferences({ onClose }: { onClose?: () => void }) {
+export function TerminalPreferences({ windowId, onClose }: { windowId?: string, onClose?: () => void }) {
   const { activeTab } = useTerminalPrefsUIStore();
 
   return (
     <div className="term-prefs-modal">
-      <TerminalPreferencesHeader onClose={onClose} />
+      <TerminalPreferencesHeader windowId={windowId} onClose={onClose} />
       <div className="term-prefs-content">
         {activeTab === 'appearance' && <TerminalPrefsAppearance />}
         {activeTab === 'behavior' && <TerminalPrefsBehavior />}
