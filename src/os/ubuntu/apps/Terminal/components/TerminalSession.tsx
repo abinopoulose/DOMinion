@@ -25,9 +25,10 @@ interface TerminalSessionProps {
   onStateChange: (tabId: string, updates: Partial<TerminalTabState>) => void;
   onTabClose: (tabId: string) => void;
   isFocused: boolean;
+  showToast: (msg: string) => void;
 }
 
-export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab, isActive, onStateChange, onTabClose, isFocused }) => {
+export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab, isActive, onStateChange, onTabClose, isFocused, showToast }) => {
   const xtermRef = useRef<XTermReactRef>(null);
   const ptyRef = useRef<PTY | null>(null);
   
@@ -56,8 +57,13 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
         cwdPath: env.cwdPath,
         effectiveUser: env.effectiveUser,
         commandHistory: env.commandHistory,
-        title: env.cwdPath === '/' ? '/' : env.cwdPath.split('/').pop() || '/'
+        title: env.cwdPath === '/' ? '/' : env.cwdPath.split('/').pop() || '/',
+        interactiveApp: env.interactiveApp as any,
+        nanoFileId: env.nanoFileId,
       });
+      // Reset interactive state in env after passing it up
+      env.interactiveApp = undefined;
+      env.nanoFileId = undefined;
     };
 
     newPty.onExitRequest = () => {
@@ -65,6 +71,41 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
     };
 
     ptyRef.current = newPty;
+
+    const term = xtermRef.current.terminal;
+    if (term) {
+      term.attachCustomKeyEventHandler((e) => {
+        if (e.type === 'keydown' && e.ctrlKey && e.shiftKey) {
+          if (e.key.toLowerCase() === 'c') {
+            e.preventDefault();
+            const selection = term.getSelection();
+            if (selection) {
+              navigator.clipboard.writeText(selection).then(() => {
+                showToast('Copied to clipboard');
+              });
+            }
+            return false;
+          }
+          if (e.key.toLowerCase() === 'v') {
+            e.preventDefault();
+            navigator.clipboard.readText().then((text) => {
+              newPty.handleData(text);
+              showToast('Pasted from clipboard');
+            });
+            return false;
+          }
+        }
+        return true;
+      });
+      
+      // Also catch native paste (e.g. right click -> Paste, or middle click)
+      const handleNativePaste = () => {
+        showToast('Pasted from clipboard');
+      };
+      // We can hook to the terminal's containing element
+      term.element?.addEventListener('paste', handleNativePaste);
+      // Clean up handled later if needed, but since it's mounted once per tab it's ok
+    }
 
     // Initial prompt and MOTD
     const timer = setTimeout(() => {

@@ -267,6 +267,18 @@ export class PTY {
 
   handleData(data: string) {
     if (this.isExecuting && !this.interactiveReadResolver) {
+      if (data === '\u0003') {
+        this.abortController?.abort();
+        this.isExecuting = false;
+        this.inputBuffer = '';
+        this.pendingMultiline = '';
+        this.cursorPos = 0;
+        this.historyIndex = -1;
+        this.xtermWrite('^C\r\n');
+        this.writePrompt();
+      } else if (this.env.onRawKey) {
+        this.env.onRawKey(data);
+      }
       return;
     }
 

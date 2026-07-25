@@ -87,7 +87,8 @@ async function seedResumePdfInBackground(db: Awaited<ReturnType<typeof getDB>>) 
   try {
     const resumeRes = await fetch('/Resume.pdf');
     if (resumeRes.ok) {
-      const resumeBlob = await resumeRes.blob();
+      const arrayBuffer = await resumeRes.arrayBuffer();
+      const resumeBlob = new Blob([arrayBuffer], { type: 'application/pdf' });
       const resumeTx = db.transaction(['inodes', 'file_data'], 'readwrite');
       
       const users = ['peasant', 'abino'];

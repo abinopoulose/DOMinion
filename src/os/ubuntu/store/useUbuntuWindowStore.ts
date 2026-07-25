@@ -272,10 +272,9 @@ export const useWindowStore = create<WindowStore>()(
       name: 'ubuntu-window-state',
       storage: createJSONStorage(() => ubuntuIdbStorage),
       partialize: (state) => ({ 
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        windows: state.windows.map(({ appState: _appState, ...rest }) => rest), 
+        windows: state.windows, 
         nextZIndex: state.nextZIndex 
-      }), // Omit appState to reduce serialization overhead
+      }),
       merge: (persistedState: unknown, currentState) => {
         const state = persistedState as Partial<WindowStore>;
         if (!state || !state.windows) {

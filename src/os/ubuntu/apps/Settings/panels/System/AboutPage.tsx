@@ -1,11 +1,17 @@
-import React, { useState } from 'react';
-import { hardwareConfig } from '../../../../../../hardware/hardwareConfig';
+import React, { useState, useEffect } from 'react';
+import { hardwareConfig, getDynamicHardwareConfig, type HardwareConfig } from '../../../../../../hardware/hardwareConfig';
 // useUbuntuVFSStore removed
 
 export function AboutPage() {
   const [deviceName, setDeviceName] = useState(() => {
     return localStorage.getItem('ubuntu-hostname') || 'envyy';
   });
+
+  const [hwConfig, setHwConfig] = useState<HardwareConfig>(hardwareConfig);
+
+  useEffect(() => {
+    getDynamicHardwareConfig().then(setHwConfig);
+  }, []);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
@@ -67,19 +73,19 @@ export function AboutPage() {
         </div>
         <div className="ubuntu-settings-list-item">
           <span>Hardware Model</span>
-          <span style={{ color: 'var(--color-text-secondary)' }}>{hardwareConfig.deviceModel}</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>{hwConfig.deviceModel}</span>
         </div>
         <div className="ubuntu-settings-list-item">
           <span>Processor</span>
-          <span style={{ color: 'var(--color-text-secondary)' }}>{hardwareConfig.processor}</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>{hwConfig.processor}</span>
         </div>
         <div className="ubuntu-settings-list-item">
           <span>Memory</span>
-          <span style={{ color: 'var(--color-text-secondary)' }}>{hardwareConfig.memory}</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>{hwConfig.memory}</span>
         </div>
         <div className="ubuntu-settings-list-item">
           <span>Disk Capacity</span>
-          <span style={{ color: 'var(--color-text-secondary)' }}>{hardwareConfig.diskCapacity}</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}>{hwConfig.diskCapacity}</span>
         </div>
         <div className="ubuntu-settings-list-item interactive">
           <span>System Details</span>

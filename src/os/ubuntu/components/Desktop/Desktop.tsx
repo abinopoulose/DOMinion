@@ -8,7 +8,7 @@ import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useWindowStore, useVFSStore } from '../../store';
 import { getDesktopId, getHomeId, getTrashId } from '../../fs/seed';
-import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
+import { getCurrentUserOrFallback } from '../../store/useUbuntuAuthStore';
 import { getIconForFile, getSpecialFolderIconUrl } from '../../utils/iconResolver';
 import type { LegacyVFSNode } from '../../fs/types';
 import { hasPermission } from '../../fs/permissions';
@@ -50,7 +50,7 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const showDesktopIcons = useSettingsStore((s: any) => s.showDesktopIcons);
   const settingsWallpaper = useSettingsStore((s: any) => s.wallpaper);
   const openWindow = useWindowStore((state) => state.openWindow);
-  const username = useUbuntuAuthStore((s) => s.currentUser) || 'peasant';
+  const username = getCurrentUserOrFallback();
   const DESKTOP_ID = getDesktopId(username);
   const HOME_ID = getHomeId(username);
   const TRASH_ID = getTrashId(username);

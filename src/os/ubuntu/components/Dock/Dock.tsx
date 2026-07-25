@@ -6,7 +6,7 @@ const settingsIcon = '/ubuntu/icons/system-settings.png';
 const textIcon = '/ubuntu/icons/text-editor.png';
 const clockIcon = '/ubuntu/icons/clock-app.png';
 import { getTrashId } from '../../fs/seed';
-import { useUbuntuAuthStore } from '../../store/useUbuntuAuthStore';
+import { getCurrentUserOrFallback } from '../../store/useUbuntuAuthStore';
 import { useWindowStore } from '../../store';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
@@ -90,7 +90,7 @@ export function Dock() {
   const windows = useWindowStore(useShallow(s => s.windows || []));
   const activeWorkspace = useWorkspaceStore(s => s.activeWorkspace);
   // const vfsStore = useVFSStore();
-  const username = useUbuntuAuthStore(s => s.currentUser) || 'peasant';
+  const username = getCurrentUserOrFallback();
   const { nodes: trashNodes } = useFileSystem(`/home/${username}/.Trash`);
   
   // Only show indicators for windows on the current workspace
@@ -485,11 +485,11 @@ export function Dock() {
               id="trash"
               label="Trash"
               icon={trashNodes.length > 0 ? '/ubuntu/icons/user-trash-full.png' : '/ubuntu/icons/user-trash.png'}
-              isActive={windows.some(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant'))}
-              isFocused={focusedAppId === 'file-manager' && (windows.find(w => w.isFocused)?.appState as any)?.cwdId === getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant')}
+              isActive={windows.some(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === getTrashId(getCurrentUserOrFallback()))}
+              isFocused={focusedAppId === 'file-manager' && (windows.find(w => w.isFocused)?.appState as any)?.cwdId === getTrashId(getCurrentUserOrFallback())}
               size={dockIconSize}
               onClick={() => {
-                const trashId = getTrashId(useUbuntuAuthStore.getState().currentUser || 'peasant');
+                const trashId = getTrashId(getCurrentUserOrFallback());
                 const trashWindows = windows.filter(w => w.appId === 'file-manager' && (w.appState as any)?.cwdId === trashId);
                 if (trashWindows.length > 0) {
                   const win = trashWindows[0];

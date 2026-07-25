@@ -25,10 +25,10 @@ export function TerminalPreferencesHeader({ windowId, onClose }: { windowId?: st
   
   return (
     <div 
-      className="term-prefs-header-controls"
-      onPointerDown={(dragHandlers as any)?.onPointerDown}
-      onPointerMove={(dragHandlers as any)?.onPointerMove}
-      onPointerUp={(dragHandlers as any)?.onPointerUp}
+      className="term-prefs-header-controls titlebar"
+      onPointerDown={dragHandlers?.onPointerDown}
+      onPointerMove={dragHandlers?.onPointerMove}
+      onPointerUp={dragHandlers?.onPointerUp}
       onDoubleClick={() => {
         if (windowId) {
           useWindowStore.getState().toggleMaximize(windowId);

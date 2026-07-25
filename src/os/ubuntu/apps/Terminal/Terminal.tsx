@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useWindowAPI } from '../../hooks/useWindowAPI';
 import { useWindowStore } from '../../store';
+import { getCurrentUserOrFallback } from '../../store/useUbuntuAuthStore';
 import { TerminalTabBar } from './components/TerminalTabBar';
 import { TerminalSession, type TerminalTabState } from './components/TerminalSession';
 import { TerminalMenu } from './components/TerminalMenu';
@@ -29,7 +30,7 @@ export function Terminal({ windowId }: TerminalProps) {
       return initialAppState.tabs;
     }
     // Migrate legacy state or create default
-    const effectiveUser = initialAppState.effectiveUser || 'peasant';
+    const effectiveUser = initialAppState.effectiveUser || getCurrentUserOrFallback();
     const defaultHomeId = effectiveUser === 'root' ? 'root-home' : `home-${effectiveUser}`;
     const defaultHomePath = effectiveUser === 'root' ? '/root' : `/home/${effectiveUser}`;
     return [{
@@ -51,6 +52,14 @@ export function Terminal({ windowId }: TerminalProps) {
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(prev => prev === msg ? null : prev);
+    }, 2500);
+  }, []);
 
   const profile = useTerminalProfileStore(state => state.activeProfile);
   const theme = themes[profile.colorScheme] || themes['ubuntu'];
@@ -86,7 +95,7 @@ export function Terminal({ windowId }: TerminalProps) {
     const newTabId = `tab-${generateId()}`;
     const activeTab = tabs.find(t => t.id === activeTabId);
     
-    const user = activeTab ? activeTab.effectiveUser : 'peasant';
+    const user = activeTab ? activeTab.effectiveUser : getCurrentUserOrFallback();
     const defaultHomeId = user === 'root' ? 'root-home' : `home-${user}`;
     const defaultHomePath = user === 'root' ? '/root' : `/home/${user}`;
     
@@ -234,9 +243,50 @@ export function Terminal({ windowId }: TerminalProps) {
             isFocused={isFocused || false}
             onStateChange={handleTabStateChange}
             onTabClose={handleCloseTab}
+            showToast={showToast}
           />
         ))}
       </div>
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{
+          position: 'absolute',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#2d2d2d',
+          color: '#ffffff',
+          padding: '8px 16px',
+          borderRadius: '24px',
+          fontSize: '14px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          zIndex: 1000,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          {toastMessage}
+          <button 
+            onClick={() => setToastMessage(null)}
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              color: '#ffffff', 
+              cursor: 'pointer',
+              opacity: 0.7,
+              display: 'flex',
+              padding: '2px'
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      )}
       
       {/* Search Bar */}
       {isSearchOpen && (
@@ -264,7 +314,7 @@ export function TerminalHeaderControls({ windowId }: { windowId: string }) {
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  const user = activeTab?.effectiveUser || 'peasant';
+  const user = activeTab?.effectiveUser || getCurrentUserOrFallback();
   const homePath = user === 'root' ? '/root' : `/home/${user}`;
   const fullPath = activeTab?.cwdPath || homePath;
   const basename = fullPath === '/' ? '/' : (fullPath.split('/').pop() || '~');

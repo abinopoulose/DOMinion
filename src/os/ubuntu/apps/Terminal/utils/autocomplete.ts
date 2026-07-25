@@ -1,6 +1,7 @@
 import { commandRegistry } from '../commands';
 import { getDB } from '../../../fs/db';
 import { resolveRelativePathAsync } from '../../../fs/pathResolver';
+import { PACKAGE_DB, getInstalledPackages } from '../packageDb';
 
 export interface AutocompleteResult {
   completion?: string;
@@ -45,86 +46,97 @@ export function formatAsColumns(items: string[], terminalWidth = 100): string[] 
   return lines;
 }
 
+function matchFromList(partial: string, items: { raw: string, display?: string }[], prefixToReconstruct: string, addSpaceOnMatch = true): AutocompleteResult {
+  const matches = items.filter(m => m.raw.startsWith(partial));
+
+  if (matches.length === 1) {
+    const match = matches[0].raw;
+    const suffix = (addSpaceOnMatch && !match.endsWith('/')) ? ' ' : '';
+    return { completion: prefixToReconstruct + match + suffix };
+  } else if (matches.length > 1) {
+    const rawMatches = matches.map(m => m.raw);
+    const prefix = getLongestCommonPrefix(rawMatches);
+    if (prefix.length > partial.length) {
+      return { completion: prefixToReconstruct + prefix };
+    } else {
+      const displayMatches = matches.map(m => m.display || m.raw).sort((a, b) => {
+        // eslint-disable-next-line no-control-regex
+        const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
+        return strip(a).toLowerCase().localeCompare(strip(b).toLowerCase());
+      });
+      return { suggestions: formatAsColumns(displayMatches) };
+    }
+  }
+  return {};
+}
+
 export async function handleAutocomplete(currentInput: string, cwdPath: string): Promise<AutocompleteResult> {
   if (!currentInput) return {};
 
   const words = currentInput.split(' ');
   const lastWord = words[words.length - 1];
+  const prefixWords = words.slice(0, -1);
+  const contextCmd = prefixWords.join(' ').trim();
   const isFirstWord = words.length === 1;
 
-  if (isFirstWord) {
-    const commands = Object.keys(commandRegistry);
-    const matches = commands.filter(cmd => cmd.startsWith(lastWord));
-    
-    if (matches.length === 1) {
-      return { completion: matches[0] + ' ' };
-    } else if (matches.length > 1) {
-      const prefix = getLongestCommonPrefix(matches);
-      if (prefix.length > lastWord.length) {
-        return { completion: prefix };
-      } else {
-        return { suggestions: formatAsColumns(matches.sort()) };
-      }
-    }
-    return {};
-  } else {
-    const lastSlashIndex = lastWord.lastIndexOf('/');
-    let dirPath = '';
-    let partialName = lastWord;
-
-    if (lastSlashIndex !== -1) {
-      dirPath = lastWord.substring(0, lastSlashIndex + 1);
-      partialName = lastWord.substring(lastSlashIndex + 1);
-    }
-
-    let targetDirId = 'root'; // fallback
-    const db = await getDB();
-    
-    if (dirPath === '/') {
-      targetDirId = 'root';
-    } else if (dirPath === '') {
-      const node = await resolveRelativePathAsync(cwdPath, '.');
-      if (node) targetDirId = node.id;
-    } else {
-      const resolvePath = dirPath.endsWith('/') && dirPath.length > 1 ? dirPath.slice(0, -1) : dirPath;
-      const node = await resolveRelativePathAsync(cwdPath, resolvePath);
-      if (node && node.type === 'directory') {
-        targetDirId = node.id;
-      } else {
-        return {};
-      }
-    }
-
-    const children = await db.getAllFromIndex('inodes', 'by-parent', targetDirId);
-    const matches = children
-      .map(c => {
-        const name = c.name + (c.type === 'directory' ? '/' : '');
-        return { raw: name, display: c.type === 'directory' ? `\x1b[1;34m${name}\x1b[0m` : name };
-      })
-      .filter(m => m.raw.startsWith(partialName));
-
-    if (matches.length === 1) {
-      const match = matches[0].raw;
-      const newLastWord = dirPath + match;
-      const suffix = match.endsWith('/') ? '' : ' ';
-      words[words.length - 1] = newLastWord + suffix;
-      return { completion: words.join(' ') };
-    } else if (matches.length > 1) {
-      const rawMatches = matches.map(m => m.raw);
-      const prefix = getLongestCommonPrefix(rawMatches);
-      if (prefix.length > partialName.length) {
-        words[words.length - 1] = dirPath + prefix;
-        return { completion: words.join(' ') };
-      } else {
-        const displayMatches = matches.map(m => m.display).sort((a, b) => {
-          // eslint-disable-next-line no-control-regex
-          const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
-          return strip(a).toLowerCase().localeCompare(strip(b).toLowerCase());
-        });
-        return { suggestions: formatAsColumns(displayMatches) };
-      }
-    }
-
-    return {};
+  // 1. Command Autocompletion
+  if (isFirstWord || contextCmd === 'sudo') {
+    const commands = Object.keys(commandRegistry).map(c => ({ raw: c }));
+    const prefixToReconstruct = isFirstWord ? '' : currentInput.substring(0, currentInput.length - lastWord.length);
+    return matchFromList(lastWord, commands, prefixToReconstruct, true);
   }
+
+  // 2. APT Install Autocompletion
+  if (contextCmd === 'apt install' || contextCmd === 'sudo apt install') {
+    const packages = PACKAGE_DB.map(p => ({ raw: p.name }));
+    const prefixToReconstruct = currentInput.substring(0, currentInput.length - lastWord.length);
+    return matchFromList(lastWord, packages, prefixToReconstruct, true);
+  }
+
+  // 3. APT Remove Autocompletion
+  if (contextCmd === 'apt remove' || contextCmd === 'sudo apt remove') {
+    const packages = getInstalledPackages().map(p => ({ raw: p }));
+    const prefixToReconstruct = currentInput.substring(0, currentInput.length - lastWord.length);
+    return matchFromList(lastWord, packages, prefixToReconstruct, true);
+  }
+
+  // 4. Fallback: File System Autocompletion
+  const lastSlashIndex = lastWord.lastIndexOf('/');
+  let dirPath = '';
+  let partialName = lastWord;
+
+  if (lastSlashIndex !== -1) {
+    dirPath = lastWord.substring(0, lastSlashIndex + 1);
+    partialName = lastWord.substring(lastSlashIndex + 1);
+  }
+
+  let targetDirId = 'root'; // fallback
+  const db = await getDB();
+  
+  if (dirPath === '/') {
+    targetDirId = 'root';
+  } else if (dirPath === '') {
+    const node = await resolveRelativePathAsync(cwdPath, '.');
+    if (node) targetDirId = node.id;
+  } else {
+    const resolvePath = dirPath.endsWith('/') && dirPath.length > 1 ? dirPath.slice(0, -1) : dirPath;
+    const node = await resolveRelativePathAsync(cwdPath, resolvePath);
+    if (node && node.type === 'directory') {
+      targetDirId = node.id;
+    } else {
+      return {};
+    }
+  }
+
+  const children = await db.getAllFromIndex('inodes', 'by-parent', targetDirId);
+  const items = children.map(c => {
+    const name = c.name + (c.type === 'directory' ? '/' : '');
+    return { 
+      raw: name, 
+      display: c.type === 'directory' ? `\x1b[1;34m${name}\x1b[0m` : name 
+    };
+  });
+
+  const prefixToReconstruct = currentInput.substring(0, currentInput.length - lastWord.length) + dirPath;
+  return matchFromList(partialName, items, prefixToReconstruct, true);
 }

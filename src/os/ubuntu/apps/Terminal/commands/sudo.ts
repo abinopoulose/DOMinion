@@ -53,13 +53,14 @@ export const sudo: CommandHandler = async (args, env, streams) => {
     streams.stdout.writeLine(`[sudo] password for ${currentUser}: `);
   }
 
-  return await executeSudoCommand(positional, env, streams);
+  return await executeSudoCommand(positional, env, streams, targetUser);
 };
 
 export async function executeSudoCommand(
   commandParts: string[],
   env: any,
-  streams: any
+  streams: any,
+  targetUser: string = 'root'
 ): Promise<number> {
   const commandName = commandParts[0];
   const commandArgs = commandParts.slice(1);
@@ -80,7 +81,14 @@ export async function executeSudoCommand(
     return 1;
   }
 
-  return await withElevation(async () => await handler(commandArgs, env, streams)) ?? 0;
+  return await withElevation(async () => {
+    env.pushUser(targetUser);
+    try {
+      return await handler(commandArgs, env, streams);
+    } finally {
+      env.popUser();
+    }
+  }) ?? 0;
 }
 
 async function handleSudoList(username: string, streams: any): Promise<number> {

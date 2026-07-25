@@ -61,6 +61,10 @@ const ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
 /** Lockout duration after max failed attempts (30 seconds) */
 const LOCKOUT_MS = 30 * 1000;
 
+export const getCurrentUserOrFallback = () => {
+  return useUbuntuAuthStore.getState().currentUser || 'peasant';
+};
+
 export const useUbuntuAuthStore = create<UbuntuAuthStore>()(
   persist(
     (set, get) => ({

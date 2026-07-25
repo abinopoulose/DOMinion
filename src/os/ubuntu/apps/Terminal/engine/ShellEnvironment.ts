@@ -1,5 +1,5 @@
 import { getHomeId } from '../../../fs/seed';
-import { useUbuntuAuthStore } from '../../../store/useUbuntuAuthStore';
+import { getCurrentUserOrFallback } from '../../../store/useUbuntuAuthStore';
 
 export class ShellEnvironment {
   cwdId: string;
@@ -13,11 +13,14 @@ export class ShellEnvironment {
   windowId?: string;
   abortSignal?: AbortSignal;
   interactiveRead?: (prompt?: string, silent?: boolean) => Promise<string>;
+  onRawKey?: (key: string) => void;
   positionalArgs: string[] = [];
   functions: Record<string, import('./ScriptParser').Statement[]> = {};
+  interactiveApp?: 'nano';
+  nanoFileId?: string;
 
   constructor(initialCwdId?: string, initialCwdPath?: string, initialUser?: string, windowId?: string) {
-    const authStoreUser = useUbuntuAuthStore.getState().currentUser || 'peasant';
+    const authStoreUser = getCurrentUserOrFallback();
     this.effectiveUser = initialUser || authStoreUser;
     this.cwdId = initialCwdId || getHomeId(this.effectiveUser);
     this.cwdPath = initialCwdPath || (this.effectiveUser === 'root' ? '/root' : `/home/${this.effectiveUser}`);

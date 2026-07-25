@@ -1,5 +1,5 @@
 import { UBUNTU_ACCOUNTS } from '../../../config/accounts';
-import { useUbuntuAuthStore } from './useUbuntuAuthStore';
+import { getCurrentUserOrFallback } from './useUbuntuAuthStore';
 
 let tempExecutionUser: string | null = null;
 
@@ -15,7 +15,7 @@ export function getAuthContext() {
   if (tempExecutionUser) {
     return { username: tempExecutionUser, role: 'admin' };
   }
-  const username = useUbuntuAuthStore.getState().currentUser || 'peasant';
+  const username = getCurrentUserOrFallback();
   const role = UBUNTU_ACCOUNTS.find((u: { username: string; role?: string }) => u.username === username)?.role || 'standard';
   return { username, role };
 }

@@ -37,6 +37,7 @@ export function useFileUrl(fileId: string | undefined) {
           
           // Recreate blob with correct mime type if needed
           const finalBlob = type !== blob.type ? new Blob([blob], { type }) : blob;
+          console.log(`[useFileUrl] Blob loaded. Size: ${finalBlob.size}, Type: ${finalBlob.type}, Original Type: ${blob.type}`);
           
           objectUrl = URL.createObjectURL(finalBlob);
           setUrl(objectUrl);

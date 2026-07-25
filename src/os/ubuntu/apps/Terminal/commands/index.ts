@@ -22,6 +22,8 @@ import { figlet } from './installable/figlet';
 import { sl } from './installable/sl';
 import { fortune } from './installable/fortune';
 import { htop } from './installable/htop';
+import { git } from './installable/git';
+import { nano } from './nano';
 
 export const commandRegistry: Record<string, CommandHandler> = {
   // Navigation
@@ -159,7 +161,12 @@ export const commandRegistry: Record<string, CommandHandler> = {
   apt,
   'apt-get': apt,
   'apt-cache': apt,
-  dpkg
+  dpkg,
+
+  // Text Editors
+  nano,
+  vi: nano,
+  vim: nano
 };
 
 const dynamicCommandHandlers: Record<string, CommandHandler> = {
@@ -169,7 +176,8 @@ const dynamicCommandHandlers: Record<string, CommandHandler> = {
   figlet,
   sl,
   fortune,
-  htop
+  htop,
+  git
 };
 
 export const loadDynamicCommands = () => {
