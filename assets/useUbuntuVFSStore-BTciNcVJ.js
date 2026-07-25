@@ -1,0 +1,1 @@
+import{i as e}from"./persistence-K8mgBGJv.js";import"./authContext-BpgHRCqu.js";var t=e(e=>({clipboard:{action:null,nodeIds:[]},setClipboard:(t,n)=>e({clipboard:{action:t,nodeIds:n}})}));export{t};

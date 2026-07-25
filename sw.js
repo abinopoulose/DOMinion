@@ -19,10 +19,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   url.searchParams.delete('t');
   url.searchParams.delete('v');
-  const cacheRequest = new Request(url.toString(), event.request);
+  const cacheUrl = url.toString();
 
   event.respondWith(
-    caches.match(cacheRequest).then((cachedResponse) => {
+    caches.match(cacheUrl).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
@@ -32,7 +32,7 @@ self.addEventListener('fetch', (event) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(cacheRequest, responseToCache);
+            cache.put(cacheUrl, responseToCache);
           });
         }
         return networkResponse;
