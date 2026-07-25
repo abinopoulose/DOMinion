@@ -63,3 +63,20 @@
   background: var(--color-context-border);
   margin: var(--space-xs) 0;
 }
+
+.context-menu__header {
+  display: flex;
+  align-items: center;
+  padding: 6px var(--space-md);
+  font-size: 11px;
+  color: #888;
+  gap: 8px;
+  user-select: none;
+  pointer-events: none;
+}
+
+.context-menu__header-line {
+  flex-grow: 1;
+  height: 1px;
+  background-color: var(--color-context-border);
+}

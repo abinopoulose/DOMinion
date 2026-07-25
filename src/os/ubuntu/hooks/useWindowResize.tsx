@@ -21,7 +21,10 @@ interface UseWindowResizeOptions {
   onPositionChange: (pos: { x: number; y: number }) => void;
 }
 
-const MIN_DEFAULT = { width: 400, height: 300 };
+const getDynamicMinSize = () => ({
+  width: Math.min(window.innerWidth * 0.9, Math.max(320, window.innerWidth * 0.15)),
+  height: Math.min(window.innerHeight * 0.9, Math.max(240, window.innerHeight * 0.15))
+});
 
 /**
  * Custom hook for pointer-based window resizing using direct DOM manipulation.
@@ -30,11 +33,12 @@ const MIN_DEFAULT = { width: 400, height: 300 };
 export function useWindowResize({
   position,
   size,
-  minSize = MIN_DEFAULT,
+  minSize,
   isMaximized,
   onSizeChange,
   onPositionChange,
 }: UseWindowResizeOptions) {
+  const dynamicMinSize = minSize || getDynamicMinSize();
   const resizeRef = useRef<ResizeState | null>(null);
   
   // Track current values to commit on pointer up
@@ -85,24 +89,24 @@ export function useWindowResize({
 
     // East (right edge)
     if (r.edge.includes('e')) {
-      newW = Math.max(minSize.width, Math.min(maxW, r.startWidth + dx));
+      newW = Math.max(dynamicMinSize.width, Math.min(maxW, r.startWidth + dx));
     }
     // West (left edge) — moves position
     if (r.edge.includes('w')) {
       const proposedW = r.startWidth - dx;
-      if (proposedW >= minSize.width) {
+      if (proposedW >= dynamicMinSize.width) {
         newW = proposedW;
         newX = r.startPosX + dx;
       }
     }
     // South (bottom edge)
-    if (r.edge === 's' || r.edge === 'se' || r.edge === 'sw') {
-      newH = Math.max(minSize.height, Math.min(maxH, r.startHeight + dy));
+    if (r.edge.includes('s')) {
+      newH = Math.max(dynamicMinSize.height, Math.min(maxH, r.startHeight + dy));
     }
     // North (top edge) — moves position
-    if (r.edge === 'n' || r.edge === 'ne' || r.edge === 'nw') {
+    if (r.edge.includes('n')) {
       const proposedH = r.startHeight - dy;
-      if (proposedH >= minSize.height) {
+      if (proposedH >= dynamicMinSize.height) {
         newH = proposedH;
         newY = Math.max(28, r.startPosY + dy);
       }

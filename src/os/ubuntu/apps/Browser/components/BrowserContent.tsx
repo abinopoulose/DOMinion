@@ -6,10 +6,10 @@ interface BrowserContentProps {
   onNavigate: (url: string) => void;
   onLoad: (title: string) => void;
   onError: () => void;
+  onOpenSettings?: () => void;
 }
 
-
-export function BrowserContent({ url, onNavigate, onLoad, onError }: BrowserContentProps) {
+export function BrowserContent({ url, onNavigate, onLoad, onError, onOpenSettings }: BrowserContentProps) {
   const { wifiEnabled } = useNetworkStore();
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export function BrowserContent({ url, onNavigate, onLoad, onError }: BrowserCont
             }}
           />
         </div>
-        <button className="browser-new-tab-settings-btn" title="Personalize New Tab">
+        <button className="browser-new-tab-settings-btn" title="Personalize New Tab" onClick={onOpenSettings}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
             <path d="M3 17.25V21h3.75L17.81 10.19l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
           </svg>

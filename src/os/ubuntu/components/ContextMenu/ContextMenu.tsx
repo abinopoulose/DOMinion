@@ -6,6 +6,7 @@ interface ContextMenuItem {
   label: string;
   icon?: React.ReactNode;
   separator?: boolean;
+  isHeader?: boolean;
   disabled?: boolean;
   onClick?: () => void;
 }
@@ -30,10 +31,21 @@ function renderIcon(icon: React.ReactNode) {
 export function ContextMenu({ x, y, items }: ContextMenuProps) {
   return createPortal(
     <div className="context-menu" style={{ left: x, top: y }}>
-      {items.map((item) =>
-        item.separator ? (
-          <div key={item.id} className="context-menu__separator" />
-        ) : (
+      {items.map((item) => {
+        if (item.separator) {
+          return <div key={item.id} className="context-menu__separator" />;
+        }
+        
+        if (item.isHeader) {
+          return (
+            <div key={item.id} className="context-menu__header">
+              <span>{item.label}</span>
+              <div className="context-menu__header-line" />
+            </div>
+          );
+        }
+
+        return (
           <div
             key={item.id}
             className={`context-menu__item${item.disabled ? ' context-menu__item--disabled' : ''}`}
@@ -47,8 +59,8 @@ export function ContextMenu({ x, y, items }: ContextMenuProps) {
             {item.icon && <span className="context-menu__item-icon">{renderIcon(item.icon)}</span>}
             {item.label}
           </div>
-        )
-      )}
+        );
+      })}
     </div>,
     document.body
   );

@@ -776,7 +776,7 @@ export function FileManager({ windowId }: FileManagerProps) {
                 
                 <div 
                   style={{ display: 'flex', alignItems: 'center', padding: '12px 8px', borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
-                  onClick={() => navigateTo('root')}
+                  onDoubleClick={() => navigateTo('root')}
                   className="fm-item-list"
                 >
                   <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg-titlebar)', borderRadius: '8px' }}>

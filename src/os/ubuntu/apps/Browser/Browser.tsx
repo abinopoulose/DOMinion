@@ -18,13 +18,21 @@ interface TabState {
   historyIndex: number;
 }
 
+import { useSystemDialogStore } from '../../store/useSystemDialogStore';
+import { BrowserModals } from './components/BrowserModals';
+import type { Bookmark } from './components/BrowserModals';
+
 interface BrowserAppState {
   tabs: TabState[];
   activeTabId: string;
+  bookmarks: Bookmark[];
+  globalHistory: string[];
 }
 export const defaultBrowserAppState: BrowserAppState = {
   tabs: [{ id: 'default', url: '', title: 'New Tab', history: [''], historyIndex: 0 }],
   activeTabId: 'default',
+  bookmarks: [],
+  globalHistory: [],
 };
 
 export function BrowserHeaderControls({ windowId }: BrowserProps) {
@@ -161,6 +169,7 @@ export function Browser({ windowId }: BrowserProps) {
 
   const [urlInputValue, setUrlInputValue] = useState('');
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [activeModal, setActiveModal] = useState<'bookmarks' | 'history' | 'settings' | null>(null);
 
   const defaultAppState = defaultBrowserAppState;
 
@@ -204,11 +213,16 @@ export function Browser({ windowId }: BrowserProps) {
     
     const newHistory = activeTab.history.slice(0, activeTab.historyIndex + 1);
     newHistory.push(finalUrl);
+    
+    // Add to global history
+    const newGlobalHistory = [...(appState.globalHistory || []), finalUrl];
+    
     updateTab(activeTab.id, { 
       url: finalUrl, 
       history: newHistory, 
       historyIndex: newHistory.length - 1 
     });
+    updateState({ globalHistory: newGlobalHistory });
     setUrlInputValue(finalUrl);
   };
 
@@ -259,6 +273,22 @@ export function Browser({ windowId }: BrowserProps) {
             }}
             placeholder="Search or enter address"
           />
+          {activeTab.url && (
+            <button 
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 8px', color: (appState.bookmarks || []).some(b => b.url === activeTab.url) ? 'var(--color-accent)' : 'var(--color-text-secondary)' }}
+              onClick={() => {
+                const isBookmarked = (appState.bookmarks || []).some(b => b.url === activeTab.url);
+                if (isBookmarked) {
+                  updateState({ bookmarks: (appState.bookmarks || []).filter(b => b.url !== activeTab.url) });
+                } else {
+                  updateState({ bookmarks: [...(appState.bookmarks || []), { url: activeTab.url, title: activeTab.title }] });
+                }
+              }}
+              title="Bookmark this page"
+            >
+              {(appState.bookmarks || []).some(b => b.url === activeTab.url) ? '★' : '☆'}
+            </button>
+          )}
         </div>
         
         <button 
@@ -285,25 +315,35 @@ export function Browser({ windowId }: BrowserProps) {
                 New Window
               </div>
               <div className="browser-settings-divider" />
-              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Bookmarks</div>
-              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>History</div>
-              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Downloads</div>
-              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Passwords</div>
+              <div className="browser-settings-item" onClick={() => { setActiveModal('bookmarks'); setShowSettingsMenu(false); }}>Bookmarks</div>
+              <div className="browser-settings-item" onClick={() => { setActiveModal('history'); setShowSettingsMenu(false); }}>History</div>
+              <div className="browser-settings-item" onClick={() => { useWindowStore.getState().openWindow('file-manager', { cwdId: 'root/home/user/Downloads' }); setShowSettingsMenu(false); }}>Downloads</div>
+              <div className="browser-settings-item" onClick={() => { useSystemDialogStore.getState().openAlertDialog('Passwords', 'Password management is coming soon to the Browser app.'); setShowSettingsMenu(false); }}>Passwords</div>
               <div className="browser-settings-divider" />
-              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Add-ons and themes</div>
-              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Settings</div>
+              <div className="browser-settings-item" onClick={() => { useSystemDialogStore.getState().openAlertDialog('Add-ons', 'Add-on support is currently under development.'); setShowSettingsMenu(false); }}>Add-ons and themes</div>
+              <div className="browser-settings-item" onClick={() => { setActiveModal('settings'); setShowSettingsMenu(false); }}>Settings</div>
               <div className="browser-settings-divider" />
-              <div className="browser-settings-item disabled" onClick={() => setShowSettingsMenu(false)}>Help</div>
+              <div className="browser-settings-item" onClick={() => { useSystemDialogStore.getState().openAlertDialog('Firefox Help', 'DOMinion OS Browser version 1.0\\nPowered by React.'); setShowSettingsMenu(false); }}>Help</div>
             </div>
           </>
         )}
       </div>
       
+      <BrowserModals 
+        activeModal={activeModal} 
+        onClose={() => setActiveModal(null)} 
+        bookmarks={appState.bookmarks || []}
+        history={appState.globalHistory || []}
+        onNavigate={navigateTo}
+        onRemoveBookmark={(url) => updateState({ bookmarks: (appState.bookmarks || []).filter(b => b.url !== url) })}
+      />
+
       <BrowserContent 
         url={activeTab.url}
         onNavigate={navigateTo}
         onLoad={(title) => updateTab(activeTab.id, { title })}
         onError={() => updateTab(activeTab.id, { title: 'Error loading page' })}
+        onOpenSettings={() => setActiveModal('settings')}
       />
     </div>
   );

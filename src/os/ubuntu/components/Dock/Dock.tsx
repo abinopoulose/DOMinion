@@ -270,20 +270,90 @@ export function Dock() {
     showMenu(e);
   };
 
-  const contextMenuItems = contextAppId ? [
-    {
+  const getAppContextMenuItems = (appId: string) => {
+    const meta = APP_REGISTRY[appId];
+    if (!meta) return [];
+
+    const isPinned = pinnedApps.includes(appId);
+    const appWindows = windows.filter(w => w.appId === appId);
+    const windowCount = appWindows.length;
+
+    const items: any[] = [];
+
+    // Header
+    items.push({ id: `header-${appId}`, label: meta.title, isHeader: true });
+
+    // App-specific quick actions
+    switch (appId) {
+      case 'browser':
+        items.push({ id: 'new-window', label: 'New Window', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        items.push({ id: 'new-private', label: 'New Private Window', onClick: () => { openWindow(appId as any, { incognito: true }); hideMenu(); } });
+        break;
+      case 'terminal':
+        items.push({ id: 'new-window', label: 'New Window', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        items.push({ id: 'preferences', label: 'Preferences', onClick: () => { openWindow('terminal-preferences' as any); hideMenu(); } });
+        break;
+      case 'file-manager':
+      case 'text-editor':
+      case 'calculator':
+      case 'image-viewer':
+      case 'video-player':
+      case 'document-viewer':
+      case 'disk-usage-analyzer':
+        items.push({ id: 'new-window', label: 'New Window', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        break;
+      case 'settings':
+        items.push({ id: 'open', label: 'Open Settings', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        break;
+      case 'clock':
+        items.push({ id: 'open', label: 'Open Clocks', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        break;
+      case 'system-monitor':
+        items.push({ id: 'open', label: 'Open System Monitor', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        break;
+      case 'welcome':
+        items.push({ id: 'open', label: 'Open Welcome', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        break;
+      case 'error-reporter':
+        items.push({ id: 'open', label: 'Open Error Reporter', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        break;
+      case 'terminal-preferences':
+        items.push({ id: 'open', label: 'Open Preferences', onClick: () => { openWindow(appId as any); hideMenu(); } });
+        break;
+    }
+
+    items.push({ id: 'sep-1', separator: true });
+
+    // Pin/Unpin
+    items.push({
       id: 'pin',
-      label: pinnedApps.includes(contextAppId) ? 'Unpin from Dock' : 'Pin to Dock',
+      label: isPinned ? 'Unpin' : 'Pin to Dash',
       onClick: () => {
-        if (pinnedApps.includes(contextAppId)) {
-          setPinnedApps(pinnedApps.filter(id => id !== contextAppId));
+        if (isPinned) {
+          setPinnedApps(pinnedApps.filter(id => id !== appId));
         } else {
-          setPinnedApps([...pinnedApps, contextAppId]);
+          setPinnedApps([...pinnedApps, appId]);
         }
         hideMenu();
       }
+    });
+
+    // Quit X Windows
+    if (windowCount > 0) {
+      items.push({
+        id: 'quit',
+        label: windowCount === 1 ? 'Quit' : `Quit ${windowCount} Windows`,
+        onClick: () => {
+          appWindows.forEach(w => useWindowStore.getState().closeWindow(w.id));
+          hideMenu();
+        }
+      });
     }
-  ] : [];
+
+    return items;
+  };
+
+  const contextMenuItems = contextAppId ? getAppContextMenuItems(contextAppId) : [];
 
   const handleDragStart = (e: React.DragEvent, appId: string) => {
     e.dataTransfer.setData('application/x-dock-app', appId);

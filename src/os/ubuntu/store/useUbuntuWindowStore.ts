@@ -27,6 +27,8 @@ interface WindowStore {
   updateWindowTitle: (id: string, title: string) => void;
   moveWindowToWorkspace: (id: string, workspaceId: number) => void;
   shiftWorkspaces: (oldIndex: number, newIndex: number) => void;
+  removeWorkspace: (index: number) => void;
+  mergeWorkspaceWindows: (sourceIndex: number, targetIndex: number) => void;
   unfocusAll: () => void;
   clearAllWindows: () => void;
 }
@@ -113,6 +115,8 @@ export const useWindowStore = create<WindowStore>()(
           nextZIndex: state.nextZIndex + 1,
         }));
         
+        setTimeout(() => useWorkspaceStore.getState().evaluateDynamicWorkspaces(), 0);
+        
         return id;
       },
 
@@ -124,6 +128,8 @@ export const useWindowStore = create<WindowStore>()(
         set((state) => ({
           windows: state.windows.filter((w) => w.id !== id),
         }));
+        
+        setTimeout(() => useWorkspaceStore.getState().evaluateDynamicWorkspaces(), 0);
       },
 
       focusWindow: (id: string) => {
@@ -226,6 +232,8 @@ export const useWindowStore = create<WindowStore>()(
             w.id === id ? { ...w, workspaceId } : w
           ),
         }));
+        
+        setTimeout(() => useWorkspaceStore.getState().evaluateDynamicWorkspaces(), 0);
       },
 
       shiftWorkspaces: (oldIndex: number, newIndex: number) => {
@@ -245,6 +253,25 @@ export const useWindowStore = create<WindowStore>()(
             })
           };
         });
+      },
+
+      removeWorkspace: (index: number) => {
+        set((state) => ({
+          windows: state.windows.map((w) => {
+            if (w.workspaceId > index) {
+              return { ...w, workspaceId: w.workspaceId - 1 };
+            }
+            return w;
+          })
+        }));
+      },
+
+      mergeWorkspaceWindows: (sourceIndex: number, targetIndex: number) => {
+        set((state) => ({
+          windows: state.windows.map((w) =>
+            w.workspaceId === sourceIndex ? { ...w, workspaceId: targetIndex } : w
+          ),
+        }));
       },
 
       unfocusAll: () => {
@@ -284,7 +311,17 @@ export const useWindowStore = create<WindowStore>()(
           // Ensure workspaceId is present (migration for old persisted state)
           const workspaceId = typeof w.workspaceId === 'number' ? w.workspaceId : 0;
           
-          return { ...w, position: { x, y }, workspaceId };
+          // Enforce minimum size on load so old cached sizes don't violate new constraints
+          const appMeta = APP_REGISTRY[w.appId];
+          const minW = appMeta?.minSize?.width ?? Math.min(maxWidth * 0.9, Math.max(320, maxWidth * 0.15));
+          const minH = appMeta?.minSize?.height ?? Math.min(maxHeight * 0.9, Math.max(240, maxHeight * 0.15));
+          
+          const newSize = {
+            width: Math.max(w.size.width, minW),
+            height: Math.max(w.size.height, minH)
+          };
+          
+          return { ...w, position: { x, y }, size: newSize, workspaceId };
         });
 
         return { ...currentState, ...state, windows: clampedWindows };

@@ -34,6 +34,8 @@ interface WorkspaceStore {
 
   getWorkspaces: () => Workspace[];
   resetWorkspaces: () => void;
+  evaluateDynamicWorkspaces: () => void;
+  deleteWorkspaceManual: (index: number) => void;
 }
 
 const MAX_WORKSPACES = 8;
@@ -51,6 +53,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         const { workspaceCount } = get();
         if (index >= 0 && index < workspaceCount) {
           set({ activeWorkspace: index, isOverviewOpen: false, isAppGridOpen: false });
+          setTimeout(() => get().evaluateDynamicWorkspaces(), 0);
         }
       },
 
@@ -58,6 +61,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         const { activeWorkspace, workspaceCount } = get();
         if (activeWorkspace < workspaceCount - 1) {
           set({ activeWorkspace: activeWorkspace + 1 });
+          setTimeout(() => get().evaluateDynamicWorkspaces(), 0);
         }
       },
 
@@ -65,6 +69,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
         const { activeWorkspace } = get();
         if (activeWorkspace > 0) {
           set({ activeWorkspace: activeWorkspace - 1 });
+          setTimeout(() => get().evaluateDynamicWorkspaces(), 0);
         }
       },
 
@@ -124,6 +129,59 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
 
       resetWorkspaces: () => {
         set({ activeWorkspace: 0, workspaceCount: MIN_WORKSPACES, isOverviewOpen: false, isAppGridOpen: false });
+      },
+
+      evaluateDynamicWorkspaces: () => {
+        import('./useUbuntuWindowStore').then(({ useWindowStore }) => {
+          const { windows } = useWindowStore.getState();
+          const { workspaceCount, activeWorkspace } = get();
+
+          const occupied = new Set<number>();
+          windows.forEach(w => occupied.add(w.workspaceId));
+
+          let currentCount = workspaceCount;
+          let currentActive = activeWorkspace;
+          let changed = false;
+
+          for (let i = currentCount - 2; i >= 0; i--) {
+            if (!occupied.has(i) && currentCount > MIN_WORKSPACES && i !== currentActive) {
+              useWindowStore.getState().removeWorkspace(i);
+              
+              currentCount--;
+              if (currentActive > i) currentActive--;
+              else if (currentActive === i && currentActive > 0) currentActive--;
+              
+              const newOccupied = new Set<number>();
+              occupied.forEach(wsId => {
+                if (wsId > i) newOccupied.add(wsId - 1);
+                else newOccupied.add(wsId);
+              });
+              occupied.clear();
+              newOccupied.forEach(wsId => occupied.add(wsId));
+              changed = true;
+            }
+          }
+
+          if (occupied.has(currentCount - 1) && currentCount < MAX_WORKSPACES) {
+            currentCount++;
+            changed = true;
+          }
+
+          if (changed) {
+            set({ workspaceCount: currentCount, activeWorkspace: currentActive });
+          }
+        });
+      },
+
+      deleteWorkspaceManual: (index: number) => {
+        const { workspaceCount } = get();
+        if (workspaceCount <= MIN_WORKSPACES) return;
+        
+        import('./useUbuntuWindowStore').then(({ useWindowStore }) => {
+          const targetIndex = index > 0 ? index - 1 : index + 1;
+          useWindowStore.getState().mergeWorkspaceWindows(index, targetIndex);
+          get().evaluateDynamicWorkspaces();
+        });
       },
     }),
     {

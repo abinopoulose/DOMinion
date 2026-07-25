@@ -44,7 +44,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
   const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
   const closeOverview = useWorkspaceStore((s) => s.closeOverview);
   const addWorkspace = useWorkspaceStore((s) => s.addWorkspace);
-  const removeWorkspace = useWorkspaceStore((s) => s.removeWorkspace);
+  const deleteWorkspaceManual = useWorkspaceStore((s) => s.deleteWorkspaceManual);
   const reorderWorkspaces = useWorkspaceStore((s) => s.reorderWorkspaces);
 
   const allWindows = useWindowStore((s) => s.windows);
@@ -114,13 +114,13 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
     [closeWindow]
   );
 
-  // Remove workspace (only if > 2)
+  // Remove workspace manually (and merge windows)
   const handleRemoveWorkspace = useCallback(
-    (e: React.MouseEvent) => {
+    (e: React.MouseEvent, index: number) => {
       e.stopPropagation();
-      removeWorkspace();
+      deleteWorkspaceManual(index);
     },
-    [removeWorkspace]
+    [deleteWorkspaceManual]
   );
 
   // Get windows for a specific workspace
@@ -217,7 +217,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
                 {workspaceCount > 2 && (
                   <div
                     className="workspace-thumbnail__remove"
-                    onClick={handleRemoveWorkspace}
+                    onClick={(e) => handleRemoveWorkspace(e, i)}
                     title="Remove workspace"
                   >
                     <svg viewBox="0 0 10 10">
@@ -233,17 +233,7 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
             </div>
           );
         })}
-        {/* Add workspace button */}
-        {workspaceCount < 8 && (
-          <div style={{ position: 'relative', paddingBottom: '24px' }}>
-            <div className="workspace-overview__add-btn" onClick={(e) => { e.stopPropagation(); addWorkspace(); }} title="Add workspace">
-              <svg viewBox="0 0 24 24">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-            </div>
-          </div>
-        )}
+
       </div>
 
       {/* Main area: App Grid OR window previews for active workspace */}

@@ -5,6 +5,7 @@ export interface AppMetadata {
   title: string;
   icon: string;
   defaultSize: { width: number; height: number };
+  minSize?: { width: number; height: number };
   processCmd: string;
   baseUsage: { cpu: number; mem: number };
 }
@@ -54,7 +55,8 @@ export const APP_REGISTRY: Record<string, AppMetadata> = {
     id: 'clock',
     title: 'Clocks',
     icon: '/ubuntu/icons/clock-app.png',
-    defaultSize: { width: 400, height: 600 },
+    defaultSize: { width: 800, height: 600 },
+    minSize: { width: 600, height: 400 },
     processCmd: '/usr/bin/gnome-clocks',
     baseUsage: { cpu: 0.1, mem: 0.2 }
   },
@@ -69,15 +71,16 @@ export const APP_REGISTRY: Record<string, AppMetadata> = {
   'calculator': {
     id: 'calculator',
     title: 'Calculator',
-    icon: '/ubuntu/icons/calculator.svg',
+    icon: '/ubuntu/icons/calculator-app.png',
     defaultSize: { width: 350, height: 500 },
+    minSize: { width: 300, height: 450 },
     processCmd: '/usr/bin/gnome-calculator',
     baseUsage: { cpu: 0.0, mem: 0.1 }
   },
   'system-monitor': {
     id: 'system-monitor',
     title: 'System Monitor',
-    icon: '/ubuntu/icons/system-monitor.png',
+    icon: '/ubuntu/icons/preferences-system-time.png',
     defaultSize: { width: 700, height: 500 },
     processCmd: '/usr/bin/gnome-system-monitor',
     baseUsage: { cpu: 0.8, mem: 0.5 }
@@ -85,7 +88,7 @@ export const APP_REGISTRY: Record<string, AppMetadata> = {
   'image-viewer': {
     id: 'image-viewer',
     title: 'Image Viewer',
-    icon: '/ubuntu/icons/image-viewer.svg',
+    icon: '/ubuntu/icons/image-viewer.png',
     defaultSize: { width: 600, height: 400 },
     processCmd: '/usr/bin/eog',
     baseUsage: { cpu: 0.4, mem: 0.6 }
@@ -93,7 +96,7 @@ export const APP_REGISTRY: Record<string, AppMetadata> = {
   'video-player': {
     id: 'video-player',
     title: 'Video Player',
-    icon: '/ubuntu/icons/video-player.svg',
+    icon: '/ubuntu/icons/video-x-generic.png',
     defaultSize: { width: 600, height: 400 },
     processCmd: '/usr/bin/totem',
     baseUsage: { cpu: 3.5, mem: 1.5 }
@@ -109,7 +112,7 @@ export const APP_REGISTRY: Record<string, AppMetadata> = {
   'disk-usage-analyzer': {
     id: 'disk-usage-analyzer',
     title: 'Disk Usage Analyzer',
-    icon: '/ubuntu/icons/disk-usage-analyzer.png',
+    icon: '/ubuntu/icons/disk.png',
     defaultSize: { width: 500, height: 400 },
     processCmd: '/usr/bin/baobab',
     baseUsage: { cpu: 2.5, mem: 0.8 }
@@ -117,7 +120,7 @@ export const APP_REGISTRY: Record<string, AppMetadata> = {
   'error-reporter': {
     id: 'error-reporter',
     title: 'System Error',
-    icon: '/ubuntu/icons/error-reporter.png',
+    icon: '/ubuntu/icons/root-terminal-app.png',
     defaultSize: { width: 500, height: 350 },
     processCmd: '/usr/bin/apport-gtk',
     baseUsage: { cpu: 0.1, mem: 0.2 }

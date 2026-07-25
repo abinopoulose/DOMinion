@@ -6,6 +6,7 @@
   color: var(--color-text-primary, #333333);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Ubuntu, 'Helvetica Neue', sans-serif;
   user-select: none;
+  overflow: hidden;
 }
 
 .calc-display {

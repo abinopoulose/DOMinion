@@ -7,6 +7,7 @@ import { useWindowStore } from '../../store';
 import { useSettingsStore } from '../../apps/Settings/store/useSettingsStore';
 import { useTerminalProfileStore } from '../../apps/Terminal/store/useTerminalProfileStore';
 import { themes } from '../../apps/Terminal/themes';
+import { APP_REGISTRY } from '../../config/appRegistry';
 import './Window.css';
 
 export interface WindowProps {
@@ -142,9 +143,12 @@ export const Window = React.memo(function Window({
     onTile: handleTile,
   });
 
+  const appMeta = APP_REGISTRY[win.appId];
+
   const { resizeHandles } = useWindowResize({
     position,
     size,
+    minSize: appMeta?.minSize,
     isMaximized,
     onSizeChange,
     onPositionChange,
@@ -277,7 +281,7 @@ export const Window = React.memo(function Window({
               <iframe
                 src={`/app/${win.appId}?windowId=${id}`}
                 sandbox="allow-scripts allow-same-origin"
-                style={{ width: '100%', height: '100%', border: 'none' }}
+                style={{ display: 'block', width: '100%', height: '100%', border: 'none' }}
                 title={win.appId}
               />
             ) : (

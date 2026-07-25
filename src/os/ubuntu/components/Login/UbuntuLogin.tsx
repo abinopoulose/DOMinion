@@ -15,7 +15,7 @@ export function UbuntuLogin() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [shadowContent, setShadowContent] = useState<string | null>(null);
   
   const authStore = useUbuntuAuthStore();
@@ -108,17 +108,19 @@ export function UbuntuLogin() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setHighlightedIndex(prev => (prev + 1) % UBUNTU_ACCOUNTS.length);
+        setHighlightedIndex(prev => prev === -1 ? 0 : (prev + 1) % UBUNTU_ACCOUNTS.length);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setHighlightedIndex(prev => (prev - 1 + UBUNTU_ACCOUNTS.length) % UBUNTU_ACCOUNTS.length);
+        setHighlightedIndex(prev => prev === -1 ? UBUNTU_ACCOUNTS.length - 1 : (prev - 1 + UBUNTU_ACCOUNTS.length) % UBUNTU_ACCOUNTS.length);
       } else if (e.key === 'Enter') {
-        e.preventDefault();
-        const acc = UBUNTU_ACCOUNTS[highlightedIndex];
-        if (acc) {
-          setSelectedUser(acc.username);
-          setPassword('');
-          setError('');
+        if (highlightedIndex !== -1) {
+          e.preventDefault();
+          const acc = UBUNTU_ACCOUNTS[highlightedIndex];
+          if (acc) {
+            setSelectedUser(acc.username);
+            setPassword('');
+            setError('');
+          }
         }
       }
     };
