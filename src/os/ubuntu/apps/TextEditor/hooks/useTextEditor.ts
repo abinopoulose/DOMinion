@@ -1,5 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { ubuntuIdbStorage, userScopedStorage } from '../../../store/persistence';
 import { useWindowStore } from '../../../store';
 import { useWindowAPI } from '../../../hooks/useWindowAPI';
 import { getDesktopId } from '../../../fs/seed';
@@ -18,19 +20,32 @@ interface TextEditorState {
   removeSession: (id: string) => void;
 }
 
-const useEditorStore = create<TextEditorState>((set) => ({
-  sessions: {},
-  setSession: (id, data) => set((s) => ({
-    sessions: {
-      ...s.sessions,
-      [id]: { ...(s.sessions[id] || { content: '', originalContent: '', fileName: 'Untitled Document', fileLocation: '' }), ...data }
+export const defaultEditorState = {
+  sessions: {} as Record<string, TextEditorSession>,
+};
+
+export const useEditorStore = create<TextEditorState>()(
+  persist(
+    (set) => ({
+      ...defaultEditorState,
+      setSession: (id, data) => set((s) => ({
+        sessions: {
+          ...s.sessions,
+          [id]: { ...(s.sessions[id] || { content: '', originalContent: '', fileName: 'Untitled Document', fileLocation: '' }), ...data }
+        }
+      })),
+      removeSession: (id) => set((s) => {
+        const { [id]: _, ...rest } = s.sessions;
+        return { sessions: rest };
+      }),
+    }),
+    {
+      name: 'ubuntu-text-editor-state',
+      storage: createJSONStorage(() => userScopedStorage(ubuntuIdbStorage)),
+      partialize: (state) => ({ sessions: state.sessions }),
     }
-  })),
-  removeSession: (id) => set((s) => {
-    const { [id]: _, ...rest } = s.sessions;
-    return { sessions: rest };
-  }),
-}));
+  )
+);
 
 export function useTextEditor(windowId: string) {
   const { updateState: updateWindowState, getState } = useWindowAPI(windowId);

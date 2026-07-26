@@ -16,6 +16,7 @@ interface ProcessManagerState {
   spawn: (name: string, ppid: number, user: string, windowId?: string) => number;
   kill: (pid: number) => void;
   killByWindowId: (windowId: string) => void;
+  syncFromWindows: () => void;
 }
 
 export const useProcessManager = create<ProcessManagerState>((set, get) => ({
@@ -38,5 +39,23 @@ export const useProcessManager = create<ProcessManagerState>((set, get) => ({
   },
   killByWindowId: (windowId) => {
     set(state => ({ processes: state.processes.filter(p => p.windowId !== windowId) }));
+  },
+  syncFromWindows: () => {
+    import('../store/useUbuntuWindowStore').then(({ useWindowStore }) => {
+      import('../config/appRegistry').then(({ APP_REGISTRY }) => {
+        const { windows } = useWindowStore.getState();
+        const { processes, spawn } = get();
+        
+        windows.forEach(w => {
+          const hasProcess = processes.some(p => p.windowId === w.id);
+          if (!hasProcess) {
+            const meta = APP_REGISTRY[w.appId];
+            const processName = meta ? meta.processCmd.split(' ')[0].split('/').pop() || w.appId : w.appId;
+            // Spawning a new process for the window
+            spawn(processName, 3, 'user', w.id);
+          }
+        });
+      });
+    });
   }
 }));

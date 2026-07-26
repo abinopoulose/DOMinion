@@ -43,7 +43,6 @@ export function WorkspaceOverview({ wallpaper, onLaunchApp }: WorkspaceOverviewP
   const workspaceCount = useWorkspaceStore((s) => s.workspaceCount);
   const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
   const closeOverview = useWorkspaceStore((s) => s.closeOverview);
-  const addWorkspace = useWorkspaceStore((s) => s.addWorkspace);
   const deleteWorkspaceManual = useWorkspaceStore((s) => s.deleteWorkspaceManual);
   const reorderWorkspaces = useWorkspaceStore((s) => s.reorderWorkspaces);
 

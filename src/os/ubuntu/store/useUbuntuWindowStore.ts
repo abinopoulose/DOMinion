@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import type { WindowState, AppId } from '../types';
-import { ubuntuIdbStorage } from './persistence';
+import { ubuntuIdbStorage, userScopedStorage } from './persistence';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { APP_REGISTRY } from '../config/appRegistry';
 import { useProcessManager } from '../services/ProcessManager';
@@ -35,12 +35,16 @@ interface WindowStore {
 
 
 
+export const defaultWindowState = {
+  windows: [] as WindowState[],
+  nextZIndex: 100,
+  previewFocusWindowId: null as string | null,
+};
+
 export const useWindowStore = create<WindowStore>()(
   persist(
     (set, get) => ({
-      windows: [],
-      nextZIndex: 100,
-      previewFocusWindowId: null,
+      ...defaultWindowState,
 
       setPreviewFocusWindowId: (id) => set({ previewFocusWindowId: id }),
 
@@ -286,7 +290,7 @@ export const useWindowStore = create<WindowStore>()(
     }),
     {
       name: 'ubuntu-window-state',
-      storage: createJSONStorage(() => ubuntuIdbStorage),
+      storage: createJSONStorage(() => userScopedStorage(ubuntuIdbStorage)),
       partialize: (state) => ({ 
         windows: state.windows, 
         nextZIndex: state.nextZIndex 

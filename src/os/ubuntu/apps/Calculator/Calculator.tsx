@@ -1,7 +1,12 @@
+import { useEffect, useMemo } from 'react';
+import { useWindowAPI } from '../../hooks/useWindowAPI';
 import { useCalculator } from './hooks/useCalculator';
 import './Calculator.css';
 
-export function Calculator({ windowId: _windowId }: { windowId: string }) {
+export function Calculator({ windowId }: { windowId: string }) {
+  const { getState, updateState } = useWindowAPI(windowId);
+  const initialAppState = useMemo(() => getState<any>() || {}, [getState]);
+
   const {
     display,
     equation,
@@ -12,7 +17,15 @@ export function Calculator({ windowId: _windowId }: { windowId: string }) {
     toggleSign,
     percentage,
     handleDecimal
-  } = useCalculator();
+  } = useCalculator({
+    display: initialAppState.display,
+    equation: initialAppState.equation,
+  });
+
+  // Sync calculator state back to appState for persistence
+  useEffect(() => {
+    updateState({ display, equation });
+  }, [display, equation, updateState]);
 
   return (
     <div className="calculator-app">

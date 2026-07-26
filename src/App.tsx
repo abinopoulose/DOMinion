@@ -126,7 +126,13 @@ function UbuntuEnvironment() {
       const remaining = Math.max(0, 800 - elapsed);
       
       setTimeout(() => {
-        if (mounted) setVfsReady(true);
+        if (mounted) {
+          setVfsReady(true);
+          // Sync processes for any windows that were restored from persistence
+          import('./os/ubuntu/services/ProcessManager').then(({ useProcessManager }) => {
+            useProcessManager.getState().syncFromWindows();
+          });
+        }
       }, remaining);
     });
     

@@ -143,7 +143,7 @@ export const Window = React.memo(function Window({
     onTile: handleTile,
   });
 
-  const appMeta = APP_REGISTRY[win.appId];
+  const appMeta = win ? APP_REGISTRY[win.appId] : undefined;
 
   const { resizeHandles } = useWindowResize({
     position,

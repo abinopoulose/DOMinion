@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import { userScopedStorage } from '../../../store/persistence';
 
 export interface TerminalProfile {
   name: string;
@@ -62,12 +63,16 @@ const defaultProfile: TerminalProfile = {
   useScrollbars: 'system',
 };
 
+export const defaultTerminalProfileState = {
+  activeProfile: { ...defaultProfile },
+  profiles: [{ ...defaultProfile }],
+  activeProfileIndex: 0,
+};
+
 export const useTerminalProfileStore = create<TerminalProfileStore>()(
   persist(
     (set) => ({
-      activeProfile: { ...defaultProfile },
-      profiles: [{ ...defaultProfile }],
-      activeProfileIndex: 0,
+      ...defaultTerminalProfileState,
 
       updateProfile: (updates) =>
         set((state) => {
@@ -145,6 +150,7 @@ export const useTerminalProfileStore = create<TerminalProfileStore>()(
     }),
     {
       name: 'ubuntu-terminal-profile',
+      storage: createJSONStorage(() => userScopedStorage(localStorage)),
     }
   )
 );

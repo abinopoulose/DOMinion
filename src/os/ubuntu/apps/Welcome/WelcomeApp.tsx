@@ -1,15 +1,25 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 import { useWindowStore } from '../../store/useUbuntuWindowStore';
 import { useWindowDrag } from '../../hooks/useWindowDrag';
+import { useWindowAPI } from '../../hooks/useWindowAPI';
 import { WelcomeStep1 } from './WelcomeStep1';
 import { WelcomeStep2 } from './WelcomeStep2';
 import { WelcomeStep3 } from './WelcomeStep3';
 
 export function WelcomeApp({ windowId }: { windowId: string }) {
-  const [step, setStep] = useState(1);
-  const [downloadProgress, setDownloadProgress] = useState(-1);
-  const [logs, setLogs] = useState<string[]>([]);
+  const { getState, updateState } = useWindowAPI(windowId);
+  const initialAppState = useMemo(() => getState<any>() || {}, [getState]);
+
+  const [step, setStep] = useState(initialAppState.step || 1);
+  const [downloadProgress, setDownloadProgress] = useState(initialAppState.downloadProgress ?? -1);
+  const [logs, setLogs] = useState<string[]>(initialAppState.logs || []);
+
+  // Sync meaningful state back to appState for persistence
+  useEffect(() => {
+    updateState({ ...initialAppState, step, downloadProgress, logs });
+  }, [step, downloadProgress, logs, updateState]);
+
   const isPausedRef = useRef(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showTerminal, setShowTerminal] = useState(true);

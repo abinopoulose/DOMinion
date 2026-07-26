@@ -91,13 +91,6 @@ export function Desktop({ onUnfocusAll }: DesktopProps) {
   const isTrashFull = trashNodes.length > 0;
   const currentTrashIcon = isTrashFull ? '/ubuntu/icons/user-trash-full.png' : '/ubuntu/icons/user-trash.png';
 
-  useEffect(() => {
-    const welcomeKey = `ubuntu-welcome-shown`;
-    if (!localStorage.getItem(welcomeKey)) {
-      openWindow('welcome');
-      localStorage.setItem(welcomeKey, 'true');
-    }
-  }, [openWindow]);
 
   const combinedIcons = useMemo(() => {
     const arr: any[] = [];

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { useWindowStore } from './useUbuntuWindowStore';
+
+import { switchUserEnvironment } from './storeLifecycle';
 
 /**
  * Sudo session cache entry.
@@ -62,7 +63,7 @@ const ATTEMPT_WINDOW_MS = 5 * 60 * 1000;
 const LOCKOUT_MS = 30 * 1000;
 
 export const getCurrentUserOrFallback = () => {
-  return useUbuntuAuthStore.getState().currentUser || 'peasant';
+  return useUbuntuAuthStore.getState().currentUser || 'guest';
 };
 
 export const useUbuntuAuthStore = create<UbuntuAuthStore>()(
@@ -72,19 +73,24 @@ export const useUbuntuAuthStore = create<UbuntuAuthStore>()(
       sudoCache: {},
       attemptTrackers: {},
 
-      login: (username) => set({
-        currentUser: username,
-        sudoCache: {},          // Clear all sudo sessions on login
-        attemptTrackers: {},    // Reset all attempt trackers on login
-      }),
+      login: (username) => {
+        set({
+          currentUser: username,
+          sudoCache: {},          // Clear all sudo sessions on login
+          attemptTrackers: {},    // Reset all attempt trackers on login
+        });
+        // Swap UI environment to the newly logged in user
+        switchUserEnvironment(username);
+      },
 
       logout: () => {
-        useWindowStore.getState().clearAllWindows();
         set({
           currentUser: null,
           sudoCache: {},          // Clear all sudo sessions on logout
           attemptTrackers: {},
         });
+        // Swap UI environment to a clean guest namespace on logout
+        switchUserEnvironment('guest');
       },
 
       grantSudoAccess: (windowId) => set((state) => ({

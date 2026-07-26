@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { ubuntuIdbStorage } from './persistence';
+import { ubuntuIdbStorage, userScopedStorage } from './persistence';
 
 export interface Workspace {
   id: number;
@@ -41,13 +41,17 @@ interface WorkspaceStore {
 const MAX_WORKSPACES = 8;
 const MIN_WORKSPACES = 2;
 
+export const defaultWorkspaceState = {
+  activeWorkspace: 0,
+  workspaceCount: 4,
+  isOverviewOpen: false,
+  isAppGridOpen: false,
+};
+
 export const useWorkspaceStore = create<WorkspaceStore>()(
   persist(
     (set, get) => ({
-      activeWorkspace: 0,
-      workspaceCount: 4,
-      isOverviewOpen: false,
-      isAppGridOpen: false,
+      ...defaultWorkspaceState,
 
       setActiveWorkspace: (index: number) => {
         const { workspaceCount } = get();
@@ -186,7 +190,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
     }),
     {
       name: 'ubuntu-workspace-state',
-      storage: createJSONStorage(() => ubuntuIdbStorage),
+      storage: createJSONStorage(() => userScopedStorage(ubuntuIdbStorage)),
       partialize: (state) => ({
         activeWorkspace: state.activeWorkspace,
         workspaceCount: state.workspaceCount,

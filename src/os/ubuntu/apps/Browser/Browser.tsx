@@ -18,7 +18,7 @@ interface TabState {
   historyIndex: number;
 }
 
-import { useSystemDialogStore } from '../../store/useSystemDialogStore';
+
 import { BrowserModals } from './components/BrowserModals';
 import type { Bookmark } from './components/BrowserModals';
 
@@ -318,12 +318,12 @@ export function Browser({ windowId }: BrowserProps) {
               <div className="browser-settings-item" onClick={() => { setActiveModal('bookmarks'); setShowSettingsMenu(false); }}>Bookmarks</div>
               <div className="browser-settings-item" onClick={() => { setActiveModal('history'); setShowSettingsMenu(false); }}>History</div>
               <div className="browser-settings-item" onClick={() => { useWindowStore.getState().openWindow('file-manager', { cwdId: 'root/home/user/Downloads' }); setShowSettingsMenu(false); }}>Downloads</div>
-              <div className="browser-settings-item" onClick={() => { useSystemDialogStore.getState().openAlertDialog('Passwords', 'Password management is coming soon to the Browser app.'); setShowSettingsMenu(false); }}>Passwords</div>
+              <div className="browser-settings-item" onClick={() => { alert('Password management is coming soon to the Browser app.'); setShowSettingsMenu(false); }}>Passwords</div>
               <div className="browser-settings-divider" />
-              <div className="browser-settings-item" onClick={() => { useSystemDialogStore.getState().openAlertDialog('Add-ons', 'Add-on support is currently under development.'); setShowSettingsMenu(false); }}>Add-ons and themes</div>
+              <div className="browser-settings-item" onClick={() => { alert('Add-on support is currently under development.'); setShowSettingsMenu(false); }}>Add-ons and themes</div>
               <div className="browser-settings-item" onClick={() => { setActiveModal('settings'); setShowSettingsMenu(false); }}>Settings</div>
               <div className="browser-settings-divider" />
-              <div className="browser-settings-item" onClick={() => { useSystemDialogStore.getState().openAlertDialog('Firefox Help', 'DOMinion OS Browser version 1.0\\nPowered by React.'); setShowSettingsMenu(false); }}>Help</div>
+              <div className="browser-settings-item" onClick={() => { alert('DOMinion OS Browser version 1.0\\nPowered by React.'); setShowSettingsMenu(false); }}>Help</div>
             </div>
           </>
         )}

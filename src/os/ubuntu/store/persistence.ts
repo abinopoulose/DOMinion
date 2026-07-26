@@ -18,3 +18,35 @@ export const ubuntuIdbStorage: StateStorage = {
   },
   removeItem: async (name) => await del(name, customStore),
 };
+
+// --- Multi-User Sandboxed Storage Context ---
+let currentStorageUser = 'peasant';
+let isSwapping = false;
+
+export const setStorageSwapLock = (locked: boolean) => {
+  isSwapping = locked;
+};
+
+/** 
+ * Call this upon login/logout to change the DB prefix namespace
+ */
+export const setStorageUserContext = (user: string) => {
+  currentStorageUser = user;
+};
+
+/**
+ * Wraps any StateStorage (localStorage or IDB) to prefix keys with the current user.
+ * This guarantees 100% data separation between different accounts.
+ */
+export const userScopedStorage = (baseStorage: StateStorage): StateStorage => ({
+  getItem: async (name) => {
+    return await baseStorage.getItem(`${currentStorageUser}_${name}`);
+  },
+  setItem: async (name, value) => {
+    if (isSwapping) return; // Prevent overwriting DB with factory defaults during swap
+    return await baseStorage.setItem(`${currentStorageUser}_${name}`, value);
+  },
+  removeItem: async (name) => {
+    return await baseStorage.removeItem(`${currentStorageUser}_${name}`);
+  }
+});

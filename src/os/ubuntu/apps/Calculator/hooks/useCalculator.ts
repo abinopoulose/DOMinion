@@ -1,8 +1,13 @@
 import { useState, useCallback } from 'react';
 
-export function useCalculator() {
-  const [display, setDisplay] = useState('0');
-  const [equation, setEquation] = useState('');
+interface CalculatorInitialState {
+  display?: string;
+  equation?: string;
+}
+
+export function useCalculator(initialState?: CalculatorInitialState) {
+  const [display, setDisplay] = useState(initialState?.display || '0');
+  const [equation, setEquation] = useState(initialState?.equation || '');
   const [newNumber, setNewNumber] = useState(true);
 
   const handleNum = useCallback((num: string) => {
