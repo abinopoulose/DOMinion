@@ -1,1 +1,0 @@
-import{t as e}from"./useUbuntuAuthStore-CWaE4xn6.js";import{t}from"./accounts-Ovurixid.js";var n=null;function r(e){n=e}function i(){if(n)return{username:n,role:`admin`};let r=e();return{username:r,role:t.find(e=>e.username===r)?.role||`standard`}}export{r as n,i as t};
