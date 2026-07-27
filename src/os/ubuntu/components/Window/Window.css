@@ -262,6 +262,11 @@
   background: #300a24 !important;
 }
 
+.window--preferences-dark {
+  border: 1px solid #111 !important;
+  background: #242424 !important;
+}
+
 .window--terminal-dark .titlebar {
   background: var(--term-chrome, #26071C) !important;
   color: var(--term-chrome-fg, #ffffff) !important;

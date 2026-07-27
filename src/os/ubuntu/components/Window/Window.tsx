@@ -157,7 +157,7 @@ export const Window = React.memo(function Window({
   const { dockPosition, dockIconSize, dockAutoHide } = useSettingsStore();
 
   const terminalProfile = useTerminalProfileStore((s) => s.activeProfile);
-  const isTerminalApp = win?.appId === 'terminal' || win?.appId === 'terminal-preferences';
+  const isTerminalApp = win?.appId === 'terminal';
   const termTheme = isTerminalApp ? (themes[terminalProfile.colorScheme] || themes['ubuntu']) : null;
 
   if (!win) return null;
@@ -210,7 +210,8 @@ export const Window = React.memo(function Window({
     animState === 'minimizing' && 'window--minimizing',
     animState === 'restoring' && 'window--restoring',
     animState === 'opening' && 'window--opening',
-    (win.appId === 'terminal' || win.appId === 'terminal-preferences') && ((win.appState as any)?.isLightTheme ? 'window--terminal-light' : 'window--terminal-dark'),
+    win.appId === 'terminal' && ((win.appState as any)?.isLightTheme ? 'window--terminal-light' : 'window--terminal-dark'),
+    win.appId === 'terminal-preferences' && 'window--preferences-dark',
     win.appId === 'welcome' && 'window--welcome',
     (win.appId === 'welcome' || hideTitleBar) && 'window--no-titlebar',
   ].filter(Boolean).join(' ');

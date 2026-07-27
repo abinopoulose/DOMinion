@@ -16,7 +16,7 @@
   justify-content: flex-start;
   align-items: center;
   gap: 16px;
-  background: transparent;
+  background-color: #303030 !important;
   width: 100%;
   padding: 12px 16px;
   touch-action: none;
@@ -124,6 +124,7 @@
   flex-direction: column;
   margin: 0 auto;
   width: 100%;
+  max-width: 600px;
 }
 
 .term-prefs-section-header {
@@ -232,6 +233,7 @@
   flex-direction: column;
   margin: 0 auto;
   width: 100%;
+  max-width: 600px;
 }
 
 .term-prefs-list-group {
@@ -383,6 +385,49 @@ label.term-prefs-list-row {
 
 .term-prefs-add-btn:hover {
   background: rgba(255, 255, 255, 0.06);
+}
+
+.term-prefs-profile-row {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.term-prefs-profile-row:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.term-prefs-profile-row:last-child {
+  border-bottom: none;
+}
+
+.term-prefs-profile-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.term-prefs-profile-name {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.term-prefs-profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.term-prefs-profile-check {
+  color: #e4e4e7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Number Controls */

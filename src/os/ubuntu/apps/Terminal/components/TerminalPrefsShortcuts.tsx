@@ -7,13 +7,13 @@ export function TerminalPrefsShortcuts() {
         <h3 className="term-prefs-list-title">Terminal</h3>
         <div className="term-prefs-list-card">
           <div className="term-prefs-list-row">
-            <span>Copy to Clipboard</span>
+            <span className="term-prefs-row-title">Copy to Clipboard</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>C</kbd>
             </div>
           </div>
           <div className="term-prefs-list-row">
-            <span>Paste from Clipboard</span>
+            <span className="term-prefs-row-title">Paste from Clipboard</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>V</kbd>
             </div>
@@ -22,31 +22,31 @@ export function TerminalPrefsShortcuts() {
         
         <div className="term-prefs-list-card" style={{ marginTop: '16px' }}>
           <div className="term-prefs-list-row">
-            <span>Select All</span>
+            <span className="term-prefs-row-title">Select All</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>A</kbd>
             </div>
           </div>
           <div className="term-prefs-list-row">
-            <span>Clear Selection</span>
+            <span className="term-prefs-row-title">Clear Selection</span>
             <span className="term-prefs-disabled-text">disabled</span>
           </div>
         </div>
 
         <div className="term-prefs-list-card" style={{ marginTop: '16px' }}>
           <div className="term-prefs-list-row">
-            <span>Reset</span>
+            <span className="term-prefs-row-title">Reset</span>
             <span className="term-prefs-disabled-text">disabled</span>
           </div>
           <div className="term-prefs-list-row">
-            <span>Reset and Clear</span>
+            <span className="term-prefs-row-title">Reset and Clear</span>
             <span className="term-prefs-disabled-text">disabled</span>
           </div>
         </div>
 
         <div className="term-prefs-list-card" style={{ marginTop: '16px' }}>
           <div className="term-prefs-list-row">
-            <span>Search History</span>
+            <span className="term-prefs-row-title">Search History</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>F</kbd>
             </div>
@@ -55,7 +55,7 @@ export function TerminalPrefsShortcuts() {
 
         <div className="term-prefs-list-card" style={{ marginTop: '16px' }}>
           <div className="term-prefs-list-row">
-            <span>Show Context Menu</span>
+            <span className="term-prefs-row-title">Show Context Menu</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>F10</kbd>
             </div>
@@ -67,25 +67,25 @@ export function TerminalPrefsShortcuts() {
         <h3 className="term-prefs-list-title">Windows</h3>
         <div className="term-prefs-list-card">
           <div className="term-prefs-list-row">
-            <span>New Window</span>
+            <span className="term-prefs-row-title">New Window</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>N</kbd>
             </div>
           </div>
           <div className="term-prefs-list-row">
-            <span>New Tab</span>
+            <span className="term-prefs-row-title">New Tab</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>T</kbd>
             </div>
           </div>
           <div className="term-prefs-list-row">
-            <span>Close Window</span>
+            <span className="term-prefs-row-title">Close Window</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>Q</kbd>
             </div>
           </div>
           <div className="term-prefs-list-row">
-            <span>Close Tab</span>
+            <span className="term-prefs-row-title">Close Tab</span>
             <div className="term-prefs-kbd-group">
               <kbd>Shift</kbd><kbd>Ctrl</kbd><kbd>W</kbd>
             </div>
