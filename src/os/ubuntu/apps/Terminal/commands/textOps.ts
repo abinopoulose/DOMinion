@@ -25,28 +25,28 @@ export const grep: CommandHandler = async (args, env, streams) => {
   } else {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { stat, readdir, readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
 
     if (flags.r) {
       const startPath = targets.length > 0 ? targets[0] : '.';
-      const startNode = await resolveRelativePathAsync(cwdPath, startPath);
+      const startNode = await resolveRelativePathAsync(cwdPath, startPath, env?.effectiveUser);
       if (!startNode) {
         [`grep: ${startPath}: No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
 
-      const startAbsPath = await getAbsolutePathAsync(startNode.id);
+      const startAbsPath = await getAbsolutePathAsync(startNode.id, env?.effectiveUser);
       if (startNode.type === 'file') {
-        const text = await (await readFile(startAbsPath)).text();
+        const text = await (await readFile(startAbsPath, { asUser: env?.effectiveUser })).text();
         files.push({ name: startPath, content: text });
       } else {
         async function walkTreeAsync(currentId: string, currentPath: string) {
-          const absPath = await getAbsolutePathAsync(currentId);
-          const node = await stat(absPath);
+          const absPath = await getAbsolutePathAsync(currentId, env?.effectiveUser);
+          const node = await stat(absPath, { asUser: env?.effectiveUser });
           if (node.type === 'file') {
-            const text = await (await readFile(absPath)).text();
+            const text = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
             files.push({ name: currentPath, content: text });
           } else if (node.type === 'directory') {
-            const children = await readdir(absPath);
+            const children = await readdir(absPath, { asUser: env?.effectiveUser });
             for (const child of children) {
               await walkTreeAsync(child.id, currentPath === '.' ? child.name : currentPath + '/' + child.name);
             }
@@ -56,15 +56,15 @@ export const grep: CommandHandler = async (args, env, streams) => {
       }
     } else {
       for (const target of targets) {
-        const node = await resolveRelativePathAsync(cwdPath, target);
+        const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
         if (!node) {
           [`grep: ${target}: No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
         }
         if (node.type === 'directory') {
           [`grep: ${target}: Is a directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
         }
-        const absPath = await getAbsolutePathAsync(node.id);
-        const text = await (await readFile(absPath)).text();
+        const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+        const text = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
         files.push({ name: target, content: text });
       }
     }
@@ -126,11 +126,11 @@ export const head: CommandHandler = async (args, env, streams) => {
 
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
 
     for (let i = 0; i < positional.length; i++) {
       const target = positional[i];
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
 
       if (!node) {
         [`head: ${target}: No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
@@ -144,8 +144,8 @@ export const head: CommandHandler = async (args, env, streams) => {
         results.push(`==> ${target} <==`);
       }
 
-      const absPath = await getAbsolutePathAsync(node.id);
-      const text = await (await readFile(absPath)).text();
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const text = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
       const lines = text.split('\n').slice(0, n);
       results.push(...lines);
     }
@@ -173,11 +173,11 @@ export const tail: CommandHandler = async (args, env, streams) => {
     const multiFile = positional.length > 1;
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
 
     for (let i = 0; i < positional.length; i++) {
       const target = positional[i];
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
 
       if (!node) {
         [`tail: ${target}: No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
@@ -191,8 +191,8 @@ export const tail: CommandHandler = async (args, env, streams) => {
         results.push(`==> ${target} <==`);
       }
 
-      const absPath = await getAbsolutePathAsync(node.id);
-      const text = await (await readFile(absPath)).text();
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const text = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
       const allLines = text.split('\n');
       const lines = allLines.slice(-n);
       results.push(...lines);
@@ -225,10 +225,10 @@ export const wc: CommandHandler = async (args, env, streams) => {
   } else {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
 
     for (const target of positional) {
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
 
       if (!node) {
         [`wc: ${target}: No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
@@ -237,8 +237,8 @@ export const wc: CommandHandler = async (args, env, streams) => {
         [`wc: ${target}: Is a directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
 
-      const absPath = await getAbsolutePathAsync(node.id);
-      const content = await (await readFile(absPath)).text();
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const content = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
       const lines = content.split('\n').length;
       const words = content.trim().length === 0 ? 0 : content.trim().split(/\s+/).length;
       const chars = content.length;
@@ -284,16 +284,16 @@ export const sort: CommandHandler = async (args, env, streams) => {
   } else {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
     for (const target of positional) {
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
       if (!node) {
         streams.stderr.writeLine(`sort: cannot read: ${target}: No such file or directory`);
         return 1;
       }
-      const absPath = await getAbsolutePathAsync(node.id);
-      const content = await (await readFile(absPath)).text();
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const content = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
       const lines = content.split('\n');
       if (lines.length > 0 && lines[lines.length - 1] === '') {
         lines.pop();
@@ -350,15 +350,15 @@ export const uniq: CommandHandler = async (args, env, streams) => {
   } else {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
-    const node = await resolveRelativePathAsync(cwdPath, positional[0]);
+    const node = await resolveRelativePathAsync(cwdPath, positional[0], env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`uniq: ${positional[0]}: No such file or directory`);
       return 1;
     }
-    const absPath = await getAbsolutePathAsync(node.id);
-    const content = await (await readFile(absPath)).text();
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const content = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
     lines = content.split('\n');
     if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
   }
@@ -425,13 +425,13 @@ export const cut: CommandHandler = async (args, env, streams) => {
   } else {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
     for (const target of positional) {
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
       if (!node) continue;
-      const absPath = await getAbsolutePathAsync(node.id);
-      const content = await (await readFile(absPath)).text();
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const content = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
       const fileLines = content.split('\n');
       if (fileLines.length > 0 && fileLines[fileLines.length - 1] === '') fileLines.pop();
       lines.push(...fileLines);
@@ -517,23 +517,23 @@ export const tee: CommandHandler = async (args, env, streams) => {
   if (positional.length > 0) {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { writeFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
     for (const target of positional) {
       let targetPath = '';
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
       if (node) {
-        targetPath = await getAbsolutePathAsync(node.id);
+        targetPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
       } else {
         const parts = target.split('/');
         const destName = parts.pop()!;
         const parentPath = parts.join('/') || '.';
-        const parentNode = await resolveRelativePathAsync(cwdPath, parentPath);
+        const parentNode = await resolveRelativePathAsync(cwdPath, parentPath, env?.effectiveUser);
         if (!parentNode) {
           streams.stderr.writeLine(`tee: ${target}: No such file or directory`);
           continue;
         }
-        const parentAbs = await getAbsolutePathAsync(parentNode.id);
+        const parentAbs = await getAbsolutePathAsync(parentNode.id, env?.effectiveUser);
         targetPath = parentAbs === '/' ? '/' + destName : parentAbs + '/' + destName;
       }
       
@@ -594,16 +594,16 @@ export const sed: CommandHandler = async (args, env, streams) => {
   } else {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile, writeFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
     for (const target of positional) {
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
       if (!node) {
         streams.stderr.writeLine(`sed: can't read ${target}: No such file or directory`);
         continue;
       }
-      const absPath = await getAbsolutePathAsync(node.id);
-      const content = await (await readFile(absPath)).text();
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const content = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
       const lines = content.split('\n');
       
       let newContent = '';
@@ -649,13 +649,13 @@ export const awk: CommandHandler = async (args, env, streams) => {
   } else {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
     for (const target of positional) {
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
       if (!node) continue;
-      const absPath = await getAbsolutePathAsync(node.id);
-      const content = await (await readFile(absPath)).text();
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const content = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
       const fileLines = content.split('\n');
       if (fileLines.length > 0 && fileLines[fileLines.length - 1] === '') fileLines.pop();
       lines.push(...fileLines);

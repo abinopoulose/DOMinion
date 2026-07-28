@@ -46,8 +46,8 @@ export const testCmd: CommandHandler = async (args, env, _streams) => {
       // File tests
       if (['-e', '-f', '-d', '-r', '-w', '-x', '-s'].includes(op)) {
         try {
-          const cwdAbs = await getAbsolutePathAsync(env.cwdId);
-          const node = await resolveRelativePathAsync(cwdAbs, val);
+          const cwdAbs = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+          const node = await resolveRelativePathAsync(cwdAbs, val, env?.effectiveUser);
           if (!node) return false;
           
           if (op === '-e') return true;
@@ -59,8 +59,8 @@ export const testCmd: CommandHandler = async (args, env, _streams) => {
           
           if (op === '-s') {
             if (node.type !== 'file') return false;
-            const absPath = await getAbsolutePathAsync(node.id);
-            const st = await stat(absPath);
+            const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+            const st = await stat(absPath, { asUser: env?.effectiveUser });
             return st.sizeBytes > 0;
           }
         } catch {

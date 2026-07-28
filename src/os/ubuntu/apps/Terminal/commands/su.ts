@@ -29,7 +29,7 @@ export const su: CommandHandler = async (args, env, streams) => {
   let userExists = targetUser === 'root';
   try {
     const { readFile } = await import('../../../fs/operations');
-    const blob = await readFile('/etc/passwd');
+    const blob = await readFile('/etc/passwd', { asUser: env?.effectiveUser });
     const text = await blob.text();
     const lines = text.split('\n');
     if (lines.some(l => l.startsWith(targetUser + ':'))) {

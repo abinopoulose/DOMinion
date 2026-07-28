@@ -1,7 +1,8 @@
-
-
 import { getDB } from './db';
-import type { VFSNode } from './types';
+
+import type { VFSNode, SecurityContext } from './types';
+import { hasPermission } from './permissions';
+import { getAuthContext } from '../store/authContext';
 
 // Simple in-memory cache for path -> ID resolution
 const pathCache = new Map<string, string>();
@@ -15,7 +16,7 @@ export function primePathCache(absolutePath: string, nodeId: string) {
   pathCache.set(absolutePath, nodeId);
 }
 
-export async function resolvePathAsync(absolutePath: string, depth: number = 0): Promise<VFSNode | null> {
+export async function resolvePathAsync(absolutePath: string, depth: number = 0, asUser?: string | SecurityContext): Promise<VFSNode | null> {
   if (depth > 40) {
     console.error(`[VFS Sync: pathResolver] ELOOP: Too many symlinks or infinite loop resolving '${absolutePath}'`);
     return null; // ELOOP
@@ -71,6 +72,10 @@ export async function resolvePathAsync(absolutePath: string, depth: number = 0):
       return null;
     }
     
+    if (!hasPermission(currentNode, 'execute', asUser || getAuthContext().username)) {
+      throw new Error(`EACCES: permission denied, stat '${absolutePath}'`);
+    }
+    
     const children = await db.getAllFromIndex('inodes', 'by-parent', currentNode.id);
     const nextNode = children.find(child => child.name === segment);
     
@@ -90,11 +95,11 @@ export async function resolvePathAsync(absolutePath: string, depth: number = 0):
       }
 
       if (isAbsolute) {
-        return resolvePathAsync(newResolutionPath, depth + 1);
+        return resolvePathAsync(newResolutionPath, depth + 1, asUser);
       } else {
         const parentId = nextNode.parentId || 'root';
         const parentAbsPath = await getAbsolutePathAsync(parentId);
-        return resolvePathAsync(parentAbsPath + '/' + newResolutionPath, depth + 1);
+        return resolvePathAsync(parentAbsPath + '/' + newResolutionPath, depth + 1, asUser);
       }
     }
 
@@ -108,7 +113,8 @@ export async function resolvePathAsync(absolutePath: string, depth: number = 0):
   return currentNode || null;
 }
 
-export async function getAbsolutePathAsync(nodeId: string): Promise<string> {
+// @ts-ignore - asUser is passed by terminal commands but not used here since absolute path generation goes bottom-up without permission checks
+export async function getAbsolutePathAsync(nodeId: string, asUser?: string): Promise<string> {
   if (nodeId === 'root') return '/';
   
   const db = await getDB();
@@ -126,11 +132,11 @@ export async function getAbsolutePathAsync(nodeId: string): Promise<string> {
   return '/' + segments.join('/');
 }
 
-export async function resolveRelativePathAsync(cwdPath: string, path: string): Promise<VFSNode | null> {
+export async function resolveRelativePathAsync(cwdPath: string, path: string, asUser?: string | SecurityContext): Promise<VFSNode | null> {
   if (path.startsWith('/')) {
-    return resolvePathAsync(path);
+    return resolvePathAsync(path, 0, asUser);
   }
 
   const combined = cwdPath === '/' ? '/' + path : cwdPath + '/' + path;
-  return resolvePathAsync(combined);
+  return resolvePathAsync(combined, 0, asUser);
 }

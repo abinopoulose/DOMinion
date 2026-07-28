@@ -16,6 +16,9 @@ export interface TerminalTabState {
   interactiveApp?: string;
   nanoFileId?: string;
   hasShownMotd?: boolean;
+  scrollbackContent?: string;
+  envVars?: Record<string, string>;
+  aliases?: Record<string, string>;
 }
 
 interface TerminalSessionProps {
@@ -45,6 +48,14 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
     // Initialize ShellEngine and PTY
     const env = new ShellEnvironment(tab.cwdId, tab.cwdPath, tab.effectiveUser, windowId);
     env.commandHistory = tab.commandHistory || [];
+
+    // Restore persisted env vars and aliases
+    if (tab.envVars) {
+      env.envVars = { ...env.envVars, ...tab.envVars };
+    }
+    if (tab.aliases) {
+      env.aliases = { ...env.aliases, ...tab.aliases };
+    }
     
     const writeToTerm = (data: string) => {
       xtermRef.current?.terminal?.write(data);
@@ -52,6 +63,12 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
 
     const newPty = new PTY(writeToTerm, env);
     newPty.onCommandComplete = () => {
+      let scrollbackContent = xtermRef.current?.serialize() ?? undefined;
+      const MAX_SCROLLBACK_BYTES = 512 * 1024; // 512 KB per tab
+      if (scrollbackContent && scrollbackContent.length > MAX_SCROLLBACK_BYTES) {
+        scrollbackContent = scrollbackContent.slice(-MAX_SCROLLBACK_BYTES);
+      }
+      
       onStateChange(tab.id, {
         cwdId: env.cwdId,
         cwdPath: env.cwdPath,
@@ -60,6 +77,9 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
         title: env.cwdPath === '/' ? '/' : env.cwdPath.split('/').pop() || '/',
         interactiveApp: env.interactiveApp as any,
         nanoFileId: env.nanoFileId,
+        scrollbackContent,
+        envVars: { ...env.envVars },
+        aliases: { ...env.aliases },
       });
       // Reset interactive state in env after passing it up
       env.interactiveApp = undefined;
@@ -109,7 +129,9 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
 
     // Initial prompt and MOTD
     const timer = setTimeout(() => {
-      if (!tab.hasShownMotd) {
+      if (tab.scrollbackContent) {
+        writeToTerm(tab.scrollbackContent);
+      } else if (!tab.hasShownMotd) {
         const motd = [
           `Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0-31-generic x86_64)`,
           ``,
@@ -141,6 +163,42 @@ export const TerminalSession: React.FC<TerminalSessionProps> = ({ windowId, tab,
       ptyRef.current.env.updateEnv('LINES', String(rows));
     }
   }, []);
+
+  // Serialize scrollback every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (xtermRef.current) {
+        let content = xtermRef.current.serialize();
+        if (content) {
+          const MAX_SCROLLBACK_BYTES = 512 * 1024; // 512 KB per tab
+          if (content.length > MAX_SCROLLBACK_BYTES) {
+            content = content.slice(-MAX_SCROLLBACK_BYTES);
+          }
+          onStateChange(tab.id, { scrollbackContent: content });
+        }
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [tab.id, onStateChange]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (xtermRef.current) {
+        let content = xtermRef.current.serialize() ?? undefined;
+        if (content) {
+          const MAX_SCROLLBACK_BYTES = 512 * 1024;
+          if (content.length > MAX_SCROLLBACK_BYTES) {
+            content = content.slice(-MAX_SCROLLBACK_BYTES);
+          }
+          onStateChange(tab.id, { scrollbackContent: content });
+        }
+      }
+    };
+    
+    window.addEventListener('app:before-unload', handleBeforeUnload);
+    return () => window.removeEventListener('app:before-unload', handleBeforeUnload);
+  }, [tab.id, onStateChange]);
 
   useEffect(() => {
     if (isActive && isFocused) {

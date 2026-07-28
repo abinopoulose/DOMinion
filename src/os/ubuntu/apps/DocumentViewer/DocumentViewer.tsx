@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFileUrl } from '../../hooks/useFileUrl';
 import { useWindowAPI } from '../../hooks/useWindowAPI';
 
@@ -9,10 +9,14 @@ interface DocumentViewerProps {
 
 export function DocumentViewer({ windowId }: DocumentViewerProps) {
   const { getState, updateState } = useWindowAPI(windowId);
-  const win = { appState: getState<any>() };
-  const fileId = (win?.appState as any)?.fileId;
+  const initialAppState = React.useMemo(() => getState<any>() || {}, [getState]);
+  const [fileId, setFileId] = useState<string | undefined>(initialAppState.fileId);
   const { url, loading, error } = useFileUrl(fileId);
   const [unsupported, setUnsupported] = useState(false);
+
+  useEffect(() => {
+    updateState({ fileId });
+  }, [fileId, updateState]);
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
@@ -23,7 +27,7 @@ export function DocumentViewer({ windowId }: DocumentViewerProps) {
       try {
         const path = await getAbsolutePathAsync(draggedId);
         if (path.toLowerCase().endsWith('.pdf')) {
-          updateState({ fileId: draggedId });
+          setFileId(draggedId);
         } else {
           setUnsupported(true);
         }

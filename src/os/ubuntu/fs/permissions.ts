@@ -46,16 +46,27 @@ function getUidForUser(username: string): number {
   return 9999;
 }
 
-import type { VFSNode } from './types';
+import type { VFSNode, SecurityContext } from './types';
 
 // Backwards compatibility layer for string-based checks
 export function hasPermission(
   node: VFSNode,
   operationType: 'read' | 'write' | 'execute',
-  executionUser: string
+  executionUserOrContext: string | SecurityContext
 ): boolean {
-  if (executionUser === 'root') return true;
   if (!node) return false;
+
+  let executionUser: string;
+  let capabilities: string[] = [];
+
+  if (typeof executionUserOrContext === 'string') {
+    executionUser = executionUserOrContext;
+  } else {
+    executionUser = executionUserOrContext.uid;
+    capabilities = executionUserOrContext.capabilities || [];
+  }
+
+  if (capabilities.includes('IGNORE_PERMISSIONS') || executionUser === 'root') return true;
 
   const euid = getUidForUser(executionUser);
   const egid = euid;

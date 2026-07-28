@@ -16,8 +16,8 @@ export const cat: CommandHandler = async (args, env, streams) => {
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readFile } = await import('../../../fs/operations');
 
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
-  const targetNode = await resolveRelativePathAsync(cwdPath, args[0]);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+  const targetNode = await resolveRelativePathAsync(cwdPath, args[0], env?.effectiveUser);
 
   if (!targetNode) {
     streams.stderr.writeLine(`cat: ${args[0]}: No such file or directory`);
@@ -29,9 +29,9 @@ export const cat: CommandHandler = async (args, env, streams) => {
     return 1;
   }
   
-  const targetAbsPath = await getAbsolutePathAsync(targetNode.id);
+  const targetAbsPath = await getAbsolutePathAsync(targetNode.id, env?.effectiveUser);
   try {
-    const blob = await readFile(targetAbsPath);
+    const blob = await readFile(targetAbsPath, { asUser: env?.effectiveUser });
     const text = await blob.text();
     text.split('\n').forEach((line: string) => streams.stdout.writeLine(line));
   } catch (err) {
@@ -46,15 +46,15 @@ export const touch: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { writeFile, readFile } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   const name = args[0];
-  const node = await resolveRelativePathAsync(cwdPath, name);
+  const node = await resolveRelativePathAsync(cwdPath, name, env?.effectiveUser);
   
   if (node) {
     try {
-      const targetAbsPath = await getAbsolutePathAsync(node.id);
-      const blob = await readFile(targetAbsPath);
+      const targetAbsPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const blob = await readFile(targetAbsPath, { asUser: env?.effectiveUser });
       await writeFile(targetAbsPath, blob);
     } catch(e) { console.error('Failed to update touch time:', e); }
     return 0;
@@ -64,12 +64,12 @@ export const touch: CommandHandler = async (args, env, streams) => {
   const destName = destParts.pop()!;
   const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
   
-  const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath);
+  const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath, env?.effectiveUser);
   if (!parentNode) {
     streams.stderr.writeLine(`touch: cannot touch '${name}': No such file or directory`); return 1;
   }
   
-  const parentAbsPath = await getAbsolutePathAsync(parentNode.id);
+  const parentAbsPath = await getAbsolutePathAsync(parentNode.id, env?.effectiveUser);
   const newFilePath = parentAbsPath === '/' ? '/' + destName : parentAbsPath + '/' + destName;
   
   try {
@@ -86,23 +86,23 @@ export const mkdir: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { mkdir: mkdirOp } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   const name = args[0];
   
   const destParts = name.split('/');
   const destName = destParts.pop()!;
   const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
   
-  const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath);
+  const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath, env?.effectiveUser);
   if (!parentNode) {
     streams.stderr.writeLine(`mkdir: cannot create directory '${name}': No such file or directory`); return 1;
   }
   
-  const parentAbsPath = await getAbsolutePathAsync(parentNode.id);
+  const parentAbsPath = await getAbsolutePathAsync(parentNode.id, env?.effectiveUser);
   const newDirPath = parentAbsPath === '/' ? '/' + destName : parentAbsPath + '/' + destName;
   
   try {
-    await mkdirOp(newDirPath);
+    await mkdirOp(newDirPath, { asUser: env?.effectiveUser });
   } catch (err) {
     streams.stderr.writeLine(`mkdir: cannot create directory '${name}': ${(err as Error).message}`);
     return 1;
@@ -134,10 +134,10 @@ export const rm: CommandHandler = async (args, env, streams) => {
 
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { unlink, rmdir } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
 
   for (const target of positional) {
-    const node = await resolveRelativePathAsync(cwdPath, target);
+    const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
 
     if (!node) {
       if (force) continue;
@@ -148,12 +148,12 @@ export const rm: CommandHandler = async (args, env, streams) => {
       streams.stderr.writeLine(`rm: cannot remove '${target}': Is a directory`); return 1;
     }
 
-    const absPath = await getAbsolutePathAsync(node.id);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
     try {
       if (node.type === 'directory') {
         await rmdir(absPath, { recursive: true });
       } else {
-        await unlink(absPath);
+        await unlink(absPath, { asUser: env?.effectiveUser });
       }
     } catch (err) {
       streams.stderr.writeLine(`rm: cannot remove '${target}': ${(err as Error).message}`); return 1;
@@ -175,8 +175,8 @@ export const chmod: CommandHandler = async (args, env, streams) => {
 
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { chmod: chmodOp } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
-  const node = await resolveRelativePathAsync(cwdPath, targetName);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+  const node = await resolveRelativePathAsync(cwdPath, targetName, env?.effectiveUser);
   
   if (!node) {
     streams.stderr.writeLine(`chmod: cannot access '${targetName}': No such file or directory`); return 1;
@@ -189,8 +189,8 @@ export const chmod: CommandHandler = async (args, env, streams) => {
   }
 
   try {
-    const absPath = await getAbsolutePathAsync(node.id);
-    await chmodOp(absPath, permissions);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    await chmodOp(absPath, permissions, { asUser: env?.effectiveUser });
   } catch (err) {
     streams.stderr.writeLine(`chmod: ${(err as Error).message}`); return 1;
   }
@@ -212,16 +212,16 @@ export const chown: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { chown: chownOp } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
-  const node = await resolveRelativePathAsync(cwdPath, targetName);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+  const node = await resolveRelativePathAsync(cwdPath, targetName, env?.effectiveUser);
   
   if (!node) {
     streams.stderr.writeLine(`chown: cannot access '${targetName}': No such file or directory`); return 1;
   }
   
   try {
-    const absPath = await getAbsolutePathAsync(node.id);
-    await chownOp(absPath, owner || node.ownerId, group || node.groupId);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    await chownOp(absPath, owner || node.ownerId, group || node.groupId, { asUser: env?.effectiveUser });
   } catch (err) {
     streams.stderr.writeLine(`chown: ${(err as Error).message}`); return 1;
   }
@@ -257,10 +257,10 @@ export const cp: CommandHandler = async (args, env, streams) => {
   const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
   const { readFile, writeFile, stat, readdir, mkdir } = await import('../../../fs/operations');
 
-  const cwdAbs = await getAbsolutePathAsync(env.cwdId);
+  const cwdAbs = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
 
   // Resolve source
-  const sourceNode = await resolveRelativePathAsync(cwdAbs, sourcePath);
+  const sourceNode = await resolveRelativePathAsync(cwdAbs, sourcePath, env?.effectiveUser);
   if (!sourceNode) {
     [`cp: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
@@ -270,19 +270,19 @@ export const cp: CommandHandler = async (args, env, streams) => {
     [`cp: -r not specified; omitting directory '${sourcePath}'`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
-  const destNode = await resolveRelativePathAsync(cwdAbs, destPath);
-  const sourceAbsPath = await getAbsolutePathAsync(sourceNode.id);
+  const destNode = await resolveRelativePathAsync(cwdAbs, destPath, env?.effectiveUser);
+  const sourceAbsPath = await getAbsolutePathAsync(sourceNode.id, env?.effectiveUser);
 
   async function copyRecursive(srcAbs: string, destAbs: string) {
-    const node = await stat(srcAbs);
+    const node = await stat(srcAbs, { asUser: env?.effectiveUser });
     if (node.type === 'directory') {
-      try { await mkdir(destAbs); } catch(e) { console.error(e); }
-      const children = await readdir(srcAbs);
+      try { await mkdir(destAbs, { asUser: env?.effectiveUser }); } catch(e) { console.error(e); }
+      const children = await readdir(srcAbs, { asUser: env?.effectiveUser });
       for (const child of children) {
         await copyRecursive(srcAbs === '/' ? '/' + child.name : srcAbs + '/' + child.name, destAbs === '/' ? '/' + child.name : destAbs + '/' + child.name);
       }
     } else {
-      const blob = await readFile(srcAbs);
+      const blob = await readFile(srcAbs, { asUser: env?.effectiveUser });
       await writeFile(destAbs, blob);
     }
   }
@@ -293,7 +293,7 @@ export const cp: CommandHandler = async (args, env, streams) => {
         [`cp: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
       
-      const destAbsPath = await getAbsolutePathAsync(destNode.id);
+      const destAbsPath = await getAbsolutePathAsync(destNode.id, env?.effectiveUser);
 
       if (destNode.type === 'directory') {
         const finalDestPath = destAbsPath === '/' ? '/' + sourceNode.name : destAbsPath + '/' + sourceNode.name;
@@ -310,12 +310,12 @@ export const cp: CommandHandler = async (args, env, streams) => {
       const destName = destParts.pop()!;
       const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
       
-      const destParentNode = await resolveRelativePathAsync(cwdAbs, destParentPath);
+      const destParentNode = await resolveRelativePathAsync(cwdAbs, destParentPath, env?.effectiveUser);
       if (!destParentNode || destParentNode.type !== 'directory') {
         [`cp: cannot create '${destPath}': No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
       
-      const destParentAbs = await getAbsolutePathAsync(destParentNode.id);
+      const destParentAbs = await getAbsolutePathAsync(destParentNode.id, env?.effectiveUser);
       const finalDestPath = destParentAbs === '/' ? '/' + destName : destParentAbs + '/' + destName;
       await copyRecursive(sourceAbsPath, finalDestPath);
     }
@@ -352,16 +352,16 @@ export const mv: CommandHandler = async (args, env, streams) => {
   const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
   const { rename } = await import('../../../fs/operations');
 
-  const cwdAbs = await getAbsolutePathAsync(env.cwdId);
+  const cwdAbs = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
 
   // Resolve source
-  const sourceNode = await resolveRelativePathAsync(cwdAbs, sourcePath);
+  const sourceNode = await resolveRelativePathAsync(cwdAbs, sourcePath, env?.effectiveUser);
   if (!sourceNode) {
     [`mv: cannot stat '${sourcePath}': No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
   }
 
-  const destNode = await resolveRelativePathAsync(cwdAbs, destPath);
-  const sourceAbsPath = await getAbsolutePathAsync(sourceNode.id);
+  const destNode = await resolveRelativePathAsync(cwdAbs, destPath, env?.effectiveUser);
+  const sourceAbsPath = await getAbsolutePathAsync(sourceNode.id, env?.effectiveUser);
 
   try {
     if (destNode) {
@@ -369,7 +369,7 @@ export const mv: CommandHandler = async (args, env, streams) => {
         [`mv: '${sourcePath}' and '${destPath}' are the same file`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
 
-      const destAbsPath = await getAbsolutePathAsync(destNode.id);
+      const destAbsPath = await getAbsolutePathAsync(destNode.id, env?.effectiveUser);
 
       if (destNode.type === 'directory') {
         const finalDestPath = destAbsPath === '/' ? '/' + sourceNode.name : destAbsPath + '/' + sourceNode.name;
@@ -386,12 +386,12 @@ export const mv: CommandHandler = async (args, env, streams) => {
       const destName = destParts.pop()!;
       const destParentPath = destParts.length > 0 ? destParts.join('/') : '.';
       
-      const destParentNode = await resolveRelativePathAsync(cwdAbs, destParentPath);
+      const destParentNode = await resolveRelativePathAsync(cwdAbs, destParentPath, env?.effectiveUser);
       if (!destParentNode || destParentNode.type !== 'directory') {
         [`mv: cannot move '${sourcePath}' to '${destPath}': No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
       }
       
-      const destParentAbs = await getAbsolutePathAsync(destParentNode.id);
+      const destParentAbs = await getAbsolutePathAsync(destParentNode.id, env?.effectiveUser);
       const finalDestPath = destParentAbs === '/' ? '/' + destName : destParentAbs + '/' + destName;
       await rename(sourceAbsPath, finalDestPath);
     }
@@ -419,10 +419,10 @@ export const rmdir: CommandHandler = async (args, env, streams) => {
 
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { rmdir: rmdirOp } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
 
   for (const target of positional) {
-    const node = await resolveRelativePathAsync(cwdPath, target);
+    const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`rmdir: failed to remove '${target}': No such file or directory`); return 1;
     }
@@ -431,8 +431,8 @@ export const rmdir: CommandHandler = async (args, env, streams) => {
     }
 
     try {
-      const absPath = await getAbsolutePathAsync(node.id);
-      await rmdirOp(absPath, { recursive: false });
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      await rmdirOp(absPath, { recursive: false , asUser: env?.effectiveUser });
     } catch (err) {
       streams.stderr.writeLine(`rmdir: failed to remove '${target}': ${(err as Error).message}`); return 1;
     }
@@ -445,8 +445,8 @@ export const find: CommandHandler = async (args, env, streams) => {
   const searchPath = positional.length > 0 ? positional[0] : '.';
 
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
-  const startNode = await resolveRelativePathAsync(cwdPath, searchPath);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+  const startNode = await resolveRelativePathAsync(cwdPath, searchPath, env?.effectiveUser);
   
   if (!startNode) {
     streams.stderr.writeLine(`find: '${searchPath}': No such file or directory`); return 1;
@@ -466,8 +466,8 @@ export const find: CommandHandler = async (args, env, streams) => {
   const { stat, readdir } = await import('../../../fs/operations');
 
   async function walkAsync(nodeId: string, currentPath: string) {
-    const absPath = await getAbsolutePathAsync(nodeId);
-    const node = await stat(absPath);
+    const absPath = await getAbsolutePathAsync(nodeId, env?.effectiveUser);
+    const node = await stat(absPath, { asUser: env?.effectiveUser });
     
     let match = true;
     if (typeFilter === 'f' && node.type !== 'file') match = false;
@@ -477,7 +477,7 @@ export const find: CommandHandler = async (args, env, streams) => {
     if (match) matches.push(currentPath);
     
     if (node.type === 'directory') {
-      const children = await readdir(absPath);
+      const children = await readdir(absPath, { asUser: env?.effectiveUser });
       for (const child of children) {
         await walkAsync(child.id, currentPath === '/' || currentPath === '.' ? currentPath + '/' + child.name : currentPath + '/' + child.name);
       }
@@ -501,7 +501,7 @@ export const ln: CommandHandler = async (args, env, streams) => {
   
   if (isSymlink) {
     try {
-      const cwdPath = await getAbsolutePathAsync(env.cwdId);
+      const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
       const linkAbsPath = cwdPath === '/' ? '/' + linkName : cwdPath + '/' + linkName;
       // Note: A true robust ln implementation resolves parents, but for now we simplify.
       await symlink(targetPath, linkAbsPath);
@@ -521,7 +521,7 @@ export const du: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { stat, readdir } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   const targets = positional.length === 0 ? ['.'] : positional;
   
@@ -538,7 +538,7 @@ export const du: CommandHandler = async (args, env, streams) => {
 
   const calculateSize = async (absPath: string, name: string): Promise<number> => {
     try {
-      const nodeStat = await stat(absPath);
+      const nodeStat = await stat(absPath, { asUser: env?.effectiveUser });
       let totalSize = nodeStat.sizeBytes || 0;
       
       if (!flags.s) {
@@ -546,7 +546,7 @@ export const du: CommandHandler = async (args, env, streams) => {
       }
       
       if (nodeStat.type === 'directory') {
-        const children = await readdir(absPath);
+        const children = await readdir(absPath, { asUser: env?.effectiveUser });
         for (const child of children) {
           const childPath = absPath === '/' ? '/' + child : absPath + '/' + child;
           const childName = name === '.' ? './' + child : name + '/' + child;
@@ -563,20 +563,20 @@ export const du: CommandHandler = async (args, env, streams) => {
   };
 
   for (const target of targets) {
-    const node = await resolveRelativePathAsync(cwdPath, target);
+    const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`du: cannot access '${target}': No such file or directory`);
       continue;
     }
-    const absPath = await getAbsolutePathAsync(node.id);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
     
     if (flags.s) {
       // In summary mode we just calculate and print once at the root of the target
       const getDirSize = async (p: string): Promise<number> => {
-        const s = await stat(p);
+        const s = await stat(p, { asUser: env?.effectiveUser });
         let size = s.sizeBytes || 0;
         if (s.type === 'directory') {
-          const children = await readdir(p);
+          const children = await readdir(p, { asUser: env?.effectiveUser });
           for (const c of children) {
             size += await getDirSize(p === '/' ? '/' + c : p + '/' + c);
           }
@@ -603,10 +603,10 @@ export const file: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readFile, stat } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   for (const target of positional) {
-    const node = await resolveRelativePathAsync(cwdPath, target);
+    const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`${target}: cannot open \`${target}' (No such file or directory)`);
       continue;
@@ -617,8 +617,8 @@ export const file: CommandHandler = async (args, env, streams) => {
       continue;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const nodeStat = await stat(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const nodeStat = await stat(absPath, { asUser: env?.effectiveUser });
     
     if (nodeStat.type === 'symlink') {
       streams.stdout.writeLine(`${target}: symbolic link`);
@@ -626,7 +626,7 @@ export const file: CommandHandler = async (args, env, streams) => {
     }
 
     try {
-      const blob = await readFile(absPath);
+      const blob = await readFile(absPath, { asUser: env?.effectiveUser });
       const ext = target.split('.').pop()?.toLowerCase();
       
       let typeStr = 'data';
@@ -666,17 +666,17 @@ export const statCmd: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { stat } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   for (const target of positional) {
-    const node = await resolveRelativePathAsync(cwdPath, target);
+    const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`stat: cannot stat '${target}': No such file or directory`);
       continue;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const s = await stat(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const s = await stat(absPath, { asUser: env?.effectiveUser });
     
     const typeStr = s.type === 'directory' ? 'directory' : s.type === 'symlink' ? 'symbolic link' : 'regular file';
     const blocks = Math.ceil((s.sizeBytes || 0) / 512);
@@ -717,9 +717,9 @@ export const readlink: CommandHandler = async (args, env, streams) => {
   const target = positional[0];
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readlink: vfsReadlink } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
-  const node = await resolveRelativePathAsync(cwdPath, target);
+  const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
   if (!node) {
     return 1; // no output
   }
@@ -728,7 +728,7 @@ export const readlink: CommandHandler = async (args, env, streams) => {
     return 1;
   }
   
-  const absPath = await getAbsolutePathAsync(node.id);
+  const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
   
   if (flags.f) {
     // Canonicalize
@@ -808,15 +808,15 @@ export const realpath: CommandHandler = async (args, env, streams) => {
   }
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   for (const target of positional) {
-    const node = await resolveRelativePathAsync(cwdPath, target);
+    const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`realpath: ${target}: No such file or directory`);
       return 1;
     }
-    const absPath = await getAbsolutePathAsync(node.id);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
     streams.stdout.writeLine(absPath);
   }
   

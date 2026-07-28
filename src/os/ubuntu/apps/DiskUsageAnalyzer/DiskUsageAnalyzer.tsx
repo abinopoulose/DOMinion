@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react';
 
 
-export function DiskUsageAnalyzer(_props: { windowId: string }) {
-  const [usage, setUsage] = useState<number>(0);
-  const [quota, setQuota] = useState<number>(0);
-  const [vfsSize, setVfsSize] = useState<number>(0);
+import { useWindowAPI } from '../../hooks/useWindowAPI';
+
+export function DiskUsageAnalyzer({ windowId }: { windowId: string }) {
+  const { getState, updateState } = useWindowAPI(windowId);
+  const initialAppState = getState<any>() || {};
+
+  const [usage, setUsage] = useState<number>(initialAppState.usage || 0);
+  const [quota, setQuota] = useState<number>(initialAppState.quota || 0);
+  const [vfsSize, setVfsSize] = useState<number>(initialAppState.vfsSize || 0);
+
+  // Sync state back to appState
+  useEffect(() => {
+    updateState({ usage, quota, vfsSize });
+  }, [usage, quota, vfsSize, updateState]);
 
   useEffect(() => {
     let mounted = true;

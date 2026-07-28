@@ -206,7 +206,7 @@ export async function expandAll(args: string[], env: ShellEnvironment): Promise<
       }
       
       // 3. Pathname Expansion (Globbing)
-      const globbedArgs = await expandGlob(expandedSegmentsStr, env.cwdId);
+      const globbedArgs = await expandGlob(expandedSegmentsStr, env.cwdId, env.effectiveUser);
       
       // 4. Quote Removal
       for (const gArg of globbedArgs) {

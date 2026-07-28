@@ -19,7 +19,7 @@ export const id: CommandHandler = async (args, env, streams) => {
   const { readFile } = await import('../../../fs/operations');
   let passwdContent = '';
   try {
-    const blob = await readFile('/etc/passwd');
+    const blob = await readFile('/etc/passwd', { asUser: env?.effectiveUser });
     passwdContent = await blob.text();
   } catch (e) {
     [`uid=1000(${targetUser}) gid=1000(${targetUser}) groups=1000(${targetUser})`].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
@@ -40,7 +40,7 @@ export const id: CommandHandler = async (args, env, streams) => {
   
   let groupContent = '';
   try {
-    const groupBlob = await readFile('/etc/group');
+    const groupBlob = await readFile('/etc/group', { asUser: env?.effectiveUser });
     groupContent = await groupBlob.text();
   } catch (e) {}
 

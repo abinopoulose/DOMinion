@@ -101,11 +101,11 @@ export class PTY {
       const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
       const { readFile } = await import('../../../fs/operations');
       const cwdAbs = await getAbsolutePathAsync(this.env.cwdId);
-      const bashrcNode = await resolveRelativePathAsync(cwdAbs, `/home/${this.env.effectiveUser}/.bashrc`);
+      const bashrcNode = await resolveRelativePathAsync(cwdAbs, `/home/${this.env.effectiveUser}/.bashrc`, this.env.effectiveUser);
       
       if (bashrcNode && bashrcNode.type === 'file') {
         const absPath = await getAbsolutePathAsync(bashrcNode.id);
-        const blob = await readFile(absPath);
+        const blob = await readFile(absPath, { asUser: this.env.effectiveUser });
         const content = await blob.text();
         
         const { ScriptParser } = await import('./ScriptParser');
@@ -421,7 +421,7 @@ export class PTY {
         break;
       case '\t': // Tab
         if (this.interactiveReadResolver) break; // Disable tab complete in read
-        handleAutocomplete(this.inputBuffer, this.env.cwdPath).then(result => {
+        handleAutocomplete(this.inputBuffer, this.env.cwdPath, this.env.effectiveUser).then(result => {
           if (result.completion) {
             const append = result.completion.substring(this.inputBuffer.length);
             this.inputBuffer += append;
@@ -524,13 +524,13 @@ export class PTY {
         const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
         const { readFile, stat } = await import('../../../fs/operations');
         const cwdAbs = await getAbsolutePathAsync(this.env.cwdId);
-        const node = await resolveRelativePathAsync(cwdAbs, firstToken);
+        const node = await resolveRelativePathAsync(cwdAbs, firstToken, this.env.effectiveUser);
         if (node && node.type === 'file') {
           const absPath = await getAbsolutePathAsync(node.id);
-          const fileStat = await stat(absPath);
+          const fileStat = await stat(absPath, { asUser: this.env.effectiveUser });
           // Check mock executable bit (if owner exec is set or just assume yes for .sh)
           if ((fileStat.permissions & 0o100) || firstToken.endsWith('.sh')) {
-            const blob = await readFile(absPath);
+            const blob = await readFile(absPath, { asUser: this.env.effectiveUser });
             const content = await blob.text();
             if (content.startsWith('#!/bin/bash') || content.startsWith('#!/bin/sh') || firstToken.endsWith('.sh')) {
               const { ScriptParser } = await import('./ScriptParser');
@@ -648,10 +648,10 @@ export class PTY {
             const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
             const { readFile } = await import('../../../fs/operations');
             const cwdAbs = await getAbsolutePathAsync(this.env.cwdId);
-            const targetNode = await resolveRelativePathAsync(cwdAbs, target);
+            const targetNode = await resolveRelativePathAsync(cwdAbs, target, this.env.effectiveUser);
             if (!targetNode) throw new Error(`${target}: No such file or directory`);
             const targetPath = await getAbsolutePathAsync(targetNode.id);
-            const blob = await readFile(targetPath);
+            const blob = await readFile(targetPath, { asUser: this.env.effectiveUser });
             const text = await blob.text();
             streams.stdin.appendToBuffer(text);
           } catch (e) {
@@ -709,7 +709,7 @@ export class PTY {
              const { resolveRelativePathAsync, getAbsolutePathAsync } = await import('../../../fs/pathResolver');
              const { writeFile } = await import('../../../fs/operations');
              const cwdAbs = await getAbsolutePathAsync(this.env.cwdId);
-             const targetNode = await resolveRelativePathAsync(cwdAbs, target);
+             const targetNode = await resolveRelativePathAsync(cwdAbs, target, this.env.effectiveUser);
              let targetPath = '';
              if (targetNode) {
                targetPath = await getAbsolutePathAsync(targetNode.id);
@@ -717,12 +717,12 @@ export class PTY {
                const parts = target.split('/');
                const destName = parts.pop()!;
                const parentPath = parts.join('/') || '.';
-               const parentNode = await resolveRelativePathAsync(cwdAbs, parentPath);
+               const parentNode = await resolveRelativePathAsync(cwdAbs, parentPath, this.env.effectiveUser);
                if (!parentNode) throw new Error();
                const parentAbs = await getAbsolutePathAsync(parentNode.id);
                targetPath = parentAbs === '/' ? '/' + destName : parentAbs + '/' + destName;
              }
-             await writeFile(targetPath, outRedirContent, { append: outRedir.type === '>>' });
+             await writeFile(targetPath, outRedirContent, { append: outRedir.type === '>>', asUser: this.env.effectiveUser });
           } catch (e) {
              console.error(e);
              this.xtermWrite(`bash: ${outRedir.target}: Permission denied or error\r\n`);

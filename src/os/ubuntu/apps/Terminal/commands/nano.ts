@@ -16,8 +16,8 @@ export const nano: CommandHandler = async (args, env, streams) => {
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { writeFile } = await import('../../../fs/operations');
   
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
-  let node = await resolveRelativePathAsync(cwdPath, targetName);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+  let node = await resolveRelativePathAsync(cwdPath, targetName, env?.effectiveUser);
 
   if (!node) {
     let destName = targetName;
@@ -28,7 +28,7 @@ export const nano: CommandHandler = async (args, env, streams) => {
       destParentPath = parts.join('/') || (targetName.startsWith('/') ? '/' : '.');
     }
 
-    const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath);
+    const parentNode = await resolveRelativePathAsync(cwdPath, destParentPath, env?.effectiveUser);
     if (!parentNode) {
       streams.stderr.writeLine(`${commandName}: cannot create '${targetName}': No such file or directory`);
       return 1;
@@ -38,12 +38,12 @@ export const nano: CommandHandler = async (args, env, streams) => {
       return 1;
     }
 
-    const parentAbsPath = await getAbsolutePathAsync(parentNode.id);
+    const parentAbsPath = await getAbsolutePathAsync(parentNode.id, env?.effectiveUser);
     const newFilePath = parentAbsPath === '/' ? '/' + destName : parentAbsPath + '/' + destName;
 
     try {
-      await writeFile(newFilePath, new Blob([]));
-      node = await resolveRelativePathAsync(cwdPath, targetName);
+      await writeFile(newFilePath, new Blob([]), { asUser: env?.effectiveUser });
+      node = await resolveRelativePathAsync(cwdPath, targetName, env?.effectiveUser);
     } catch (err: any) {
       streams.stderr.writeLine(`${commandName}: ${err.message}`);
       return 1;

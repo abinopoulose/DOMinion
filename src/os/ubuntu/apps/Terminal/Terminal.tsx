@@ -43,6 +43,8 @@ export function Terminal({ windowId }: TerminalProps) {
       interactiveApp: initialAppState.interactiveApp,
       nanoFileId: initialAppState.nanoFileId,
       hasShownMotd: initialAppState.hasShownMotd || false,
+      envVars: initialAppState.envVars,
+      aliases: initialAppState.aliases,
     }];
   });
   

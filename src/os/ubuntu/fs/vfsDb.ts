@@ -36,8 +36,10 @@ export async function seedVfsFromSnapshot() {
   const isFullySeeded = localStorage.getItem('vfs_fully_seeded') === 'true';
   const rootExists = await db.get('inodes', 'root');
   
-  if (isFullySeeded && rootExists) {
-    console.log('[VFS Seed] Database already fully seeded. Skipping.');
+  if (isFullySeeded) {
+    // Once fully seeded, NEVER re-seed regardless of state.
+    // If the user deleted everything, that's intentional.
+    console.log('[VFS Seed] Database already fully seeded. Skipping all re-seeding.');
     return;
   }
 
@@ -84,6 +86,13 @@ export async function seedVfsFromSnapshot() {
 
 /** Seeds Resume.pdf to user desktops without blocking boot */
 async function seedResumePdfInBackground(db: Awaited<ReturnType<typeof getDB>>) {
+  // Don't re-seed if already seeded
+  const existing = await db.get('inodes', 'home-peasant-desktop-resume');
+  if (existing) {
+    console.log('[VFS Seed] Resume.pdf already exists. Skipping.');
+    return;
+  }
+
   try {
     const resumeRes = await fetch('/Resume.pdf');
     if (resumeRes.ok) {

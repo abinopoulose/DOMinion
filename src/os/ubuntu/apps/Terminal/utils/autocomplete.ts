@@ -1,5 +1,5 @@
 import { commandRegistry } from '../commands';
-import { getDB } from '../../../fs/db';
+import { readdir } from '../../../fs/operations';
 import { resolveRelativePathAsync } from '../../../fs/pathResolver';
 import { PACKAGE_DB, getInstalledPackages } from '../packageDb';
 
@@ -70,7 +70,7 @@ function matchFromList(partial: string, items: { raw: string, display?: string }
   return {};
 }
 
-export async function handleAutocomplete(currentInput: string, cwdPath: string): Promise<AutocompleteResult> {
+export async function handleAutocomplete(currentInput: string, cwdPath: string, effectiveUser?: string): Promise<AutocompleteResult> {
   if (!currentInput) return {};
 
   const words = currentInput.split(' ');
@@ -110,25 +110,24 @@ export async function handleAutocomplete(currentInput: string, cwdPath: string):
     partialName = lastWord.substring(lastSlashIndex + 1);
   }
 
-  let targetDirId = 'root'; // fallback
-  const db = await getDB();
-  
+  let resolvePath = cwdPath;
   if (dirPath === '/') {
-    targetDirId = 'root';
-  } else if (dirPath === '') {
-    const node = await resolveRelativePathAsync(cwdPath, '.');
-    if (node) targetDirId = node.id;
-  } else {
-    const resolvePath = dirPath.endsWith('/') && dirPath.length > 1 ? dirPath.slice(0, -1) : dirPath;
-    const node = await resolveRelativePathAsync(cwdPath, resolvePath);
-    if (node && node.type === 'directory') {
-      targetDirId = node.id;
-    } else {
-      return {};
-    }
+    resolvePath = '/';
+  } else if (dirPath !== '') {
+    const cleanDirPath = dirPath.endsWith('/') && dirPath.length > 1 ? dirPath.slice(0, -1) : dirPath;
+    const node = await resolveRelativePathAsync(cwdPath, cleanDirPath, effectiveUser);
+    if (!node || node.type !== 'directory') return {};
+    const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
+    resolvePath = await getAbsolutePathAsync(node.id);
   }
 
-  const children = await db.getAllFromIndex('inodes', 'by-parent', targetDirId);
+  let children;
+  try {
+    children = await readdir(resolvePath, { asUser: effectiveUser });
+  } catch (e) {
+    return {}; // Permission denied or does not exist
+  }
+
   const items = children.map(c => {
     const name = c.name + (c.type === 'directory' ? '/' : '');
     return { 

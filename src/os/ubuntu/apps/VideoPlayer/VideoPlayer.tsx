@@ -9,8 +9,8 @@ interface VideoPlayerProps {
 
 export function VideoPlayer({ windowId }: VideoPlayerProps) {
   const { getState, updateState } = useWindowAPI(windowId);
-  const win = { appState: getState<any>() };
-  const fileId = (win?.appState as any)?.fileId;
+  const initialAppState = React.useMemo(() => getState<any>() || {}, [getState]);
+  const [fileId, setFileId] = useState<string | undefined>(initialAppState.fileId);
   const { url, loading, error, mimeType } = useFileUrl(fileId);
   const [unsupported, setUnsupported] = useState(false);
 
@@ -22,7 +22,7 @@ export function VideoPlayer({ windowId }: VideoPlayerProps) {
       const ext = draggedId.toLowerCase().split('.').pop() || '';
       const supported = ['mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac', 'aac', 'm4a', 'mkv', 'avi'].includes(ext);
       if (supported) {
-        updateState({ fileId: draggedId });
+        setFileId(draggedId);
       } else {
         setUnsupported(true);
       }
@@ -37,10 +37,10 @@ export function VideoPlayer({ windowId }: VideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [isPlaying, setIsPlaying] = useState(true);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [currentTime, setCurrentTime] = useState(initialAppState.currentTime || 0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [volume, setVolume] = useState(initialAppState.volume ?? 1);
+  const [isMuted, setIsMuted] = useState(initialAppState.isMuted ?? false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -52,6 +52,26 @@ export function VideoPlayer({ windowId }: VideoPlayerProps) {
       }
     }
   }, [isPlaying]);
+
+  useEffect(() => {
+    if (mediaRef.current && initialAppState.currentTime && fileId === initialAppState.fileId) {
+      mediaRef.current.currentTime = initialAppState.currentTime;
+    }
+  }, [url, fileId, initialAppState.currentTime, initialAppState.fileId]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (mediaRef.current) {
+        updateState({
+          fileId,
+          currentTime: mediaRef.current.currentTime,
+          volume: mediaRef.current.volume,
+          isMuted: mediaRef.current.muted,
+        });
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [fileId, updateState]);
 
   useEffect(() => {
     if (mediaRef.current) {

@@ -1,4 +1,4 @@
-export async function expandGlob(token: string, cwdId: string): Promise<string[]> {
+export async function expandGlob(token: string, cwdId: string, effectiveUser?: string): Promise<string[]> {
   // Simple check for unquoted glob characters
   let hasGlob = false;
   let inSingle = false;
@@ -57,15 +57,15 @@ export async function expandGlob(token: string, cwdId: string): Promise<string[]
     
     if (dirPath) {
        const { resolveRelativePathAsync } = await import('../../../fs/pathResolver');
-       const targetNode = await resolveRelativePathAsync(cwdPath, dirPath);
+       const targetNode = await resolveRelativePathAsync(cwdPath, dirPath, effectiveUser);
        if (!targetNode) return [token];
        targetDirPath = await getAbsolutePathAsync(targetNode.id);
     }
     
-    const targetStat = await stat(targetDirPath);
+    const targetStat = await stat(targetDirPath, { asUser: effectiveUser });
     if (targetStat.type !== 'directory') return [token];
     
-    const children = await readdir(targetDirPath);
+    const children = await readdir(targetDirPath, { asUser: effectiveUser });
     
     // Convert filePattern to Regex
     let regexStr = '^';

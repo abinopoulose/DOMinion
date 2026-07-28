@@ -3,8 +3,8 @@ import { useHardwareStore } from './hardware/store/useHardwareStore'
 import { useUbuntuAuthStore } from './os/ubuntu/store/useUbuntuAuthStore'
 import { useSettingsStore } from './os/ubuntu/apps/Settings/store/useSettingsStore'
 
-// Static load OS components
 import { UbuntuLogin } from './os/ubuntu/components/Login/UbuntuLogin'
+import { flushPendingWrites } from './os/ubuntu/store/persistence'
 
 // Ubuntu UI
 import { useWindowStore } from './os/ubuntu/store/useUbuntuWindowStore'
@@ -108,6 +108,25 @@ function MockAppContent({ appId, windowId }: { appId: string, windowId: string }
 
 function UbuntuEnvironment() {
   useClockDaemon();
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      window.dispatchEvent(new CustomEvent('app:before-unload'));
+      flushPendingWrites();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        window.dispatchEvent(new CustomEvent('app:before-unload'));
+        flushPendingWrites();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const [vfsReady, setVfsReady] = useState(false);
 

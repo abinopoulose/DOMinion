@@ -136,7 +136,7 @@ export const help: CommandHandler = (_args, _env, streams) => {
 export const hostname: CommandHandler = async (_args, _env, streams) => {
   try {
     const { readFile } = await import('../../../fs/operations');
-    const blob = await readFile('/etc/hostname');
+    const blob = await readFile('/etc/hostname', { asUser: _env?.effectiveUser });
     const text = await blob.text();
     [text.trim()].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
   } catch (err) {
@@ -595,19 +595,19 @@ export const diff: CommandHandler = async (args, env, streams) => {
   try {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
-    const node1 = await resolveRelativePathAsync(cwdPath, file1);
-    const node2 = await resolveRelativePathAsync(cwdPath, file2);
+    const node1 = await resolveRelativePathAsync(cwdPath, file1, env?.effectiveUser);
+    const node2 = await resolveRelativePathAsync(cwdPath, file2, env?.effectiveUser);
     
     if (!node1) { streams.stderr.writeLine(`diff: ${file1}: No such file or directory`); return 1; }
     if (!node2) { streams.stderr.writeLine(`diff: ${file2}: No such file or directory`); return 1; }
     
-    const absPath1 = await getAbsolutePathAsync(node1.id);
-    const absPath2 = await getAbsolutePathAsync(node2.id);
+    const absPath1 = await getAbsolutePathAsync(node1.id, env?.effectiveUser);
+    const absPath2 = await getAbsolutePathAsync(node2.id, env?.effectiveUser);
     
-    const text1 = await (await readFile(absPath1)).text();
-    const text2 = await (await readFile(absPath2)).text();
+    const text1 = await (await readFile(absPath1, { asUser: env?.effectiveUser })).text();
+    const text2 = await (await readFile(absPath2, { asUser: env?.effectiveUser })).text();
     
     const lines1 = text1.split('\n');
     const lines2 = text2.split('\n');
@@ -651,9 +651,9 @@ const hashsum = async (args: string[], env: any, streams: any, algo: string) => 
     try {
       const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
       const { readFile } = await import('../../../fs/operations');
-      const cwdPath = await getAbsolutePathAsync(env.cwdId);
+      const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
       
-      const node = await resolveRelativePathAsync(cwdPath, target);
+      const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
       if (!node) {
         streams.stderr.writeLine(`${algo.toLowerCase()}sum: ${target}: No such file or directory`);
         exitCode = 1;
@@ -666,8 +666,8 @@ const hashsum = async (args: string[], env: any, streams: any, algo: string) => 
         continue;
       }
       
-      const absPath = await getAbsolutePathAsync(node.id);
-      const blob = await readFile(absPath);
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const blob = await readFile(absPath, { asUser: env?.effectiveUser });
       const buffer = await blob.arrayBuffer();
       
       let digest: ArrayBuffer;
@@ -701,9 +701,9 @@ export const xxd: CommandHandler = async (args, env, streams) => {
   try {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
-    const node = await resolveRelativePathAsync(cwdPath, args[0]);
+    const node = await resolveRelativePathAsync(cwdPath, args[0], env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`xxd: ${args[0]}: No such file or directory`);
       return 1;
@@ -714,8 +714,8 @@ export const xxd: CommandHandler = async (args, env, streams) => {
       return 1;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const blob = await readFile(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const blob = await readFile(absPath, { asUser: env?.effectiveUser });
     const arrayBuffer = await blob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     

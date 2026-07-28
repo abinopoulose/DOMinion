@@ -4,6 +4,7 @@ import { useTerminalProfileStore, defaultTerminalProfileState } from '../apps/Te
 import { useWindowStore } from './useUbuntuWindowStore';
 import { useWorkspaceStore, defaultWorkspaceState } from './useWorkspaceStore';
 import { useDesktopStore, defaultDesktopState } from './useUbuntuDesktopStore';
+import { useProcessManager } from '../services/ProcessManager';
 
 /**
  * Executes a full environment swap in RAM when the user context changes.
@@ -29,6 +30,15 @@ export const switchUserEnvironment = async (username: string) => {
   useWorkspaceStore.setState(defaultWorkspaceState);
   // Desktop
   useDesktopStore.setState(defaultDesktopState);
+  // Process Manager
+  useProcessManager.setState({
+    processes: [
+      { pid: 1, ppid: 0, name: 'systemd', state: 'running', user: 'root', startTime: Date.now() },
+      { pid: 2, ppid: 1, name: 'kthreadd', state: 'sleeping', user: 'root', startTime: Date.now() },
+      { pid: 3, ppid: 1, name: 'dominion-wm', state: 'running', user: 'root', startTime: Date.now() }
+    ],
+    nextPid: 100,
+  });
 
   // 4. Force rehydration from the new user's DB keys
   // This will read the values from the newly prefixed storage keys.
@@ -39,6 +49,7 @@ export const switchUserEnvironment = async (username: string) => {
     useWindowStore.persist.rehydrate(),
     useWorkspaceStore.persist.rehydrate(),
     useDesktopStore.persist.rehydrate(),
+    useProcessManager.persist.rehydrate(),
     import('../apps/TextEditor/hooks/useTextEditor').then(m => m.useEditorStore.persist.rehydrate())
   ]);
 

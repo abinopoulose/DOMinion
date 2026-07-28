@@ -59,3 +59,13 @@ export interface VFSNode {
   };
 }
 
+export interface SecurityContext {
+  uid: string;
+  gid?: string;
+  capabilities: ('IGNORE_PERMISSIONS' | 'CHOWN_CAPABLE' | 'CHMOD_CAPABLE')[];
+}
+
+export interface VfsOperationOptions {
+  asUser?: string;
+  context?: SecurityContext;
+}

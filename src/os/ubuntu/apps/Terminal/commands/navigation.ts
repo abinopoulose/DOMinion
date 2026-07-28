@@ -5,7 +5,7 @@ import { hasPermission } from '../../../fs/permissions';
 
 export const pwd: CommandHandler = async (_args, env, streams) => {
   const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
-  const path = await getAbsolutePathAsync(env.cwdId);
+  const path = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   [path].forEach((line: string) => streams.stdout.writeLine(line)); return 0;
 };
 
@@ -16,7 +16,7 @@ export const cd: CommandHandler = async (args, env, streams) => {
   
   if (args.length === 0) {
     env.cwdId = HOME_ID;
-    env.cwdPath = await getAbsolutePathAsync(HOME_ID);
+    env.cwdPath = await getAbsolutePathAsync(HOME_ID, env?.effectiveUser);
     return 0;
   }
 
@@ -24,17 +24,17 @@ export const cd: CommandHandler = async (args, env, streams) => {
   
   if (path === '~') {
     env.cwdId = HOME_ID;
-    env.cwdPath = await getAbsolutePathAsync(HOME_ID);
+    env.cwdPath = await getAbsolutePathAsync(HOME_ID, env?.effectiveUser);
     return 0;
   }
   
   if (path.startsWith('~/')) {
-    const homePath = await getAbsolutePathAsync(HOME_ID);
+    const homePath = await getAbsolutePathAsync(HOME_ID, env?.effectiveUser);
     path = path.replace('~', homePath);
   }
 
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
-  const node = await resolveRelativePathAsync(cwdPath, path);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+  const node = await resolveRelativePathAsync(cwdPath, path, env?.effectiveUser);
   
   if (!node) {
     [`cd: ${args[0]}: No such file or directory`].forEach((line: string) => streams.stderr.writeLine(line)); return 1;
@@ -49,7 +49,7 @@ export const cd: CommandHandler = async (args, env, streams) => {
   }
 
   env.cwdId = node.id;
-  env.cwdPath = await getAbsolutePathAsync(node.id);
+  env.cwdPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
   return 0;
 };
 
@@ -70,8 +70,8 @@ export const ls: CommandHandler = async (args, env, streams) => {
     }
   }
 
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
-  const targetNode = await resolveRelativePathAsync(cwdPath, targetPath);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+  const targetNode = await resolveRelativePathAsync(cwdPath, targetPath, env?.effectiveUser);
   
   if (!targetNode) {
     streams.stderr.writeLine(`ls: cannot access '${targetPath}': No such file or directory`); 
@@ -80,8 +80,8 @@ export const ls: CommandHandler = async (args, env, streams) => {
   
   let children: any[] = [];
   if (targetNode.type === 'directory') {
-    const targetAbsPath = await getAbsolutePathAsync(targetNode.id);
-    children = await readdir(targetAbsPath);
+    const targetAbsPath = await getAbsolutePathAsync(targetNode.id, env?.effectiveUser);
+    children = await readdir(targetAbsPath, { asUser: env?.effectiveUser });
   } else {
     children = [targetNode];
   }

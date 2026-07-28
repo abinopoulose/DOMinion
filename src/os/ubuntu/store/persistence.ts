@@ -4,20 +4,56 @@ import type { StateStorage } from 'zustand/middleware';
 const customStore = createStore('ubuntu-db', 'ubuntu-store');
 const debouncedSetters: Record<string, ReturnType<typeof setTimeout>> = {};
 
+// Track pending debounced values for flush-on-unload
+const pendingWrites: Record<string, string> = {};
+
 export const ubuntuIdbStorage: StateStorage = {
   getItem: async (name) => (await get(name, customStore)) ?? null,
   setItem: (name, value) => {
+    // Always capture latest value for emergency flush
+    pendingWrites[name] = value;
+    
     return new Promise<void>((resolve) => {
       if (debouncedSetters[name]) {
         clearTimeout(debouncedSetters[name]);
       }
       debouncedSetters[name] = setTimeout(() => {
+        delete pendingWrites[name]; // No longer pending once written
         set(name, value, customStore).then(resolve);
       }, 300);
     });
   },
-  removeItem: async (name) => await del(name, customStore),
+  removeItem: async (name) => {
+    delete pendingWrites[name];
+    await del(name, customStore);
+  },
 };
+
+/**
+ * Synchronously flush all pending debounced writes to IndexedDB.
+ * Called on beforeunload/visibilitychange to prevent data loss.
+ */
+export async function flushPendingWrites(): Promise<void> {
+  const entries = Object.entries(pendingWrites);
+  if (entries.length === 0) return;
+  
+  console.log(`[Persistence] Flushing ${entries.length} pending writes...`);
+  
+  // Cancel all pending debounce timers
+  for (const name of Object.keys(debouncedSetters)) {
+    clearTimeout(debouncedSetters[name]);
+    delete debouncedSetters[name];
+  }
+  
+  // Write all pending values immediately
+  const writes = entries.map(([name, value]) => {
+    delete pendingWrites[name];
+    return set(name, value, customStore);
+  });
+  
+  await Promise.all(writes);
+  console.log(`[Persistence] Flush complete.`);
+}
 
 // --- Multi-User Sandboxed Storage Context ---
 let currentStorageUser = 'peasant';

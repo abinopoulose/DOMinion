@@ -1,4 +1,5 @@
-import { getDB } from '../../../../fs/db';
+import { getAbsolutePathAsync } from '../../../../fs/pathResolver';
+import { stat, readdir } from '../../../../fs/operations';
 import type { VFSNode } from '../../../../fs/types';
 
 /**
@@ -11,16 +12,32 @@ export async function walkTree(
   username: string,
   visitor: (node: VFSNode, path: string) => void | Promise<void>
 ): Promise<void> {
-  const db = await getDB();
-  const node = await db.get('inodes', nodeId);
-  if (!node) return;
+  let absPath: string;
+  try {
+    absPath = await getAbsolutePathAsync(nodeId);
+  } catch {
+    return;
+  }
+
+  let node: VFSNode;
+  try {
+    node = await stat(absPath, { asUser: username });
+  } catch (err) {
+    return;
+  }
 
   // Visit the current node
   await visitor(node, currentPath);
 
   // If directory, recurse into children
   if (node.type === 'directory') {
-    const children = await db.getAllFromIndex('inodes', 'by-parent', nodeId);
+    let children: VFSNode[];
+    try {
+      children = await readdir(absPath, { asUser: username });
+    } catch (err) {
+      return; // EACCES or other error
+    }
+    
     for (const child of children) {
       const childPath = currentPath === '.'
         ? `./${child.name}`

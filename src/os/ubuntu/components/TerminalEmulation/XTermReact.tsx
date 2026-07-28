@@ -2,12 +2,14 @@ import { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { SearchAddon } from '@xterm/addon-search';
+import { SerializeAddon } from '@xterm/addon-serialize';
 import '@xterm/xterm/css/xterm.css';
 
 export interface XTermReactRef {
   terminal: Terminal;
   fit: () => void;
   searchAddon: SearchAddon;
+  serialize: () => string;
 }
 
 import type { ITerminalOptions } from '@xterm/xterm';
@@ -23,13 +25,17 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
   const xtermRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const searchAddonRef = useRef<SearchAddon | null>(null);
+  const serializeAddonRef = useRef<SerializeAddon | null>(null);
 
   useImperativeHandle(ref, () => ({
     get terminal() { return xtermRef.current!; },
     fit: () => {
       fitAddonRef.current?.fit();
     },
-    get searchAddon() { return searchAddonRef.current!; }
+    get searchAddon() { return searchAddonRef.current!; },
+    serialize: () => {
+      return serializeAddonRef.current?.serialize() ?? '';
+    }
   }));
 
   useEffect(() => {
@@ -59,6 +65,9 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
     const searchAddon = new SearchAddon();
     term.loadAddon(searchAddon);
     
+    const serializeAddon = new SerializeAddon();
+    term.loadAddon(serializeAddon);
+    
     searchAddon.onDidChangeResults((e) => {
       window.dispatchEvent(new CustomEvent('terminal:search-results', {
         detail: { resultIndex: e?.resultIndex ?? -1, resultCount: e?.resultCount ?? 0 }
@@ -73,6 +82,7 @@ export const XTermReact = forwardRef<XTermReactRef, XTermReactProps>(({ onData, 
     xtermRef.current = term;
     fitAddonRef.current = fitAddon;
     searchAddonRef.current = searchAddon;
+    serializeAddonRef.current = serializeAddon;
     
     term.attachCustomKeyEventHandler((event) => {
       if (event.ctrlKey && event.shiftKey && event.code === 'KeyC') {

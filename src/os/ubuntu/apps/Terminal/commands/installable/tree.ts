@@ -6,8 +6,8 @@ export const tree: CommandHandler = async (args, env, streams) => {
   const targetDir = args[0] || '.';
   
   try {
-    const cwdAbs = await getAbsolutePathAsync(env.cwdId);
-    const node = await resolveRelativePathAsync(cwdAbs, targetDir);
+    const cwdAbs = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+    const node = await resolveRelativePathAsync(cwdAbs, targetDir, env?.effectiveUser);
     
     if (!node) {
       streams.stderr.writeLine(`tree: ${targetDir}: No such file or directory`);
@@ -25,7 +25,7 @@ export const tree: CommandHandler = async (args, env, streams) => {
     let fileCount = 0;
 
     const traverse = async (dirId: string, prefix: string = '') => {
-      const children = await readdir(dirId);
+      const children = await readdir(dirId, { asUser: env?.effectiveUser });
       children.sort((a, b) => a.name.localeCompare(b.name));
       
       for (let i = 0; i < children.length; i++) {

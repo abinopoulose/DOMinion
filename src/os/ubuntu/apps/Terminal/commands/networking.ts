@@ -83,14 +83,14 @@ export const curl: CommandHandler = async (args, env, streams) => {
     try {
       const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
       const { readFile } = await import('../../../fs/operations');
-      const cwdPath = await getAbsolutePathAsync(env.cwdId);
+      const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
       
       const targetPathStr = url.replace('file://', '');
-      const node = await resolveRelativePathAsync(cwdPath, targetPathStr);
+      const node = await resolveRelativePathAsync(cwdPath, targetPathStr, env?.effectiveUser);
       if (!node) throw new Error();
       
-      const absPath = await getAbsolutePathAsync(node.id);
-      const blob = await readFile(absPath);
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const blob = await readFile(absPath, { asUser: env?.effectiveUser });
       content = await blob.text();
       contentType = 'text/plain'; // Approximation
     } catch {
@@ -128,19 +128,19 @@ export const curl: CommandHandler = async (args, env, streams) => {
     try {
       const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
       const { writeFile } = await import('../../../fs/operations');
-      const cwdPath = await getAbsolutePathAsync(env.cwdId);
+      const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
       
       let targetPath = '';
-      const node = await resolveRelativePathAsync(cwdPath, outputFile);
+      const node = await resolveRelativePathAsync(cwdPath, outputFile, env?.effectiveUser);
       if (node) {
-        targetPath = await getAbsolutePathAsync(node.id);
+        targetPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
       } else {
         const parts = outputFile.split('/');
         const destName = parts.pop()!;
         const parentPath = parts.join('/') || '.';
-        const parentNode = await resolveRelativePathAsync(cwdPath, parentPath);
+        const parentNode = await resolveRelativePathAsync(cwdPath, parentPath, env?.effectiveUser);
         if (!parentNode) throw new Error();
-        const parentAbs = await getAbsolutePathAsync(parentNode.id);
+        const parentAbs = await getAbsolutePathAsync(parentNode.id, env?.effectiveUser);
         targetPath = parentAbs === '/' ? '/' + destName : parentAbs + '/' + destName;
       }
       
@@ -203,19 +203,19 @@ export const wget: CommandHandler = async (args, env, streams) => {
   try {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { writeFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
     
     let targetPath = '';
-    const node = await resolveRelativePathAsync(cwdPath, outputFile);
+    const node = await resolveRelativePathAsync(cwdPath, outputFile, env?.effectiveUser);
     if (node) {
-      targetPath = await getAbsolutePathAsync(node.id);
+      targetPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
     } else {
       const parts = outputFile.split('/');
       const destName = parts.pop()!;
       const parentPath = parts.join('/') || '.';
-      const parentNode = await resolveRelativePathAsync(cwdPath, parentPath);
+      const parentNode = await resolveRelativePathAsync(cwdPath, parentPath, env?.effectiveUser);
       if (!parentNode) throw new Error();
-      const parentAbs = await getAbsolutePathAsync(parentNode.id);
+      const parentAbs = await getAbsolutePathAsync(parentNode.id, env?.effectiveUser);
       targetPath = parentAbs === '/' ? '/' + destName : parentAbs + '/' + destName;
     }
     

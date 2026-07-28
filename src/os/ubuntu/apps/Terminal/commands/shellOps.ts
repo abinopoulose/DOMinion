@@ -42,15 +42,15 @@ export const bash: CommandHandler = async (args, env, streams) => {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
     
-    const cwdAbs = await getAbsolutePathAsync(env.cwdId);
-    const node = await resolveRelativePathAsync(cwdAbs, scriptPath);
+    const cwdAbs = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+    const node = await resolveRelativePathAsync(cwdAbs, scriptPath, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`bash: ${scriptPath}: No such file or directory`);
       return 127;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const blob = await readFile(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const blob = await readFile(absPath, { asUser: env?.effectiveUser });
     const content = await blob.text();
     
     // Create new env for child script (inherit vars, but not aliases unless configured, for now just copy)
@@ -88,15 +88,15 @@ export const source: CommandHandler = async (args, env, streams) => {
     const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
     const { readFile } = await import('../../../fs/operations');
     
-    const cwdAbs = await getAbsolutePathAsync(env.cwdId);
-    const node = await resolveRelativePathAsync(cwdAbs, scriptPath);
+    const cwdAbs = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+    const node = await resolveRelativePathAsync(cwdAbs, scriptPath, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`bash: ${scriptPath}: No such file or directory`);
       return 127;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const blob = await readFile(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const blob = await readFile(absPath, { asUser: env?.effectiveUser });
     const content = await blob.text();
     
     const oldArgs = [...env.positionalArgs];

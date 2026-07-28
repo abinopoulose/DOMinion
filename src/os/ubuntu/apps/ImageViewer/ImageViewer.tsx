@@ -9,8 +9,8 @@ interface ImageViewerProps {
 
 export function ImageViewer({ windowId }: ImageViewerProps) {
   const { getState, updateState } = useWindowAPI(windowId);
-  const win = { appState: getState<any>() };
-  const fileId = (win?.appState as any)?.fileId;
+  const initialAppState = React.useMemo(() => getState<any>() || {}, [getState]);
+  const [fileId, setFileId] = useState<string | undefined>(initialAppState.fileId);
   const { url, loading, error } = useFileUrl(fileId);
   const [unsupported, setUnsupported] = useState(false);
 
@@ -22,7 +22,7 @@ export function ImageViewer({ windowId }: ImageViewerProps) {
       const ext = draggedId.toLowerCase().split('.').pop() || '';
       const supported = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'].includes(ext);
       if (supported) {
-        updateState({ fileId: draggedId });
+        setFileId(draggedId);
       } else {
         setUnsupported(true);
       }
@@ -36,13 +36,18 @@ export function ImageViewer({ windowId }: ImageViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const [scale, setScale] = useState(1);
-  const [rotation, setRotation] = useState(0);
+  const [scale, setScale] = useState<number>(initialAppState.zoom ?? 1);
+  const [rotation, setRotation] = useState<number>(initialAppState.rotation ?? 0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(initialAppState.zoom !== undefined);
+
+  // Sync state back to appState
+  useEffect(() => {
+    updateState({ fileId, zoom: scale, rotation });
+  }, [fileId, scale, rotation, updateState]);
 
   const fitToWindow = useCallback(() => {
     if (!containerRef.current || !imageRef.current) return;

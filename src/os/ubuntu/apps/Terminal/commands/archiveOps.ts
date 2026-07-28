@@ -31,7 +31,7 @@ export const tar: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readFile, writeFile, stat, readdir, mkdir } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   if (isCreate) {
     const filesToArchive = positional;
@@ -43,24 +43,24 @@ export const tar: CommandHandler = async (args, env, streams) => {
     const archiveData: MockArchive = { type: 'tar', files: [] };
     
     const addNodeToArchive = async (currentPath: string, archivePath: string) => {
-      const node = await resolveRelativePathAsync(cwdPath, currentPath);
+      const node = await resolveRelativePathAsync(cwdPath, currentPath, env?.effectiveUser);
       if (!node) {
         streams.stderr.writeLine(`tar: ${currentPath}: Cannot stat: No such file or directory`);
         return;
       }
       
-      const absPath = await getAbsolutePathAsync(node.id);
-      const nodeStat = await stat(absPath);
+      const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+      const nodeStat = await stat(absPath, { asUser: env?.effectiveUser });
       
       if (nodeStat.type === 'file') {
-        const text = await (await readFile(absPath)).text();
+        const text = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
         archiveData.files.push({ path: archivePath, content: text, isDirectory: false });
         if (isVerbose) streams.stdout.writeLine(archivePath);
       } else if (nodeStat.type === 'directory') {
         archiveData.files.push({ path: archivePath + '/', content: '', isDirectory: true });
         if (isVerbose) streams.stdout.writeLine(archivePath + '/');
         
-        const children = await readdir(absPath);
+        const children = await readdir(absPath, { asUser: env?.effectiveUser });
         for (const child of children) {
           await addNodeToArchive(currentPath + '/' + child.name, archivePath + '/' + child.name);
         }
@@ -75,13 +75,13 @@ export const tar: CommandHandler = async (args, env, streams) => {
     const parts = archiveFile.split('/');
     const destName = parts.pop()!;
     const parentPath = parts.join('/') || '.';
-    const parentNode = await resolveRelativePathAsync(cwdPath, parentPath);
+    const parentNode = await resolveRelativePathAsync(cwdPath, parentPath, env?.effectiveUser);
     if (!parentNode) {
       streams.stderr.writeLine(`tar: ${archiveFile}: Cannot open: No such file or directory`);
       return 1;
     }
     
-    const parentAbs = await getAbsolutePathAsync(parentNode.id);
+    const parentAbs = await getAbsolutePathAsync(parentNode.id, env?.effectiveUser);
     const targetPath = parentAbs === '/' ? '/' + destName : parentAbs + '/' + destName;
     
     await writeFile(targetPath, JSON.stringify(archiveData));
@@ -89,15 +89,15 @@ export const tar: CommandHandler = async (args, env, streams) => {
   }
   
   if (isExtract) {
-    const node = await resolveRelativePathAsync(cwdPath, archiveFile);
+    const node = await resolveRelativePathAsync(cwdPath, archiveFile, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`tar: ${archiveFile}: Cannot open: No such file or directory`);
       streams.stderr.writeLine('tar: Error is not recoverable: exiting now');
       return 2;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const blob = await readFile(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const blob = await readFile(absPath, { asUser: env?.effectiveUser });
     const text = await blob.text();
     
     let archiveData: MockArchive;
@@ -114,7 +114,7 @@ export const tar: CommandHandler = async (args, env, streams) => {
       const fullExtractPath = cwdPath === '/' ? '/' + file.path : cwdPath + '/' + file.path;
       if (file.isDirectory) {
         try {
-          await mkdir(fullExtractPath);
+          await mkdir(fullExtractPath, { asUser: env?.effectiveUser });
         } catch (e: any) {
           if (!e.message?.includes('exists')) {
             streams.stderr.writeLine(`tar: ${file.path}: Cannot mkdir: ${e.message}`);
@@ -133,7 +133,7 @@ export const tar: CommandHandler = async (args, env, streams) => {
              let curr = '';
              for (const dp of dirParts) {
                curr += '/' + dp;
-               try { await mkdir(curr); } catch {}
+               try { await mkdir(curr, { asUser: env?.effectiveUser }); } catch {}
              }
           }
           await writeFile(fullExtractPath, file.content);
@@ -162,22 +162,22 @@ export const zip: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readFile, writeFile, stat, readdir } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   const archiveData: MockArchive = { type: 'zip', files: [] };
   
   const addNodeToArchive = async (currentPath: string, archivePath: string) => {
-    const node = await resolveRelativePathAsync(cwdPath, currentPath);
+    const node = await resolveRelativePathAsync(cwdPath, currentPath, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`zip warning: name not matched: ${currentPath}`);
       return;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const nodeStat = await stat(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const nodeStat = await stat(absPath, { asUser: env?.effectiveUser });
     
     if (nodeStat.type === 'file') {
-      const text = await (await readFile(absPath)).text();
+      const text = await (await readFile(absPath, { asUser: env?.effectiveUser })).text();
       archiveData.files.push({ path: archivePath, content: text, isDirectory: false });
       streams.stdout.writeLine(`  adding: ${archivePath} (mock deflated 0%)`);
     } else if (nodeStat.type === 'directory') {
@@ -187,7 +187,7 @@ export const zip: CommandHandler = async (args, env, streams) => {
       // zip normally doesn't recurse unless -r is given, but we will simplify and always recurse or assume user used -r.
       // Wait, let's only recurse if it was requested, or just do it for simplicity.
       // We will do it for simplicity since we don't fully parse -r here.
-      const children = await readdir(absPath);
+      const children = await readdir(absPath, { asUser: env?.effectiveUser });
       for (const child of children) {
         await addNodeToArchive(currentPath + '/' + child.name, archivePath + '/' + child.name);
       }
@@ -202,13 +202,13 @@ export const zip: CommandHandler = async (args, env, streams) => {
   const parts = archiveFile.split('/');
   const destName = parts.pop()!;
   const parentPath = parts.join('/') || '.';
-  const parentNode = await resolveRelativePathAsync(cwdPath, parentPath);
+  const parentNode = await resolveRelativePathAsync(cwdPath, parentPath, env?.effectiveUser);
   if (!parentNode) {
     streams.stderr.writeLine(`zip I/O error: No such file or directory`);
     return 1;
   }
   
-  const parentAbs = await getAbsolutePathAsync(parentNode.id);
+  const parentAbs = await getAbsolutePathAsync(parentNode.id, env?.effectiveUser);
   const targetPath = parentAbs === '/' ? '/' + destName : parentAbs + '/' + destName;
   
   await writeFile(targetPath, JSON.stringify(archiveData));
@@ -227,16 +227,16 @@ export const unzip: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readFile, writeFile, mkdir } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
-  const node = await resolveRelativePathAsync(cwdPath, archiveFile);
+  const node = await resolveRelativePathAsync(cwdPath, archiveFile, env?.effectiveUser);
   if (!node) {
     streams.stderr.writeLine(`unzip:  cannot find or open ${archiveFile}, ${archiveFile}.zip or ${archiveFile}.ZIP.`);
     return 9;
   }
   
-  const absPath = await getAbsolutePathAsync(node.id);
-  const blob = await readFile(absPath);
+  const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+  const blob = await readFile(absPath, { asUser: env?.effectiveUser });
   const text = await blob.text();
   
   let archiveData: MockArchive;
@@ -255,7 +255,7 @@ export const unzip: CommandHandler = async (args, env, streams) => {
     const fullExtractPath = cwdPath === '/' ? '/' + file.path : cwdPath + '/' + file.path;
     if (file.isDirectory) {
       try {
-        await mkdir(fullExtractPath);
+        await mkdir(fullExtractPath, { asUser: env?.effectiveUser });
       } catch (e: any) {
         if (!e.message?.includes('exists')) {
           streams.stderr.writeLine(`   error:  cannot create ${file.path}`);
@@ -273,7 +273,7 @@ export const unzip: CommandHandler = async (args, env, streams) => {
            let curr = '';
            for (const dp of dirParts) {
              curr += '/' + dp;
-             try { await mkdir(curr); } catch {}
+             try { await mkdir(curr, { asUser: env?.effectiveUser }); } catch {}
            }
         }
         await writeFile(fullExtractPath, file.content);
@@ -297,10 +297,10 @@ export const gzip: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readFile, writeFile, unlink } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   for (const target of positional) {
-    const node = await resolveRelativePathAsync(cwdPath, target);
+    const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`gzip: ${target}: No such file or directory`);
       continue;
@@ -311,14 +311,14 @@ export const gzip: CommandHandler = async (args, env, streams) => {
       continue;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const blob = await readFile(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const blob = await readFile(absPath, { asUser: env?.effectiveUser });
     
     // Write new file .gz
     await writeFile(`${absPath}.gz`, await blob.text()); // Simulated compression, just rename/copy
     
     // Remove old file
-    await unlink(absPath);
+    await unlink(absPath, { asUser: env?.effectiveUser });
   }
   
   return 0;
@@ -334,10 +334,10 @@ export const gunzip: CommandHandler = async (args, env, streams) => {
   
   const { getAbsolutePathAsync, resolveRelativePathAsync } = await import('../../../fs/pathResolver');
   const { readFile, writeFile, unlink } = await import('../../../fs/operations');
-  const cwdPath = await getAbsolutePathAsync(env.cwdId);
+  const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
   
   for (const target of positional) {
-    const node = await resolveRelativePathAsync(cwdPath, target);
+    const node = await resolveRelativePathAsync(cwdPath, target, env?.effectiveUser);
     if (!node) {
       streams.stderr.writeLine(`gunzip: ${target}: No such file or directory`);
       continue;
@@ -353,15 +353,15 @@ export const gunzip: CommandHandler = async (args, env, streams) => {
       continue;
     }
     
-    const absPath = await getAbsolutePathAsync(node.id);
-    const blob = await readFile(absPath);
+    const absPath = await getAbsolutePathAsync(node.id, env?.effectiveUser);
+    const blob = await readFile(absPath, { asUser: env?.effectiveUser });
     
     // Write new file removing .gz
     const uncompressedPath = absPath.slice(0, -3);
     await writeFile(uncompressedPath, await blob.text()); 
     
     // Remove old file
-    await unlink(absPath);
+    await unlink(absPath, { asUser: env?.effectiveUser });
   }
   
   return 0;

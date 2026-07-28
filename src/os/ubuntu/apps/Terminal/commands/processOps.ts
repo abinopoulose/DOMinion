@@ -144,8 +144,8 @@ export const nohup: CommandHandler = async (args, env, streams) => {
   try {
     const { getAbsolutePathAsync } = await import('../../../fs/pathResolver');
     const { writeFile } = await import('../../../fs/operations');
-    const cwdPath = await getAbsolutePathAsync(env.cwdId);
-    await writeFile(`${cwdPath === '/' ? '' : cwdPath}/nohup.out`, outContent, { append: true });
+    const cwdPath = await getAbsolutePathAsync(env.cwdId, env?.effectiveUser);
+    await writeFile(`${cwdPath === '/' ? '' : cwdPath}/nohup.out`, outContent, { append: true , asUser: env?.effectiveUser });
   } catch {}
   
   return exitCode;
