@@ -309,7 +309,6 @@ export async function chmod(path: string, mode: number, options?: VfsOperationOp
   node.permissions = mode;
   node.modifiedAt = Date.now();
   await AuthorizedVFS.validatePut(node, getSecurityContext(options), node);
-  await AuthorizedVFS.validatePut(node, getSecurityContext(options), undefined, newParentNode);
   
   const db = await getDB();
   await db.put('inodes', node);
@@ -326,7 +325,6 @@ export async function chown(path: string, uid: string, gid: string, options?: Vf
   node.groupId = gid;
   node.modifiedAt = Date.now();
   await AuthorizedVFS.validatePut(node, getSecurityContext(options), node);
-  await AuthorizedVFS.validatePut(node, getSecurityContext(options), undefined, newParentNode);
   
   const db = await getDB();
   await db.put('inodes', node);
@@ -399,7 +397,6 @@ export async function moveNode(nodeId: string, newParentId: string, options?: Vf
   node.parentId = newParentId;
   node.modifiedAt = Date.now();
   await AuthorizedVFS.validatePut(node, getSecurityContext(options), undefined, newParent);
-  await AuthorizedVFS.validatePut(node, getSecurityContext(options), undefined, newParentNode);
   await db.put('inodes', node);
   clearPathCache();
   fsEvents.emit('/', 'fs:modified');

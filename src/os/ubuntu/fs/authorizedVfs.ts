@@ -1,7 +1,6 @@
 import { getDB } from './db';
 import type { VFSNode, SecurityContext } from './types';
 import { hasPermission } from './permissions';
-import { resolvePathAsync } from './pathResolver';
 
 export class AuthorizedVFS {
   static async validatePut(node: VFSNode, context: SecurityContext, existingNodeInfo?: VFSNode, parentNodeInfo?: VFSNode): Promise<void> {
