@@ -1,0 +1,1 @@
+import{d as e}from"./ProcessManager-KjzveyEk.js";import"./authContext-CuzU3DMs.js";var t=e(e=>({clipboard:{action:null,nodeIds:[]},setClipboard:(t,n)=>e({clipboard:{action:t,nodeIds:n}})}));export{t};

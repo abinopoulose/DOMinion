@@ -1,1 +1,0 @@
-import{r as e}from"./ProcessManager-BUt7ZqEZ.js";import"./authContext-xEYYrdag.js";var t=e(e=>({clipboard:{action:null,nodeIds:[]},setClipboard:(t,n)=>e({clipboard:{action:t,nodeIds:n}})}));export{t};
